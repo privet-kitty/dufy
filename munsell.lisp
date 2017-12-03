@@ -7,7 +7,7 @@
 
 ;; the largest chroma in the Munsell renotation data
 ;; (defparameter max-chroma-overall (apply #'max (mapcar #'third munsell-renotation-data)))
-(defparameter max-chroma-overall 50)
+(defparameter *max-chroma-overall* 50)
 
 (defun max-chroma-integer-case (hue40 value)
   (aref max-chroma-arr hue40 value))
@@ -42,7 +42,7 @@
 (defun value-to-y (v)
   (* v (+ 1.1914 (* v (+ -0.22533 (* v (+ 0.23352 (* v (+ -0.020484 (* v 0.00081939)))))))) 0.01))
   
-(defun value-to-achromatic-srgb (v)
+(defun value-to-achromatic-rgb255 (v)
   (let ((x (round (* (clcl:delinearize (value-to-y v)) 255))))
     (list x x x)))
 
@@ -74,10 +74,13 @@
 	  (+ (* (- 1 r) (aref y-to-value-arr y1))
 	     (* r (aref y-to-value-arr y2)))))))
 
+(defun rgb255-to-value (r g b &optional (rgbspace srgbd65))
+  (y-to-value (second (rgb255-to-xyz r g b rgbspace))))
+
 
 ;; hue ∈ Z/40, tmp-value ∈ {0, 1, ..., 10}, half-chroma ∈ {0, 1, ..., max-chroma/2}
 ;; If dark is t, tmp-value ∈ {0, 1, 2, 3, 4 ,5} and treated as {0, 0.2, ...., 1.0}.
-(defun hvc-to-xyy-simplest-case (hue40 tmp-value half-chroma dark)
+(defun hvc-to-xyy-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
   (let ((hue (mod hue40 40)))
     (if dark
 	(list (aref mrd-array-dark hue tmp-value half-chroma 0)
@@ -87,11 +90,21 @@
 	      (aref mrd-array hue tmp-value half-chroma 1)
 	      (aref mrd-array hue tmp-value half-chroma 2)))))
 
+
 (defun hvc-to-lrgb-simplest-case (hue value half-chroma)
   (apply #'clcl:xyz-to-lrgb
 	 (clcl:bradford (apply #'clcl:xyy-to-xyz
 			       (hvc-to-xyy-simplest-case hue value half-chroma nil))
 			clcl:c clcl:d65)))
+
+;; CAUTION: This LCH(ab) values are under Illuminant C.
+(defun hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
+  (destructuring-bind (l a b)
+      (apply #'(lambda (x y largey) (xyy-to-lab x y largey c))
+	     (hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark))
+    (list (bound l 0d0 100d0)
+	  a
+	  b)))
 
 (defun hvc-to-xyy-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (let* ((hue (mod hue40 40))
@@ -147,28 +160,32 @@
 			   (* y2 (/ (- lum lum1) (- lum2 lum1))))))
 		(list x y lum))))))))
 
+; CAUTION: the Standard Illuminant is C
 (defun hvc-to-xyy (hue40 value chroma)
   (if (>= value 1)
       (hvc-to-xyy-general-case hue40 value (/ chroma 2) nil)
       (hvc-to-xyy-general-case hue40 (* value 5) (/ chroma 2) t)))
 
-(defun hvc-to-lrgb (hue40 value chroma)
-  (apply #'clcl:xyz-to-lrgb
-	 (clcl:bradford (apply #'clcl:xyy-to-xyz
-			       (hvc-to-xyy hue40 value chroma))
-			clcl:c clcl:d65)))
+(defun hvc-to-xyz (hue40 value chroma)
+  (clcl:bradford (apply #'clcl:xyy-to-xyz (hvc-to-xyy hue40 value chroma))
+		 clcl:c clcl:d65))
 
+;; return multiple values: (lr lg lb),  out-of-gamut-p
+;; Note that the pure white (N 10.0) could be judged as out of gamut by numerical error, if threshold is too small.
+(defun hvc-to-lrgb (hue40 value chroma &key (threshold 0.001d0))
+  (destructuring-bind (x y z) (hvc-to-xyz hue40 value chroma)
+    (xyz-to-lrgb x y z :threshold threshold)))
+
+;; Unlike HVC-TO-LRGB, all of achromatic colors are judged as within gamut.
 ;; return multiple values: (r g b),  out-of-gamut-p
-(defun hvc-to-srgb (hue40 value chroma &key (threshold 0.0001d0))
-  (multiple-value-bind (srgb out-of-gamut)
-      (destructuring-bind (x y z)
-	  (clcl:bradford (apply #'clcl:xyy-to-xyz
-				(hvc-to-xyy hue40 value chroma))
-			 clcl:c clcl:d65)
-	  (clcl:xyz-to-srgb x y z :threshold threshold))
-    (if (and (= value 10) (= chroma 0)) ;pure white (N 10.0) be in gamut
-	(values srgb nil)
-	(values srgb out-of-gamut))))
+(defun hvc-to-rgb255 (hue40 value chroma &key (threshold 0.001d0))
+  (multiple-value-bind (rgb255 out-of-gamut)
+      (destructuring-bind (x y z) (clcl:hvc-to-xyz hue40 value chroma)
+	  (clcl:xyz-to-rgb255 x y z :threshold threshold))
+    (if (and (= chroma 0))
+	(values rgb255 nil)
+	(values rgb255 out-of-gamut))))
+
 
 (defun munsellspec-to-hvc (spec)
   (destructuring-bind (hue-suffix value chroma)
@@ -191,14 +208,14 @@
 	(values (funcall #'hvc-to-xyy h v c) nil))))
 
 ;; return multiple values: (x, y, Y), out-of-gamut-p
-(defun munsellspec-to-srgb (spec &key (threshold 0.0001d0))
+(defun munsellspec-to-rgb255 (spec &key (threshold 0.0001d0))
   (destructuring-bind (nil v chroma) (munsellspec-to-hvc spec)
     (multiple-value-bind (xyy out-of-macadam-limit) (munsellspec-to-xyy spec)
       (if out-of-macadam-limit
 	  (values (list -1 -1 -1) t)
-	  (multiple-value-bind (srgb out-of-gamut) 
-	      (apply #'(lambda (x y z) (clcl:xyz-to-srgb x y z :threshold threshold))
+	  (multiple-value-bind (rgb255 out-of-gamut) 
+	      (apply #'(lambda (x y z) (clcl:xyz-to-rgb255 x y z :threshold threshold))
 		     (clcl:bradford (apply #'clcl:xyy-to-xyz xyy) clcl:c clcl:d65))
 	    (if (and (= v 10) (= chroma 0))
-		(values srgb nil)
-		(values srgb out-of-gamut)))))))
+		(values rgb255 nil)
+		(values rgb255 out-of-gamut)))))))

@@ -5,16 +5,22 @@
   (:export :xyy-to-xyz
 	   :xyz-to-xyy
 	   :illuminant
+	   :illuminant-x
+	   :illuminant-y
+	   :illuminant-largex
+	   :illuminant-largey
+	   :illuminant-largez
 	   :new-illuminant
 	   :defilluminant
 	   :c :d50 :d65
-	   :calculate-ca-matrix
+	   :calc-ca-matrix
 	   :chromatic-adaptation
 	   :bradford
 	   :xyz-scaling
 	   :von-kries
 	   :cmccat97
 	   :cmccat2000
+
 	   :rgbspace
 	   :srgb
 	   :srgbd65
@@ -22,27 +28,46 @@
 	   :new-rgbspace
 	   :rgbspace-linearizer
 	   :rgbspace-delinearizer
+	   :rgbspace-illuminant
+	   :rgbspace-xr
+	   :rgbspace-yr
+	   :rgbspace-xg
+	   :rgbspace-yg
+	   :rgbspace-xb
+	   :rgbspace-yb
+	   :rgbspace-to-xyz-matrix
+	   :rgbspace-from-xyz-matrix
 	   :genlinearizer
 	   :gendelinearizer
+
 	   :xyz-to-lab
-	   :srgb-to-lab
+	   :lab-to-xyz
+	   :rgb255-to-lab
+	   :lab-to-lchab
+	   :lchab-to-lab
+	   :xyy-to-lab
+	   :lab-to-xyy
+	   :xyz-to-lchab
+	   :xyy-to-lchab
+	   :lchab-to-xyz
+	   :lchab-to-xyy
 	   :deltae
 	   :xyz-deltae
-	   :srgb-deltae
-	   :xyzc-to-xyzd65
-	   :xyzd65-to-xyzc
+	   :rgb255-deltae
+
 	   :bound
 	   :delinearize
-	   :xyz-to-lrgb
-	   :xyy-to-lrgb
+	   :linearize
 	   :nearly=
 	   :nearly<=
-	   :xyz-to-srgb
-	   :xyy-to-srgb
-	   :srgb-to-hex
-	   :hex-to-srgb
-	   :linearize
-	   :srgb-to-xyz
+	   :xyz-to-lrgb
+	   :lrgb-to-xyz
+	   :xyz-to-rgb
+	   :rgb-to-xyz
+	   :xyz-to-rgb255
+	   :rgb255-to-xyz
+	   :rgb255-to-hex
+	   :hex-to-rgb255
 	   :two-pi
 	   :subtract-with-mod
 	   :interpolate-in-circle-group
@@ -52,15 +77,25 @@
 	   :rgb1+
 	   :rgb1-
 
+	   :hsv-to-rgb
+	   :rgb-to-hsv
+	   :hsv-to-rgb255
+	   :rgb255-to-hsv
+	   :hsv-to-xyz
+	   :xyz-to-hsv
+
 	   :mrd-filename
 	   :mrd-pathname
 	   :value-to-y
 	   :y-to-value
+	   :rgb255-to-value
 	   :hvc-to-xyy
-	   :hvc-to-srgb
+	   :hvc-to-xyz
+	   :hvc-to-lrgb
+	   :hvc-to-rgb255
 	   :munsellspec-to-xyy
 	   :munsellspec-to-hvc
-	   :munsellspec-to-srgb
+	   :munsellspec-to-rgb255
 	   :max-chroma
 ))
 
@@ -227,7 +262,7 @@
 	     (* y (aref matrix 2 1))
 	     (* z (aref matrix 2 2))))))
 
-(defun calculate-ca-matrix  (from-illuminant to-illuminant &optional (tmatrix bradford))
+(defun calc-ca-matrix  (from-illuminant to-illuminant &optional (tmatrix bradford))
   (let ((from-white-x (illuminant-largex from-illuminant))
 	(from-white-y (illuminant-largey from-illuminant))
 	(from-white-z (illuminant-largez from-illuminant))
@@ -284,7 +319,7 @@
   (dotimes (from-index *number-of-illuminants*)
     (dotimes (to-index *number-of-illuminants*)
       (setf (aref bradford-dictionary from-index to-index)
-	    (calculate-ca-matrix
+	    (calc-ca-matrix
 	     (aref illuminant-array from-index)
 	     (aref illuminant-array to-index))))))
 
@@ -306,7 +341,7 @@
   (if (or (< (illuminant-index from-illuminant) 0)
 	  (< (illuminant-index to-illuminant) 0))
       (error "The function BRADFORD cannot take a user-defined standard illuminant.
-Use CALCULATE-CA-MATRIX and CHROMATIC-ADAPTATION.")
+Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
       (chromatic-adaptation
        xyz-list
        (get-bradford-transformation-matrix from-illuminant to-illuminant))))
@@ -417,51 +452,55 @@ Use CALCULATE-CA-MATRIX and CHROMATIC-ADAPTATION.")
 ;; 	(+ (* -0.9692660d0 x) (* 1.8760108d0 y) (* 0.0415560d0 z))
 ;; 	(+ (* 0.0556434d0 x) (* -0.2040259d0 y) (* 1.0572252d0 z))))
 
-(defun xyz-to-lrgb (x y z &optional (rgbspace srgb))
-  (multiply-matrix-and-list (rgbspace-from-xyz-matrix rgbspace)
-			    (list x y z)))
 
-(defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgb))
+;; convert XYZ to linear RGB in [0, 1]
+;; return multiple values: (lr lg lb) and out-of-gamut flag
+(defun xyz-to-lrgb (x y z &key (rgbspace srgbd65) (threshold 0))
+  (destructuring-bind (lr lg lb)
+      (multiply-matrix-and-list (rgbspace-from-xyz-matrix rgbspace)
+				(list x y z))
+    (let ((out-of-gamut (not (and  (nearly<= threshold 0 lr 1)
+				   (nearly<= threshold 0 lg 1)
+				   (nearly<= threshold 0 lb 1)))))
+      (values (list lr lg lb) out-of-gamut))))
+
+(defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgbd65))
   (multiply-matrix-and-list (rgbspace-to-xyz-matrix rgbspace)
-			    (list lr lg lb)))
+			    (list lr lg lb)))		       
 
-;; (defun xyy-to-lrgb (x y largey)
-;;   (apply #'xyz-to-lrgb
-;; 	 (apply #'xyzc-to-xyzd65
-;; 		(xyy-to-xyz x y largey))))
-		       
+;; convert XYZ to non-linear (i.e. gamma corrected) RGB in [0, 1]
+;; return multiple values: (lr lg lb) and out-of-gamut flag
+(defun xyz-to-rgb (x y z &key (rgbspace srgbd65) (threshold 0))
+  (multiple-value-bind (lrgb out-of-gamut)
+      (xyz-to-lrgb x y z :rgbspace rgbspace :threshold threshold)
+    (values (mapcar (rgbspace-delinearizer rgbspace) lrgb)
+	    out-of-gamut)))
 
-;; convert XYZ d65 to sRGB d65 in [0, 255]
+(defun rgb-to-xyz (r g b &optional (rgbspace srgb))
+  (let ((lr (linearize r rgbspace))
+	(lg (linearize g rgbspace))
+	(lb (linearize b rgbspace)))
+    (lrgb-to-xyz lr lg lb rgbspace)))
+
+
+;; convert XYZ to RGB in {0, 1, ..., 255}
 ;; return multiple values: (r g b) and out-of-gamut-p
-(defun xyz-to-srgb (x y z &key (rgbspace srgbd65) (threshold 0))
-  (destructuring-bind (r g b) (xyz-to-lrgb x y z rgbspace)
-    (let ((out-of-gamut (not (and (nearly<= threshold 0 r 1)
-				  (nearly<= threshold 0 g 1)
-				  (nearly<= threshold 0 b 1)))))
-      (setf r (round (* (delinearize (bound r 0 1)) 255)))
-      (setf g (round (* (delinearize (bound g 0 1)) 255)))
-      (setf b (round (* (delinearize (bound b 0 1)) 255)))
-      (values (list r g b) out-of-gamut))))
+(defun xyz-to-rgb255 (x y z &key (rgbspace srgbd65) (threshold 0))
+  (multiple-value-bind (rgb out-of-gamut) (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
+    (values (mapcar #'(lambda (x) (round (* (bound x 0 1) 255d0))) rgb)
+	    out-of-gamut)))
 
-;; (defun xyy-to-srgb (x y largey)
-;;   (apply #'xyz-to-srgb (apply #'xyzc-to-xyzd65 (xyy-to-xyz x y largey))))
+;; convert RGB ({0, 1, ..., 255}) to XYZ ([0, 1])
+(defun rgb255-to-xyz (r g b &optional (rgbspace srgbd65))
+  (rgb-to-xyz (/ r 255d0) (/ g 255d0) (/ b 255d0) rgbspace))
 
-(defun srgb-to-hex (r g b)
+(defun rgb255-to-hex (r g b)
   (+ (ash r 16) (ash g 8) b))
 
-(defun hex-to-srgb (hex)
+(defun hex-to-rgb255 (hex)
   (list (logand (ash hex -16) #xff)
 	(logand (ash hex -8) #xff)
 	(logand hex #xff)))
-
-;; convert sRGB d65 ([0, 255]) to XYZ d65 ([0, 1])
-(defun srgb-to-xyz (r g b)
-  (let ((lr (linearize (/ r 255.0d0)))
-	(lg (linearize (/ g 255.0d0)))
-	(lb (linearize (/ b 255.0d0))))
-    (list (+ (* 0.4124564d0 lr) (* 0.3575761d0 lg) (* 0.1804375d0 lb))
-	  (+ (* 0.2126729d0 lr) (* 0.7151522d0 lg) (* 0.0721750d0 lb))
-	  (+ (* 0.0193339d0 lr) (* 0.1191920d0 lg) (* 0.9503041d0 lb)))))
 
 (defmacro rgb1+ (x)
   `(bound (1+ ,x) 0 255))
@@ -489,6 +528,24 @@ Use CALCULATE-CA-MATRIX and CHROMATIC-ADAPTATION.")
   (destructuring-bind (x y z) (xyy-to-xyz x y largey)
     (xyz-to-lab x y z illuminant)))
 
+(defun lab-to-xyz (l a b &optional (illuminant d65))
+  (let* ((fy (* (+ l 16) 0.008620689655172414d0))
+	 (fx (+ fy (* a 0.002d0)))
+	 (fz (- fy (* b 0.005d0))))
+    (list (if (> fx 0.20689655172413793d0)
+	      (* (illuminant-largex illuminant) fx fx fx)
+	      (* (- fx 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largex illuminant)))
+	  (if (> fy 0.20689655172413793d0)
+	      (* (illuminant-largey illuminant) fy fy fy)
+	      (* (- fy 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largey illuminant)))
+	  (if (> fz 0.20689655172413793d0)
+	      (* (illuminant-largez illuminant) fz fz fz)
+	      (* (- fz 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largez illuminant))))))
+
+(defun lab-to-xyy (l a b &optional (illuminant d65))
+  (destructuring-bind (x y z) (lab-to-xyz l a b illuminant)
+    (xyz-to-xyy x y z illuminant)))
+
 (defun lab-to-lchab (l a b)
   (list l
 	(sqrt (+ (* a a) (* b b)))
@@ -503,9 +560,16 @@ Use CALCULATE-CA-MATRIX and CHROMATIC-ADAPTATION.")
 (defun xyy-to-lchab (x y largey &optional (illuminant d65))
   (apply #'lab-to-lchab (xyy-to-lab x y largey illuminant)))
 
+(defun lchab-to-xyz (l c h &optional (illuminant d65))
+  (destructuring-bind (l a b) (lchab-to-lab l c h)
+    (lab-to-xyz l a b illuminant)))
 
-(defun srgb-to-lab (r g b)
-  (destructuring-bind (x y z) (srgb-to-xyz r g b)
+(defun lchab-to-xyy (l c h &optional (illuminant d65))
+  (destructuring-bind (x y z) (lchab-to-xyz l c h illuminant)
+    (xyz-to-xyy x y z illuminant)))
+
+(defun rgb255-to-lab (r g b &optional (rgbspace srgbd65))
+  (destructuring-bind (x y z) (rgb255-to-xyz r g b rgbspace)
     (xyz-to-lab x y z)))
 
 (defun deltae (l1 a1 b1 l2 a2 b2)
@@ -521,10 +585,10 @@ Use CALCULATE-CA-MATRIX and CHROMATIC-ADAPTATION.")
     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
       (deltae l1 a1 b1 l2 a2 b2))))
 
-(defun srgb-deltae (r1 g1 b1 r2 g2 b2)
-  (destructuring-bind (x1 y1 z1) (srgb-to-xyz r1 g1 b1)
-    (destructuring-bind (x2 y2 z2) (srgb-to-xyz r2 g2 b2)
-      (xyz-deltae x1 y1 z1 x2 y2 z2))))
+(defun rgb255-deltae (r1 g1 b1 r2 g2 b2 &optional (rgbspace srgbd65))
+  (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
+    (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+      (xyz-deltae x1 y1 z1 x2 y2 z2 (rgbspace-illuminant rgbspace)))))
 
 ;; obsolete
 ;; (defun xyzc-to-xyzd65 (x y z)
@@ -562,3 +626,54 @@ Use CALCULATE-CA-MATRIX and CHROMATIC-ADAPTATION.")
   (let ((dx (* r (cos theta)))
 	(dy (* r (sin theta))))
     (list (+ dx 0.31006d0) (+ dy 0.31616d0))))
+
+
+;;; HSV
+
+;; H is in R/360. S and V are in [0, 1].
+(defun hsv-to-rgb (h s v)
+  (let* ((c (* v s))
+	 (h-prime (/ (mod h 360d0) 60d0))
+	 (h-prime-int (floor h-prime))
+	 (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
+	 (base (- v c)))
+    (cond ((= s 0d0) (list base base base))
+	  ((= 0 h-prime-int) (list (+ base c) (+ base x) base))
+	  ((= 1 h-prime-int) (list (+ base x) (+ base c) base))
+	  ((= 2 h-prime-int) (list base (+ base c) (+ base x)))
+	  ((= 3 h-prime-int) (list base (+ base x) (+ base c)))
+	  ((= 4 h-prime-int) (list (+ base x) base (+ base c)))
+	  ((= 5 h-prime-int) (list (+ base c) base (+ base x))))))
+	 
+(defun hsv-to-rgb255 (h s v)
+  (mapcar #'(lambda (x) (round (* x 255d0)))
+	  (hsv-to-rgb h s v)))
+
+;; The HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
+(defun hsv-to-xyz (h s v &optional (rgbspace srgbd65))
+  (destructuring-bind (r g b) (hsv-to-rgb h s v)
+    (rgb-to-xyz r g b rgbspace)))
+
+;; R, G and B should be in [0, 1].
+(defun rgb-to-hsv (r g b)
+  (let* ((maxrgb (coerce (max r g b) 'double-float))
+	 (minrgb (coerce (min r g b) 'double-float))
+	 (s (if (= maxrgb 0) 0d0 (/ (- maxrgb minrgb) maxrgb)))
+	 (h (cond ((= minrgb maxrgb) 0d0)
+		  ((= minrgb b) (+ (* 60d0 (/ (- g r) (- maxrgb minrgb))) 60d0))
+		  ((= minrgb r) (+ (* 60d0 (/ (- b g) (- maxrgb minrgb))) 180d0))
+		  ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
+    (list h s maxrgb)))
+	 
+(defun rgb255-to-hsv (r g b)
+  (rgb-to-hsv (* r 0.00392156862745098d0)
+	      (* g 0.00392156862745098d0)
+	      (* b 0.00392156862745098d0)))
+
+(defun xyz-to-hsv (x y z &key (rgbspace srgbd65) (threshold 0))
+  (multiple-value-bind (rgb out-of-gamut)
+      (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
+    (values (apply #'rgb-to-hsv
+		   (mapcar #'(lambda (i) (bound i 0d0 1d0)) rgb))
+	    out-of-gamut)))
+  

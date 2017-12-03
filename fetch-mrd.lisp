@@ -116,10 +116,6 @@
 ;; convert munsell value to Y in [0, 1]
 (defun value-to-y (v)
   (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0))
-  
-(defun value-to-achromatic-srgb (v)
-  (let ((x (round (* (clcl:delinearize (value-to-y v)) 255))))
-    (list x x x)))
 
 (defun value-to-achromatic-xyy (v)
   (let* ((y (value-to-y v))
@@ -159,7 +155,7 @@
 	     (* r (aref y-to-value-arr y2)))))))
 
 ;; get data without correcting the luminance factor, i.e. max(Y) = 1.0257 (not 1.00)
-;; The data at value=0 are substituted with the data value=0.2.
+;; The data with value=0 are substituted with the data with value=0.2.
 (defun get-xyy-from-dat (hue-num value chroma)
   (cond ((= chroma 0)
 	 (value-to-achromatic-xyy value))
