@@ -86,17 +86,23 @@
 
 	   :mrd-filename
 	   :mrd-pathname
-	   :value-to-y
-	   :y-to-value
-	   :rgb255-to-value
-	   :hvc-to-xyy
-	   :hvc-to-xyz
-	   :hvc-to-lrgb
-	   :hvc-to-rgb255
+	   :munsell-value-to-y
+	   :y-to-munsell-value
+	   :rgb255-to-munsell-value
+	   :munsell-hvc-to-xyy
+	   :munsell-hvc-to-xyz
+	   :munsell-hvc-to-lrgb
+	   :munsell-hvc-to-rgb255
 	   :munsellspec-to-xyy
 	   :munsellspec-to-hvc
 	   :munsellspec-to-rgb255
 	   :max-chroma
+	   :interpolatedp
+	   :make-munsell-inversion-data
+	   :interpolate-munsell-inversion-data
+	   :load-munsell-inversion-data
+	   :save-munsell-inversion-data
+	   :rgb255-to-munsell-hvc
 ))
 
 (in-package :clcl)
@@ -633,7 +639,7 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
     (list (+ dx 0.31006d0) (+ dy 0.31616d0))))
 
 
-;;; HSV
+;;; HSV/HSL
 
 ;; H is in R/360. S and V are in [0, 1].
 (defun hsv-to-rgb (h s v)
