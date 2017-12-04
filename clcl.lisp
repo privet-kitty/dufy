@@ -120,8 +120,13 @@
       (and (<= (- number (car more-numbers)) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
+(defun rcurry (fn &rest args) 
+  #'(lambda  (&rest args2) 
+    (apply fn (append args2 args))))
+
+
 ;;; Standard Illuminant, XYZ, xyY
-;;; The nominal range of X, Y, Z, x, y is always [0, 1]
+;;; The nominal range of X, Y, Z, x, y is always [0, 1].
 
 (defstruct illuminant
   (x 0.0 :type double-float)
@@ -250,17 +255,16 @@
 				  (* (aref mat 0 1) (aref mat 1 0))) det))
     invmat))
 
-(defun multiply-matrix-and-list (matrix lst)
-  (destructuring-bind (x y z) lst
-    (list (+ (* x (aref matrix 0 0))
-	     (* y (aref matrix 0 1))
-	     (* z (aref matrix 0 2)))
-	  (+ (* x (aref matrix 1 0))
-	     (* y (aref matrix 1 1))
-	     (* z (aref matrix 1 2)))
-	  (+ (* x (aref matrix 2 0))
-	     (* y (aref matrix 2 1))
-	     (* z (aref matrix 2 2))))))
+(defun multiply-matrix-and-vec (matrix x y z)
+  (list (+ (* x (aref matrix 0 0))
+	   (* y (aref matrix 0 1))
+	   (* z (aref matrix 0 2)))
+	(+ (* x (aref matrix 1 0))
+	   (* y (aref matrix 1 1))
+	   (* z (aref matrix 1 2)))
+	(+ (* x (aref matrix 2 0))
+	   (* y (aref matrix 2 1))
+	   (* z (aref matrix 2 2)))))
 
 (defun calc-ca-matrix  (from-illuminant to-illuminant &optional (tmatrix bradford))
   (let ((from-white-x (illuminant-largex from-illuminant))
@@ -332,18 +336,18 @@
 	(illuminant-index to-illuminant)))
 
 ;; general function for chromatic adaptation
-(defun chromatic-adaptation (xyz-list matrix)
-  (multiply-matrix-and-list matrix xyz-list))
+(defun chromatic-adaptation (x y z matrix)
+  (multiply-matrix-and-vec matrix x y z))
 
 
 ;; special function for Bradford transformation between default standard illuminants
-(defun bradford (xyz-list from-illuminant to-illuminant)
+(defun bradford (x y z from-illuminant to-illuminant)
   (if (or (< (illuminant-index from-illuminant) 0)
 	  (< (illuminant-index to-illuminant) 0))
       (error "The function BRADFORD cannot take a user-defined standard illuminant.
 Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
       (chromatic-adaptation
-       xyz-list
+       x y z
        (get-bradford-transformation-matrix from-illuminant to-illuminant))))
 
 (defun xyz-to-xyy (x y z &optional (illuminant d65))
@@ -376,10 +380,10 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 					     (list yr yg yb)
 					     (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
     (destructuring-bind (sr sg sb)
-	(multiply-matrix-and-list (invert-matrix33 coordinates)
-				  (list (illuminant-largex illuminant)
-					(illuminant-largey illuminant)
-					(illuminant-largez illuminant)))
+	(multiply-matrix-and-vec (invert-matrix33 coordinates)
+				 (illuminant-largex illuminant)
+				 (illuminant-largey illuminant)
+				 (illuminant-largez illuminant))
       (let ((m
 	     (make-array '(3 3)
 			 :element-type 'double-float
@@ -457,16 +461,16 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 ;; return multiple values: (lr lg lb) and out-of-gamut flag
 (defun xyz-to-lrgb (x y z &key (rgbspace srgbd65) (threshold 0))
   (destructuring-bind (lr lg lb)
-      (multiply-matrix-and-list (rgbspace-from-xyz-matrix rgbspace)
-				(list x y z))
+      (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
+				x y z)
     (let ((out-of-gamut (not (and  (nearly<= threshold 0 lr 1)
 				   (nearly<= threshold 0 lg 1)
 				   (nearly<= threshold 0 lb 1)))))
       (values (list lr lg lb) out-of-gamut))))
 
 (defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgbd65))
-  (multiply-matrix-and-list (rgbspace-to-xyz-matrix rgbspace)
-			    (list lr lg lb)))		       
+  (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
+			    lr lg lb))		       
 
 ;; convert XYZ to non-linear (i.e. gamma corrected) RGB in [0, 1]
 ;; return multiple values: (lr lg lb) and out-of-gamut flag
@@ -572,6 +576,7 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
   (destructuring-bind (x y z) (rgb255-to-xyz r g b rgbspace)
     (xyz-to-lab x y z)))
 
+;; CIE76
 (defun deltae (l1 a1 b1 l2 a2 b2)
   (let ((deltal (- l1 l2))
 	(deltaa (- a1 a2))
@@ -649,7 +654,7 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
   (mapcar #'(lambda (x) (round (* x 255d0)))
 	  (hsv-to-rgb h s v)))
 
-;; The HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
+;; The received HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
 (defun hsv-to-xyz (h s v &optional (rgbspace srgbd65))
   (destructuring-bind (r g b) (hsv-to-rgb h s v)
     (rgb-to-xyz r g b rgbspace)))

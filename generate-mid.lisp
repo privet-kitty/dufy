@@ -4,6 +4,10 @@
 
 (defconstant possible-colors 16777216) ;256*256*256
 
+(defun rcurry (fn &rest args) 
+  #'(lambda  (&rest args2) 
+    (apply fn (append args2 args))))
+
 (defun encode-hvc1000 (h1000 v1000 c500 &optional (interpolated-flag 0))
   (+ (ash interpolated-flag 31)
      (ash h1000 20)
@@ -168,8 +172,9 @@
     (destructuring-bind (h1000 nil c500)
 	(decode-hvc1000 (aref munsell-inversion-data hex))
       (let* ((hue40 (clcl:bound (/ h1000 25.0) 0 40))
-	     (new-value (clcl:y-to-value (second (clcl:bradford (apply #'clcl:rgb255-to-xyz (clcl:hex-to-rgb255 hex))
-							   clcl:d65 clcl:c))))
+	     (new-value (clcl:y-to-value (second (apply (rcurry clcl:bradford clcl:d65 clcl:c)
+							(apply #'clcl:rgb255-to-xyz
+							       (clcl:hex-to-rgb255 hex))))))
 	     (chroma (* c500 0.1))
 	     (v1000-new (round (* new-value 100)))
 	     (c500-new (round (* (min (clcl:max-chroma hue40 new-value) chroma) 10))))
