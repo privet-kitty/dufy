@@ -37,7 +37,7 @@
 
 ;; convert munsell value to Y in [0, 1]
 (defun munsell-value-to-y (v)
-  (* v (+ 1.1914 (* v (+ -0.22533 (* v (+ 0.23352 (* v (+ -0.020484 (* v 0.00081939)))))))) 0.01))
+  (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0))
   
 (defun munsell-value-to-achromatic-rgb255 (v)
   (let ((x (round (* (delinearize (munsell-value-to-y v)) 255))))
@@ -98,11 +98,9 @@
 ;; CAUTION: This LCH(ab) values are under Illuminant C.
 (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
   (destructuring-bind (l a b)
-      (apply #'(lambda (x y largey) (xyy-to-lab x y largey c))
+      (apply (rcurry #'xyy-to-lab clcl:c)
 	     (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark))
-    (list (bound l 0d0 100d0)
-	  a
-	  b)))
+    (list (bound l 0d0 100d0) a b)))
 
 (defun munsell-hvc-to-xyy-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (let* ((hue (mod hue40 40))
@@ -178,8 +176,8 @@
 ;; return multiple values: (r g b),  out-of-gamut-p
 (defun munsell-hvc-to-rgb255 (hue40 value chroma &key (threshold 0.001d0))
   (multiple-value-bind (rgb255 out-of-gamut)
-      (destructuring-bind (x y z) (munsell-hvc-to-xyz hue40 value chroma)
-	  (xyz-to-rgb255 x y z :threshold threshold))
+      (apply (rcurry #'xyz-to-rgb255 :threshold threshold)
+	     (munsell-hvc-to-xyz hue40 value chroma))
     (if (and (= chroma 0))
 	(values rgb255 nil)
 	(values rgb255 out-of-gamut))))

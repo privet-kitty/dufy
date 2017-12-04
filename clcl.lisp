@@ -410,7 +410,7 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 		       :from-xyz-matrix (invert-matrix33 m))))))
 		       
 (defparameter srgb
-  (clcl::new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
+  (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
 		      :linearizer #'(lambda (x)
 					 (if (<= x 0.04045d0)
 					     (/ x 12.92d0)
@@ -421,18 +421,27 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 					    (- (* 1.055d0 (expt x 0.41666666666d0)) 0.055d0)))))
 (defparameter srgbd65 srgb)
 (defparameter adobe
-  (clcl::new-rgbspace 0.64d0 0.33d0  0.21d0 0.71d0 0.15d0 0.06d0
-		      :linearizer #'(lambda (x)
-				      (if (<= x 0.0556d0)
-					  (* x 0.03125d0)
-					  (expt x 2.2d0)))
-					  
-		      :delinearizer #'(lambda (x)
-					(if (<= x 0.00174d0)
-					    (* x 32d0)
-					    (expt x 0.45454545454d0)))))
+  (new-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
+		:linearizer #'(lambda (x)
+				(if (<= x 0.0556d0)
+				    (* x 0.03125d0)
+				    (expt x 2.2d0)))		  
+		:delinearizer #'(lambda (x)
+				  (if (<= x 0.00174d0)
+				      (* x 32d0)
+				      (expt x 0.45454545454d0)))))
 
 
+(defparameter ntsc1953
+  (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
+		:illuminant clcl:c
+		:linearizer (genlinearizer 2.2d0)
+		:delinearizer (gendelinearizer 2.2d0)))
+
+(defparameter pal/secam
+  (new-rgbspace 0.64d0 0.33d0 0.29d0 0.60d0 0.15d0 0.06d0
+		:linearizer (genlinearizer 2.8d0)
+		:delinearizer (gendelinearizer 2.8d0)))
 
 ;; (defun delinearize (x &optional (rgbspace srgb))
 ;;   (if (<= x 0.0031308d0)
