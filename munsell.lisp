@@ -48,7 +48,7 @@
 	 (largex (+ (* 0.4124564d0 y) (* 0.3575761d0 y) (* 0.1804375d0 y)))
 	 (largey (+ (* 0.2126729d0 y) (* 0.7151522d0 y) (* 0.0721750d0 y)))
 	 (largez (+ (* 0.0193339d0 y) (* 0.1191920d0 y) (* 0.9503041d0 y))))
-    (apply #'(lambda (x y largey) (list x y (bound largey 0d0 1d0)))
+    (apply #'(lambda (x y largey) (list x y (clamp largey 0d0 1d0)))
 	   (apply #'xyz-to-xyy
 		  (bradford largex largey largez clcl:d65 clcl:c)))))
 
@@ -58,12 +58,12 @@
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
   (list 0.31006d0 0.31616d0
-	(bound (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v) 0.975d0)
+	(clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v) 0.975d0)
 	       0d0 1d0)))
 
 ;; y should be in [0,1]
 (defun y-to-munsell-value (y)
-  (let* ((y1000 (* (clcl:bound y 0 1) 1000))
+  (let* ((y1000 (* (clamp y 0 1) 1000))
 	 (y1 (floor y1000))
 	 (y2 (ceiling y1000)))
     (if (= y1 y2)
@@ -100,7 +100,7 @@
   (destructuring-bind (l a b)
       (apply (rcurry #'xyy-to-lab clcl:c)
 	     (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark))
-    (list (bound l 0d0 100d0) a b)))
+    (list (clamp l 0d0 100d0) a b)))
 
 (defun munsell-hvc-to-xyy-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (let* ((hue (mod hue40 40))
@@ -337,6 +337,7 @@
 	    (find-least-score-rec testfunc (cdr lst) score (car lst))
 	    (find-least-score-rec testfunc (cdr lst) l-score l-node)))))
 
+;; return a node where the testfunc gives the minimum value.
 (defun find-least-score (testfunc lst)
   (find-least-score-rec testfunc
 			lst
@@ -392,7 +393,7 @@
   (dotimes (hex possible-colors)
     (destructuring-bind (h1000 nil c500)
 	(decode-munsell-hvc1000 (aref munsell-inversion-data hex))
-      (let* ((hue40 (bound (/ h1000 25.0) 0 40))
+      (let* ((hue40 (clamp (/ h1000 25.0) 0 40))
 	     (new-value (y-to-munsell-value (second (apply (rcurry #'bradford clcl:d65 clcl:c)
 							(apply #'rgb255-to-xyz
 							       (hex-to-rgb255 hex))))))

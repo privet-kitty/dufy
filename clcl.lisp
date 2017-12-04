@@ -55,7 +55,6 @@
 	   :xyz-deltae
 	   :rgb255-deltae
 
-	   :bound
 	   :delinearize
 	   :linearize
 	   :nearly=
@@ -109,11 +108,6 @@
 
 (defconstant TWO-PI (+ PI PI))
 
-(defun bound (x min max)
-  (cond ((< x min) min)
-	((> x max) max)
-	(t x)))
-
 (defun nearly= (threshold number &rest more-numbers)
   (if (null more-numbers)
       t
@@ -126,9 +120,12 @@
       (and (<= (- number (car more-numbers)) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
-(defun rcurry (fn &rest args) 
-  #'(lambda  (&rest args2) 
-    (apply fn (append args2 args))))
+(import 'alexandria:rcurry)
+(import 'alexandria:clamp)
+
+;; (defun rcurry (fn &rest args) 
+;;   #'(lambda  (&rest args2) 
+;;     (apply fn (append args2 args))))
 
 
 ;;; Standard Illuminant, XYZ, xyY
@@ -368,6 +365,12 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
   (make-array '(3 3) :element-type 'double-float
 	      :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 
+(defun genlinearizer (gamma)
+  #'(lambda (x) (expt x (coerce gamma 'double-float))))
+
+(defun gendelinearizer (gamma)
+  #'(lambda (x) (expt x (/ 1d0 (coerce gamma 'double-float)))))
+
 (defstruct rgbspace
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
@@ -408,7 +411,9 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 		       :delinearizer delinearizer
 		       :to-xyz-matrix m
 		       :from-xyz-matrix (invert-matrix33 m))))))
-		       
+
+
+   
 (defparameter srgb
   (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
 		      :linearizer #'(lambda (x)
@@ -459,13 +464,6 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 (defun delinearize (x &optional (rgbspace srgbd65))
   (funcall (rgbspace-delinearizer rgbspace) x))
 
-(defun genlinearizer (gamma)
-  #'(lambda (x) (expt x (coerce gamma 'double-float))))
-
-(defun gendelinearizer (gamma)
-  #'(lambda (x) (expt x (/ 1d0 (coerce gamma 'double-float)))))
-
-
 ;; (defun xyz-to-lrgb (x y z &optional (rgbspace srgb))
 ;;   (list (+ (* 3.2404542d0 x) (* -1.5371385d0 y) (* -0.4985314d0 z))
 ;; 	(+ (* -0.9692660d0 x) (* 1.8760108d0 y) (* 0.0415560d0 z))
@@ -505,8 +503,9 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 ;; convert XYZ to RGB in {0, 1, ..., 255}
 ;; return multiple values: (r g b) and out-of-gamut-p
 (defun xyz-to-rgb255 (x y z &key (rgbspace srgbd65) (threshold 0))
-  (multiple-value-bind (rgb out-of-gamut) (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (mapcar #'(lambda (x) (round (* (bound x 0 1) 255d0))) rgb)
+  (multiple-value-bind (rgb out-of-gamut)
+      (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
+    (values (mapcar #'(lambda (x) (round (* (clamp x 0 1) 255d0))) rgb)
 	    out-of-gamut)))
 
 ;; convert RGB ({0, 1, ..., 255}) to XYZ ([0, 1])
@@ -522,10 +521,10 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 	(logand hex #xff)))
 
 (defmacro rgb1+ (x)
-  `(bound (1+ ,x) 0 255))
+  `(clamp (1+ ,x) 0 255))
 
 (defmacro rgb1- (x)
-  `(bound (1- ,x) 0 255))
+  `(clamp (1- ,x) 0 255))
 
 
 
@@ -694,6 +693,6 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
     (values (apply #'rgb-to-hsv
-		   (mapcar #'(lambda (i) (bound i 0d0 1d0)) rgb))
+		   (mapcar #'(lambda (i) (clamp i 0d0 1d0)) rgb))
 	    out-of-gamut)))
   

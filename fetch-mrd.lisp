@@ -140,7 +140,7 @@
 
 ;; y should be in [0,1]
 (defun y-to-munsell-value (y)
-  (let* ((y1000 (* (clcl:bound y 0 1) 1000))
+  (let* ((y1000 (* (alexandria:clamp y 0 1) 1000))
 	 (y1 (floor y1000))
 	 (y2 (ceiling y1000)))
     (if (= y1 y2)
