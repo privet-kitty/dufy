@@ -2,6 +2,7 @@
 
 (defpackage :clcl
   (:use :common-lisp)
+  (:shadowing-import-from :alexandria :rcurry :clamp)
   (:export :xyy-to-xyz
 	   :xyz-to-xyy
 	   :illuminant
@@ -14,7 +15,7 @@
 	   :defilluminant
 	   :c :d50 :d65
 	   :calc-ca-matrix
-	   :chromatic-adaptation
+	   :get-ca-converter
 	   :bradford
 	   :xyz-scaling
 	   :von-kries
@@ -120,8 +121,6 @@
       (and (<= (- number (car more-numbers)) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
-(import 'alexandria:rcurry)
-(import 'alexandria:clamp)
 
 ;; (defun rcurry (fn &rest args) 
 ;;   #'(lambda  (&rest args2) 
@@ -338,9 +337,12 @@
 	(illuminant-index from-illuminant)
 	(illuminant-index to-illuminant)))
 
-;; general function for chromatic adaptation
-(defun chromatic-adaptation (x y z matrix)
-  (multiply-matrix-and-vec matrix x y z))
+;; get a function for chromatic adaptation
+(defun get-ca-converter (from-illuminant to-illuminant)
+  (let ((mat (calc-ca-matrix from-illuminant to-illuminant)))
+    #'(lambda (x y z)
+	(multiply-matrix-and-vec mat x y z))))
+
 
 
 ;; special function for Bradford transformation between default standard illuminants
