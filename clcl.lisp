@@ -93,6 +93,7 @@
 	   :munsell-hvc-to-xyz
 	   :munsell-hvc-to-lrgb
 	   :munsell-hvc-to-rgb255
+	   :munsell-hvc-to-lchab
 	   :munsellspec-to-xyy
 	   :munsellspec-to-hvc
 	   :munsellspec-to-rgb255
