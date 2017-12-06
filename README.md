@@ -9,6 +9,7 @@ CLCL is a color library for Common Lisp which is aimed at an exact color manipul
 * XYZ
 * xyY 
 * CIELAB and LCH(ab)
+* CIELUV and LCH(uv)
 
 CLCL has following features:
 
