@@ -78,7 +78,7 @@
 	   :hex-to-rgb255
 	   :two-pi
 	   :subtract-with-mod
-	   :interpolate-in-circle-group
+	   :lerp-in-circle-group
 	   :polar-mean-of-xy
 	   :xy-to-polar
 	   :polar-to-xy
@@ -692,16 +692,49 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
   (mod (- x y) divisor))
 
+(defun nearer-in-circle-group (theta1 x theta2 &optional (perimeter TWO-PI))
+  (if (<= (subtract-with-mod x theta1 perimeter) (subtract-with-mod theta2 x perimeter))
+      theta1
+      theta2))
+
+(defun clamp-in-circle-group (number min max &optional (perimeter TWO-PI))
+  (let ((number$ (mod number perimeter))
+	(min$ (mod min perimeter))
+	(max$ (mod max perimeter)))
+    (if (<= min$ max$)
+	(if (<= min$ number$)
+	    (if (<= number$ max$)
+		number$ ; [min, number, max]
+		(nearer-in-circle-group max$ number$ min$))   ; [min, max, number]
+	    (nearer-in-circle-group max$ number$ min$)) ; [number, min, max]
+	(if (or (<= number$ max$)  (<= min$ number$))
+	    number$ ;[number, max, min] or [max, min, number]
+	    (nearer-in-circle-group max$ number$ min$))))) ; [max, number, min]
+
 ;; counterclockwise linear interpolation from theta1 to theta2 in a circle group
-(defun interpolate-in-circle-group (theta1 theta2 coef &optional (perimeter TWO-PI))
+;; (defun lerp-in-circle-group (theta1 theta2 coef &optional (perimeter TWO-PI))
+;;   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+;;     (mod (+ theta1 (* dtheta coef)) perimeter)))
+
+;; a version preventing the floating-point error, 
+;; It doesn't exceed the given interval from theta1 to theta2.
+(defun lerp-in-circle-group (theta1 theta2 coef &optional (perimeter TWO-PI))
+  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+    (clamp-in-circle-group (mod (+ theta1 (* dtheta coef)) perimeter)
+			   theta1
+			   theta2
+			   perimeter)))
+
+(defun lerp-in-circle-group-old (theta1 theta2 coef &optional (perimeter TWO-PI))
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (mod (+ theta1 (* dtheta coef)) perimeter)))
+
 
 (defun polar-mean-of-xy (x1 y1 x2 y2)
   (destructuring-bind (r1 theta1) (xy-to-polar x1 y1)
     (destructuring-bind (r2 theta2) (xy-to-polar x2 y2)
       (polar-to-xy (* 0.5d0 (+ r1 r2))
-		   (interpolate-in-circle-group theta1 theta2 0.5d0)))))
+		   (lerp-in-circle-group theta1 theta2 0.5d0)))))
 
 (defun xy-to-polar (x y)
   (let ((dx (- x 0.31006d0))

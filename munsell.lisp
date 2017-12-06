@@ -131,9 +131,11 @@
 		   (xy-to-polar x1 y1)
 		 (destructuring-bind (r2 theta2)
 		     (xy-to-polar x2 y2)
-		   (let* ((theta (interpolate-in-circle-group theta1 theta2 (- hue hue1)))
-			  (r (+ (* r1 (/ (subtract-with-mod theta2 theta) (subtract-with-mod theta2 theta1)))
-				(* r2 (/ (subtract-with-mod theta theta1) (subtract-with-mod theta2 theta1))))))
+		   (let* ((theta (lerp-in-circle-group theta1 theta2 (- hue hue1)))
+			  (r (+ (* r1 (/ (subtract-with-mod theta2 theta)
+					 (subtract-with-mod theta2 theta1)))
+				(* r2 (/ (subtract-with-mod theta theta1)
+					 (subtract-with-mod theta2 theta1))))))
 		     (append (polar-to-xy r theta) (list largey)))))))))))
 
 (defun munsell-hvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
@@ -149,11 +151,11 @@
 	       (munsell-hvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
 	     (destructuring-bind (nil cstarab2 hab2)
 		 (munsell-hvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
-	       (let* ((hab (interpolate-in-circle-group hab1 hab2 (- hue hue1) 360d0))
+	       (let* ((hab (lerp-in-circle-group hab1 hab2 (- hue hue1) 360d0))
 		      (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
-					     (subtract-with-mod hab2 hab1 360d0)))
-				(* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
-					     (subtract-with-mod hab2 hab1 360d0))))))
+						 (subtract-with-mod hab2 hab1 360d0)))
+				  (* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
+						 (subtract-with-mod hab2 hab1 360d0))))))
 		 (list lstar cstarab hab))))))))
 
 
@@ -235,6 +237,7 @@
 
 ; Error:
 ; (clcl::munsell-hvc-to2-xyy 0.9999999999999999d0 2.84d0 3d0)
+; (clcl::munsell-hvc-to-lchab-value-chroma-integer-case 0.9999999999999999d0 2 1)
 
 ; CAUTION: the Standard Illuminant is C
 (defun munsell-hvc-to-xyy (hue40 value chroma)
