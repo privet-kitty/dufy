@@ -52,6 +52,14 @@
 	   :xyy-to-lchab
 	   :lchab-to-xyz
 	   :lchab-to-xyy
+
+	   :xyz-to-luv
+	   :luv-to-xyz
+	   :luv-to-lchuv
+	   :lchuv-to-luv
+	   :xyz-to-lchuv
+	   :lchuv-to-xyz
+
 	   :deltae
 	   :xyz-deltae
 	   :rgb255-deltae
@@ -549,10 +557,10 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
   (destructuring-bind (x y z) (xyy-to-xyz x y largey)
     (xyz-to-lab x y z illuminant)))
 
-(defun lab-to-xyz (l a b &optional (illuminant d65))
-  (let* ((fy (* (+ l 16) 0.008620689655172414d0))
-	 (fx (+ fy (* a 0.002d0)))
-	 (fz (- fy (* b 0.005d0))))
+(defun lab-to-xyz (lstar astar bstar &optional (illuminant d65))
+  (let* ((fy (* (+ lstar 16) 0.008620689655172414d0))
+	 (fx (+ fy (* astar 0.002d0)))
+	 (fz (- fy (* bstar 0.005d0))))
     (list (if (> fx 0.20689655172413793d0)
 	      (* (illuminant-largex illuminant) fx fx fx)
 	      (* (- fx 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largex illuminant)))
@@ -563,21 +571,21 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 	      (* (illuminant-largez illuminant) fz fz fz)
 	      (* (- fz 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largez illuminant))))))
 
-(defun lab-to-xyy (l a b &optional (illuminant d65))
-  (destructuring-bind (x y z) (lab-to-xyz l a b illuminant)
+(defun lab-to-xyy (lstar astar bstar &optional (illuminant d65))
+  (destructuring-bind (x y z) (lab-to-xyz lstar astar bstar illuminant)
     (xyz-to-xyy x y z illuminant)))
 
 (defparameter CONST-TWO-PI/360 (/ TWO-PI 360))
 (defparameter CONST-360/TWO-PI (/ 360 TWO-PI))
 
-(defun lab-to-lchab (l a b)
-  (list l
-	(sqrt (+ (* a a) (* b b)))
-	(mod (* (atan b a) CONST-360/TWO-PI) 360d0)))
+(defun lab-to-lchab (lstar astar bstar)
+  (list lstar
+	(sqrt (+ (* astar astar) (* bstar bstar)))
+	(mod (* (atan bstar astar) CONST-360/TWO-PI) 360d0)))
 
-(defun lchab-to-lab (l c h)
-  (let ((hue-two-pi (* h CONST-TWO-PI/360)))
-    (list l (* c (cos hue-two-pi)) (* c (sin hue-two-pi)))))
+(defun lchab-to-lab (lstar cstarab hab)
+  (let ((hue-two-pi (* hab CONST-TWO-PI/360)))
+    (list lstar (* cstarab (cos hue-two-pi)) (* cstarab (sin hue-two-pi)))))
 
 (defun xyz-to-lchab (x y z &optional (illuminant d65))
   (apply #'lab-to-lchab (xyz-to-lab x y z illuminant)))
@@ -585,17 +593,70 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 (defun xyy-to-lchab (x y largey &optional (illuminant d65))
   (apply #'lab-to-lchab (xyy-to-lab x y largey illuminant)))
 
-(defun lchab-to-xyz (l c h &optional (illuminant d65))
-  (destructuring-bind (l a b) (lchab-to-lab l c h)
+(defun lchab-to-xyz (lstar cstarab hab &optional (illuminant d65))
+  (destructuring-bind (l a b) (lchab-to-lab lstar cstarab hab)
     (lab-to-xyz l a b illuminant)))
 
-(defun lchab-to-xyy (l c h &optional (illuminant d65))
-  (destructuring-bind (x y z) (lchab-to-xyz l c h illuminant)
+(defun lchab-to-xyy (lstar cstarab hab &optional (illuminant d65))
+  (destructuring-bind (x y z) (lchab-to-xyz lstar cstarab hab illuminant)
     (xyz-to-xyy x y z illuminant)))
 
 (defun rgb255-to-lab (r g b &optional (rgbspace srgbd65))
   (destructuring-bind (x y z) (rgb255-to-xyz r g b rgbspace)
     (xyz-to-lab x y z)))
+
+(defun calc-uvprime (x y)
+  (let ((denom (+ (* -2d0 x) (* 12d0 y) 3d0)))
+    (list (/ (* 4d0 x) denom)
+	  (/ (* 9d0 y) denom))))
+
+(defun calc-uvprime-from-xyz (x y z)
+  (let ((denom (+ x (* 15d0 y) (* 3d0 z))))
+    (list (/ (* 4d0 x) denom)
+	  (/ (* 9d0 y) denom))))
+
+(defun xyz-to-luv (x y z &optional (illuminant d65))
+  (destructuring-bind (uprime vprime) (calc-uvprime-from-xyz x y z)
+    (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-x illuminant) (illuminant-y illuminant))
+      (let* ((yr (/ y (illuminant-largey illuminant)))
+	     (lstar (if (> yr 0.008856451679035631d0)
+			(- (* 116d0 (expt yr 0.3333333333333333d0)) 16d0)
+			(* 903.2962962962963d0 yr))))
+	(list lstar
+	      (* 13d0 lstar (- uprime urprime))
+	      (* 13d0 lstar (- vprime vrprime)))))))
+
+(defun luv-to-xyz (lstar ustar vstar &optional (illuminant d65))
+  (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-x illuminant) (illuminant-y illuminant))
+    (let* ((uprime (+ (/ ustar (* 13d0 lstar)) urprime))
+	   (vprime (+ (/ vstar (* 13d0 lstar)) vrprime))
+	   (l (/ (+ lstar 16d0) 116d0))
+	   (y (if (<= lstar 8d0)
+		  (* (illuminant-largey illuminant)
+		     lstar
+		     0.008856451679035631d0)
+		  (* (illuminant-largey illuminant)
+		     (* l l l)))))
+      (list (* y (/ (* 9d0 uprime) (* 4d0 vprime)))
+	    y
+	    (* y (/ (- 12d0 (* 3d0 uprime) (* 20d0 vprime)) (* 4d0 vprime)))))))
+	    
+(defun luv-to-lchuv (lstar ustar vstar)
+  (list lstar
+	(sqrt (+ (* ustar ustar) (* vstar vstar)))
+	(mod (* (atan vstar ustar) CONST-360/TWO-PI) 360d0)))
+
+(defun lchuv-to-luv (lstar cstaruv huv)
+  (let ((hue-two-pi (* huv CONST-TWO-PI/360)))
+    (list lstar (* cstaruv (cos hue-two-pi)) (* cstaruv (sin hue-two-pi)))))
+
+(defun xyz-to-lchuv (x y z &optional (illuminant d65))
+  (apply #'luv-to-lchuv (xyz-to-luv x y z illuminant)))
+
+(defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant d65))
+  (destructuring-bind (l u v) (lchuv-to-luv lstar cstaruv huv)
+    (luv-to-xyz l u v illuminant)))
+
 
 ;; CIE76
 (defun deltae (l1 a1 b1 l2 a2 b2)
