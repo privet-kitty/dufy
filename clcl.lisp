@@ -349,9 +349,9 @@
 	  (< (illuminant-index to-illuminant) 0))
       (error "The function BRADFORD cannot take a user-defined standard illuminant.
 Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
-      (chromatic-adaptation
-       x y z
-       (get-bradford-transformation-matrix from-illuminant to-illuminant))))
+      (multiply-matrix-and-vec
+       (get-bradford-transformation-matrix from-illuminant to-illuminant)
+       x y z)))
 
 (defun xyz-to-xyy (x y z &optional (illuminant d65))
   (if (= x y z 0)
@@ -564,13 +564,17 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
   (destructuring-bind (x y z) (lab-to-xyz l a b illuminant)
     (xyz-to-xyy x y z illuminant)))
 
+(defparameter CONST-TWO-PI/360 (/ TWO-PI 360))
+(defparameter CONST-360/TWO-PI (/ 360 TWO-PI))
+
 (defun lab-to-lchab (l a b)
   (list l
 	(sqrt (+ (* a a) (* b b)))
-	(mod (atan b a) TWO-PI)))
+	(mod (* (atan b a) CONST-360/TWO-PI) 360d0)))
 
 (defun lchab-to-lab (l c h)
-  (list l (* c (cos h)) (* c (sin h))))
+  (let ((hue-two-pi (* h CONST-TWO-PI/360)))
+    (list l (* c (cos hue-two-pi)) (* c (sin hue-two-pi)))))
 
 (defun xyz-to-lchab (x y z &optional (illuminant d65))
   (apply #'lab-to-lchab (xyz-to-lab x y z illuminant)))
@@ -625,9 +629,9 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
   (mod (- x y) divisor))
 
 ;; counterclockwise linear interpolation from theta1 to theta2 in a circle group
-(defun interpolate-in-circle-group (theta1 theta2 ratio &optional (perimeter TWO-PI))
+(defun interpolate-in-circle-group (theta1 theta2 coef &optional (perimeter TWO-PI))
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
-    (mod (+ theta1 (* dtheta ratio)) perimeter)))
+    (mod (+ theta1 (* dtheta coef)) perimeter)))
 
 (defun polar-mean-of-xy (x1 y1 x2 y2)
   (destructuring-bind (r1 theta1) (xy-to-polar x1 y1)

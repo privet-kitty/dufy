@@ -83,8 +83,8 @@
 	      (apply #'max rows))))))
 
 
-(defun mean (x y)
-  (* (+ x y) 0.5))
+;; (defun mean (x y)
+;;   (* (+ x y) 0.5))
 
 ;; interpolate the missing data at 10Y 0.2/2
 ;; (push (list 12 0.2 2 (mean 0.713 1.434) (mean 1.414 1.459) 0.237) munsell-renotation-data)

@@ -12,7 +12,7 @@
 (defun max-chroma-integer-case-dark (hue40 dark-value)
   (aref max-chroma-arr-dark hue40 dark-value))
 
-;; max-chroma returns the largest chroma which the MUNSELL-HVC-TO- functions can take.
+;; max-chroma returns the largest chroma which the MUNSELL-HVC-TO- functions can receive.
 ;; The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is larger than (max-chroma hue value)
 (defun max-chroma (hue40 value &key (use-dark t))
   (let* ((hue (mod hue40 40))
@@ -38,6 +38,10 @@
 ;; convert munsell value to Y in [0, 1]
 (defun munsell-value-to-y (v)
   (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0))
+
+(defun munsell-value-to-lstar (v)
+  (- (* 116 (function-f (munsell-value-to-y v))) 16))
+
   
 (defun munsell-value-to-achromatic-rgb255 (v)
   (let ((x (round (* (delinearize (munsell-value-to-y v)) 255))))
@@ -51,6 +55,13 @@
     (apply #'(lambda (x y largey) (list x y (clamp largey 0d0 1d0)))
 	   (apply #'xyz-to-xyy
 		  (bradford largex largey largez clcl:d65 clcl:c)))))
+
+(defun munsell-value-to-achromatic-lchab (v)
+  (apply #'lab-to-lchab
+	 (apply (rcurry #'xyz-to-lab clcl:c)
+		(xyy-to-xyz (illuminant-x clcl:c)
+			    (illuminant-y clcl:c)
+			    (munsell-value-to-y v)))))
 
 ;; the version corresponding with Y of the munsell renotation data
 ;; v must be integer.
@@ -97,10 +108,11 @@
 
 ;; CAUTION: This LCH(ab) values are under Illuminant C.
 (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
-  (destructuring-bind (l a b)
-      (apply (rcurry #'xyy-to-lab clcl:c)
-	     (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark))
-    (list (clamp l 0d0 100d0) a b)))
+  (apply #'(lambda (lstar cstarab hab) (list (clamp lstar 0d0 100d0) cstarab hab))
+	 (apply #'lab-to-lchab
+		(apply (rcurry #'xyy-to-lab clcl:c)
+		       (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark)))))
+	 
 
 (defun munsell-hvc-to-xyy-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (let* ((hue (mod hue40 40))
@@ -111,7 +123,7 @@
 	  ((or (zerop tmp-value) (zerop half-chroma))
 	   (munsell-value-to-achromatic-xyy (if dark (* tmp-value 0.2d0) tmp-value))) ;avoid division with zero
 	  (t 
-	   (destructuring-bind (x1 y1 lum)
+	   (destructuring-bind (x1 y1 largey)
 	       (munsell-hvc-to-xyy-simplest-case hue1 tmp-value half-chroma dark)
 	     (destructuring-bind (x2 y2 nil)
 		 (munsell-hvc-to-xyy-simplest-case hue2 tmp-value half-chroma dark)
@@ -122,14 +134,35 @@
 		   (let* ((theta (interpolate-in-circle-group theta1 theta2 (- hue hue1)))
 			  (r (+ (* r1 (/ (subtract-with-mod theta2 theta) (subtract-with-mod theta2 theta1)))
 				(* r2 (/ (subtract-with-mod theta theta1) (subtract-with-mod theta2 theta1))))))
-		     (append (polar-to-xy r theta) (list lum)))))))))))
+		     (append (polar-to-xy r theta) (list largey)))))))))))
+
+(defun munsell-hvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
+  (let* ((hue (mod hue40 40))
+	 (hue1 (floor hue))
+	 (hue2 (ceiling hue)))
+    (cond ((= hue1 hue2)
+	   (munsell-hvc-to-lchab-simplest-case (round hue) tmp-value half-chroma dark))
+	  ((or (zerop tmp-value) (zerop half-chroma))
+	   (munsell-value-to-achromatic-lchab (if dark (* tmp-value 0.2d0) tmp-value))) ;avoid division with zero
+	  (t 
+	   (destructuring-bind (lstar cstarab1 hab1)
+	       (munsell-hvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
+	     (destructuring-bind (nil cstarab2 hab2)
+		 (munsell-hvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
+	       (let* ((hab (interpolate-in-circle-group hab1 hab2 (- hue hue1) 360d0))
+		      (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
+					     (subtract-with-mod hab2 hab1 360d0)))
+				(* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
+					     (subtract-with-mod hab2 hab1 360d0))))))
+		 (list lstar cstarab hab))))))))
+
 
 (defun munsell-hvc-to-xyy-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (let ((hchroma1 (floor half-chroma))
 	(hchroma2 (ceiling half-chroma)))
     (if (= hchroma1 hchroma2)
 	(munsell-hvc-to-xyy-value-chroma-integer-case hue40 tmp-value (round half-chroma) dark)
-	(destructuring-bind (x1 y1 lum)
+	(destructuring-bind (x1 y1 largey)
 	    (munsell-hvc-to-xyy-value-chroma-integer-case hue40 tmp-value hchroma1 dark)
 	  (destructuring-bind (x2 y2 nil)
 	      (munsell-hvc-to-xyy-value-chroma-integer-case hue40 tmp-value hchroma2 dark)
@@ -137,30 +170,121 @@
 			 (* x2 (- half-chroma hchroma1))))
 		   (y (+ (* y1 (- hchroma2 half-chroma))
 			 (* y2 (- half-chroma hchroma1)))))
-	      (list x y lum)))))))
+	      (list x y largey)))))))
+
+
+(defun munsell-hvc-to-lchab-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
+  (let ((hchroma1 (floor half-chroma))
+	(hchroma2 (ceiling half-chroma)))
+    (if (= hchroma1 hchroma2)
+	(munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value (round half-chroma) dark)
+	(destructuring-bind (lstar astar1 bstar1)
+	    (apply #'lchab-to-lab
+		   (munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma1 dark))
+	  (destructuring-bind (nil astar2 bstar2)
+	      (apply #'lchab-to-lab
+		     (munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma2 dark))
+	    (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
+			     (* astar2 (- half-chroma hchroma1))))
+		   (bstar (+ (* bstar1 (- hchroma2 half-chroma))
+			     (* bstar2 (- half-chroma hchroma1)))))
+	      (lab-to-lchab lstar astar bstar)))))))
 
 (defun munsell-hvc-to-xyy-general-case (hue40 tmp-value half-chroma &optional (dark nil))
   (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
     (let  ((tmp-val1 (floor tmp-value))
 	   (tmp-val2 (ceiling tmp-value))
-	   (lum (munsell-value-to-y true-value)))
+	   (largey (munsell-value-to-y true-value)))
       (if (= tmp-val1 tmp-val2)
 	  (munsell-hvc-to-xyy-value-integer-case hue40 tmp-val1 half-chroma dark)
-	  (destructuring-bind (x1 y1 lum1)
+	  (destructuring-bind (x1 y1 largey1)
 	      (munsell-hvc-to-xyy-value-integer-case hue40 tmp-val1 half-chroma dark)
-	    (destructuring-bind (x2 y2 lum2)
+	    (destructuring-bind (x2 y2 largey2)
 		(munsell-hvc-to-xyy-value-integer-case hue40 tmp-val2 half-chroma dark)
-	      (let* ((x (+ (* x1 (/ (- lum2 lum) (- lum2 lum1)))
-			   (* x2 (/ (- lum lum1) (- lum2 lum1)))))
-		     (y (+ (* y1 (/ (- lum2 lum) (- lum2 lum1)))
-			   (* y2 (/ (- lum lum1) (- lum2 lum1))))))
-		(list x y lum))))))))
+	      (let* ((x (+ (* x1 (/ (- largey2 largey) (- largey2 largey1)))
+			   (* x2 (/ (- largey largey1) (- largey2 largey1)))))
+		     (y (+ (* y1 (/ (- largey2 largey) (- largey2 largey1)))
+			   (* y2 (/ (- largey largey1) (- largey2 largey1))))))
+		(list x y largey))))))))
+
+(defun munsell-hvc-to-lchab-general-case (hue40 tmp-value half-chroma &optional (dark nil))
+  (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
+    (let  ((tmp-val1 (floor tmp-value))
+	   (tmp-val2 (ceiling tmp-value))
+	   (lstar (munsell-value-to-lstar true-value)))
+      (if (= tmp-val1 tmp-val2)
+	  (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark)
+	  ; If the given color is too dark to interpolate it by the MRD,
+	  ; we use the fact that the chroma of LCH(ab) corresponds roughly
+	  ; to the one of Munsell.
+	  (if (= tmp-val1 0)
+	      (destructuring-bind (nil cstarab hab)
+		  (munsell-hvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
+		(list lstar cstarab hab))
+	      (destructuring-bind (lstar1 astar1 bstar1)
+		  (apply #'lchab-to-lab
+			 (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark))
+		(destructuring-bind (lstar2 astar2 bstar2)
+		    (apply #'lchab-to-lab
+			   (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
+		  (let* ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
+				   (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
+			 (bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
+				   (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
+		    (lab-to-lchab lstar astar bstar)))))))))
+
+; Error:
+; (clcl::munsell-hvc-to2-xyy 0.9999999999999999d0 2.84d0 3d0)
 
 ; CAUTION: the Standard Illuminant is C
 (defun munsell-hvc-to-xyy (hue40 value chroma)
   (if (>= value 1)
       (munsell-hvc-to-xyy-general-case hue40 value (/ chroma 2) nil)
       (munsell-hvc-to-xyy-general-case hue40 (* value 5) (/ chroma 2) t)))
+
+(defun munsell-hvc-to-lchab (hue40 value chroma)
+  (if (>= value 1)
+      (munsell-hvc-to-lchab-general-case hue40 value (/ chroma 2) nil)
+      (munsell-hvc-to-lchab-general-case hue40 (* value 5) (/ chroma 2) t)))
+
+(defun test-munsell-converter (mc)
+  (let ((deltaes nil)
+	(max-deltae 0)
+	(outlier nil)
+	(number-within-gamut 0))
+    (dotimes (x mc)
+      (let* ((hue40 (random 40d0))
+	     (value (+ 0.2d0 (random 9.8d0)))
+	     (chroma (random (coerce (clcl:max-chroma hue40 value) 'double-float))))
+	(let* ((lab1 (apply #'clcl:xyy-to-lab (clcl:munsell-hvc-to-xyy hue40 value chroma)))
+	       (lab2 (apply #'clcl:lchab-to-lab (clcl::munsell-hvc-to-lchab hue40 value chroma)))
+	       (deltae (apply #'clcl:deltae (append lab1 lab2))))
+	  (unless (nth-value 1 (clcl:munsell-hvc-to-lrgb hue40 value chroma :threshold 0))
+	    (incf number-within-gamut)
+	    (when (> deltae max-deltae)
+	      (setf max-deltae deltae)
+	      (setf outlier (list hue40 value chroma)))
+	    (push deltae deltaes)))))
+    (format t "Processed colors within sRGB gamut = ~A~%" number-within-gamut)
+    (format t "Mean Delta E = ~A~%" (funcall #'alexandria:mean deltaes))
+    (format t "Maximum Delta E = ~A~%" (apply #'max deltaes))
+    (format t "Outlier (H, V, C) = ~A~%" outlier)))
+
+;; (clcl::test-munsell-converter 100000)
+;; =>
+;; Processed colors within sRGB gamut = 48585
+;; Mean Delta E = 4.445772812346427d0
+;; Maximum Delta E = 8.753060852088298d0
+;; Outlier (H, V, C) = (30.770467203255123d0 3.2341004792255665d0 26.69890821729271d0)
+
+(defun munsell-hvc-to-lab (hue40 value chroma)
+  (apply #'xyy-to-lab (munsell-hvc-to-xyy hue40 value chroma)))
+
+(defun munsell-hvc-to2-lab (hue40 value chroma)
+  (apply #'lchab-to-lab (munsell-hvc-to-lchab hue40 value chroma)))
+
+(defun munsell-hvc-to2-xyy (hue40 value chroma)
+  (apply #'lchab-to-xyy (munsell-hvc-to-lchab hue40 value chroma)))
 
 (defun munsell-hvc-to-xyz (hue40 value chroma)
   (apply (rcurry #'bradford clcl:c clcl:d65)
@@ -583,3 +707,6 @@
 ;; 	(dotimes (chroma max-c)
 ;; 	  (push (clcl:munsell-hvc-to-xyy hue40 value chroma)
 ;; 		xyy-lst))))))
+
+(defun test-blue (lb)
+  (apply #'xyz-to-lchab (lrgb-to-xyz 0 0 lb)))
