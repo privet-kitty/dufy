@@ -15,17 +15,17 @@ CLCL is a library for an exact color manipulation and conversion in various colo
 CLCL has following features:
 
 * It can deal with a prepared or user-defined standard illuminant for each of the color spaces.
-* It avoids defining special structures or classes to express a color. E.g., a converter from RGB to XYZ receives just three numbers and returns (a list of) three numbers. 
+* It avoids defining special structures or classes to express a color: e.g., a converter from RGB to XYZ receives just three numbers and returns (a list of) three numbers. 
 
 # Dependencies
 * alexandria
 * cl-ppcre
 
-All dependent libraries can be installed with quicklisp.
+All of the dependent libraries can be installed with quicklisp.
 
 # Install
 
-The easiest way is to use quicklisp. The following is an example of installation on SBCL:
+The easiest way is to use quicklisp. The following is an example of the installation on SBCL:
 
     > cd ~/quicklisp/local-projects
     > git clone git@github.com:privet-kitty/clcl.git
@@ -34,7 +34,7 @@ The easiest way is to use quicklisp. The following is an example of installation
     * (ql:register-local-projects)
     * (ql:quickload :clcl)
 
-The path of the local projects is holded in `ql:*local-project-directories*`
+The path of the local projects is holded in `ql:*local-project-directories*`.
 
 If you'd like to use ASDF without quicklisp, you should put the CLCL directory to an appropriate location and do `(asdf:load-system :clcl)`.
 
