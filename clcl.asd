@@ -10,5 +10,6 @@
   :serial t
   :depends-on (:cl-ppcre :nibbles :alexandria)
   :components ((:file "clcl")
+	       (:file "deltae" :depends-on ("clcl"))
 	       (:file "munsell-renotation-data")
-	       (:file "munsell" :depends-on ("clcl" "munsell-renotation-data"))))
+	       (:file "munsell" :depends-on ("clcl" "munsell-renotation-data" "deltae"))))

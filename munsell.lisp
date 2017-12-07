@@ -307,6 +307,11 @@
   (apply (rcurry #'bradford clcl:c clcl:d65)
 	 (apply #'xyy-to-xyz (munsell-hvc-to-xyy hue40 value chroma))))
 
+(defun munsell-hvc-to2-xyz (hue40 value chroma)
+  (apply (rcurry #'bradford clcl:c clcl:d65)
+	 (apply (rcurry #'lchab-to-xyz clcl:c)
+		(munsell-hvc-to-lchab hue40 value chroma))))
+
 ;; return multiple values: (lr lg lb),  out-of-gamut-p
 ;; Note that the pure white (N 10.0) could be judged as out of gamut by numerical error, if threshold is too small.
 (defun munsell-hvc-to-lrgb (hue40 value chroma &key (threshold 0.001d0))
@@ -406,7 +411,7 @@
 	    (dotimes (c500 maxc500)
 	      (let ((chroma (/ c500 10.0d0)))
 		(destructuring-bind (x y z)
-		    (clcl:munsell-hvc-to-xyz hue value chroma)
+		    (clcl::munsell-hvc-to2-xyz hue value chroma)
 		  (multiple-value-bind (rgb255 out-of-gamut)
 		      (clcl:xyz-to-rgb255 x y z :threshold 0.001d0)
 		    (unless out-of-gamut
@@ -421,7 +426,7 @@
 				    (encode-munsell-hvc1000 h1000 v1000 c500))
 			      (setf (aref deltae-arr hex)
 				    new-deltae))))))))))))))
-    (let ((gaps (number-of-gaps mid)))
+    (let ((gaps (count-gaps mid)))
       (format t "Primary data are set. Number of gaps is ~A (~A).~%"
 	      gaps (/ gaps (float possible-colors))))
     (when with-interpolation
@@ -604,7 +609,7 @@
   (let ((mid (make-munsell-inversion-data with-interpolation)))
     (save-munsell-inversion-data mid filename)))
 
-(defun number-of-gaps (munsell-inversion-data)
+(defun count-gaps (munsell-inversion-data)
   (let ((gaps 0))
     (dotimes (hex possible-colors)
       (when (= +maxu32+ (aref munsell-inversion-data hex))
