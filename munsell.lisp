@@ -340,16 +340,21 @@
 
 (defun munsellspec-to-hvc (spec)
   (destructuring-bind (hue-suffix value chroma)
-      (mapcar #'read-from-string (cl-ppcre:split "[^0-9.]+" spec))
-    (let* ((hue-name (intern (cl-ppcre:scan-to-strings "[A-Z]+" spec) "KEYWORD"))
+      (mapcar #'read-from-string (cl-ppcre:split "[^0-9.a-z#\-]+" spec))
+    (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" spec))
 	   (hue-number
-	    (case hue-name
-	      (:R 0) (:YR 1) (:Y 2) (:GY 3) (:G 4)
-	      (:BG 5) (:B 6) (:PB 7) (:P 8) (:RP 9)
-	      (otherwise (error "invalid spec")))))
+	    (switch (hue-name :test #'string=)
+	      ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
+	      ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9)
+	      (t (error "invalid spec")))))
       (list (+ (* hue-number 4) (/ (* hue-suffix 2) 5))
 	    value
 	    chroma))))
+
+;; (clcl:munsellspec-to-hvc "2.13d-2R .8999/   #x0f")
+;; => (0.00852d0 0.8999 15)
+;; (clcl:munsellspec-to-hvc "2.13D-2R .8999/   #x0F")
+;; => ERROR
 
 ;; return multiple values: (x, y, Y), out-of-macadam-limit-p
 (defun munsellspec-to-xyy (spec)
