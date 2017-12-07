@@ -282,7 +282,7 @@
 	      (setf outlier (list hue40 value chroma)))
 	    (push deltae deltaes)))))
     (format t "Processed colors within sRGB(d65) gamut = ~A~%" number-within-gamut)
-    (format t "Mean Delta E = ~A~%" (funcall #'alexandria:mean deltaes))
+    (format t "Mean Delta E = ~A~%" (funcall #'mean deltaes))
     (format t "Maximum Delta E = ~A~%" (apply #'max deltaes))
     (format t "Outlier (H, V, C) = ~A~%" outlier)))
 

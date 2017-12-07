@@ -1,8 +1,8 @@
 (in-package :cl-user)
 
 (defpackage :clcl
-  (:use :common-lisp)
-  (:shadowing-import-from :alexandria :rcurry :clamp)
+  (:use :common-lisp :alexandria)
+  ;(:shadowing-import-from :alexandria :rcurry :clamp)
   (:export :xyy-to-xyz
 	   :xyz-to-xyy
 	   :illuminant

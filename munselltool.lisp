@@ -1,6 +1,5 @@
 (defpackage :clcltool
-  (:use :common-lisp :clcl)
-  (:shadowing-import-from :alexandria :rcurry :clamp)
+  (:use :common-lisp :clcl :alexandria)
   (:export :make-munsell-inversion-data
 	   :interpolate-munsell-inversion-data
 	   :load-munsell-inversion-data
@@ -19,8 +18,8 @@
 
 (defconstant possible-colors 16777216) ;256*256*256
 
-(defun encode-munsell-hvc1000 (h1000 v1000 c500 &optional (interpolated-flag 0))
-  (+ (ash interpolated-flag 31)
+(defun encode-munsell-hvc1000 (h1000 v1000 c500 &optional (flag-interpolated 0))
+  (+ (ash flag-interpolated 31)
      (ash h1000 20)
      (ash v1000 10)
      c500))
