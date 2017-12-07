@@ -26,11 +26,11 @@
 	    (vector-push-extend x str))))))
 
 
-(defun quantize-40hue (hue-name hue-suffix)
+(defun quantize-40hue (hue-name hue-prefix)
   (let ((hue-number
 	 (ecase hue-name
 	   (R 0) (YR 1) (Y 2) (GY 3) (G 4) (BG 5) (B 6) (PB 7) (P 8) (RP 9))))
-    (mod (+ (* 4 hue-number) (round (/ hue-suffix 2.5))) 40)))
+    (mod (+ (* 4 hue-number) (round (/ hue-prefix 2.5))) 40)))
 
 (defparameter munsell-renotation-data nil)
 
@@ -55,8 +55,8 @@
     (dolist (x munsell-renotation-data)
       (let* ((hue-str (string (car x)))
 	     (hue-name (intern (subseq-if #'alpha-char-p hue-str)))
-	     (hue-suffix (read-from-string (subseq-if (complement #'alpha-char-p) hue-str))))
-	(push (cons (quantize-40hue hue-name hue-suffix) (cdr x)) quantized-data)))
+	     (hue-prefix (read-from-string (subseq-if (complement #'alpha-char-p) hue-str))))
+	(push (cons (quantize-40hue hue-name hue-prefix) (cdr x)) quantized-data)))
     (setf munsell-renotation-data quantized-data)))
 
 ;; the largest chroma in the renotation data

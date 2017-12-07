@@ -339,7 +339,7 @@
 
 
 (defun munsell-spec-to-hvc (spec)
-  (destructuring-bind (hue-suffix value chroma)
+  (destructuring-bind (hue-prefix value chroma)
       (mapcar #'read-from-string (cl-ppcre:split "[^0-9.a-z#\-]+" spec))
     (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" spec))
 	   (hue-number
@@ -347,18 +347,18 @@
 	      ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
 	      ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9)
 	      (t (error "invalid spec")))))
-      (list (+ (* hue-number 4) (/ (* hue-suffix 2) 5))
+      (list (+ (* hue-number 4) (/ (* hue-prefix 2) 5))
 	    value
 	    chroma))))
 
 (defun munsell-hvc-to-spec (hue40 value chroma &optional (digits 2))
   (let* ((hue40$ (mod hue40 40d0))
 	 (hue-number (floor (/ hue40$ 4)))
-	 (hue-suffix (* (mod hue40$ 4) 2.5d0))
+	 (hue-prefix (* (mod hue40$ 4) 2.5d0))
 	 (hue-name (aref #("R" "YR" "Y" "GY" "G" "BG" "B" "PB" "P" "RP") hue-number))
 	 (unit (concatenate 'string "~," (write-to-string digits) "F")))
     (format nil (concatenate 'string unit "~A " unit "/" unit)
-	    hue-suffix hue-name value chroma)))
+	    hue-prefix hue-name value chroma)))
 
 ;; (clcl:munsell-spec-to-hvc "2.13d-2R .8999/   #x0f")
 ;; => (0.00852d0 0.8999 15)
