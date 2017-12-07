@@ -86,12 +86,33 @@
 ;; (defun mean (x y)
 ;;   (* (+ x y) 0.5))
 
-;; interpolate the missing data at 10Y 0.2/2
-;; (push (list 12 0.2 2 (mean 0.713 1.434) (mean 1.414 1.459) 0.237) munsell-renotation-data)
-(push (append (list 12 0.2d0 2)
-	      (clcl:polar-mean-of-xy 1.434d0 1.459d0 0.713d0 1.414d0)
-	      (list 0.00237d0))
+
+;; We need to interpolate the missing data at 10Y 0.2/2.
+;;     H         V         C         x         y         Y
+;;  7.5Y        0.2         2     1.434     1.459   0.237
+;; lchab = 55.78616839326824d0 535.9969016772114d0 89.62792336089832d0
+;; 2.5GY        0.2         2     0.713     1.414   0.237
+;; lchab = 55.78616839326824d0 371.0625522161684d0 99.13832996818876d0
+
+;; the mean on LCH(ab) space
+;;   10Y        0.2         2
+;; xyY = 1.0817607707836834d0 1.6255500743912765d0 0.23700000349119013d0
+;; lchab = 55.78616839326824d0 453.52972694668995d0 94.38312666454354d0
+
+;; the mean on xy-plane
+;; 10Y        0.2         2
+;; xyY = 1.051555310936564d0 1.4873480274716935d0 0.237d0
+
+
+;; (push (append (list 12 0.2d0 2)
+;; 	      (clcl:polar-mean-of-xy 1.434d0 1.459d0 0.713d0 1.414d0)
+;; 	      (list 0.00237d0))
+;;       munsell-renotation-data)
+
+(push (list 12 0.2d0 2
+	    1.0817607707836834d0 1.6255500743912765d0 0.237d0)
       munsell-renotation-data)
+
 
 (dotimes (hue 40)
   (dotimes (dark-value 6)
@@ -167,6 +188,15 @@
 				  (= (third row) chroma)))
 			 munsell-renotation-data)))))
 
+(defmacro aif (test-form then-form &optional else-form)
+  `(let ((it ,test-form))
+     (if it ,then-form ,else-form)))
+
+(defun get-lchab-from-dat (hue-num value chroma)
+  (aif (get-xyy-from-dat hue-num value chroma)
+       (apply (alexandria:rcurry #'clcl:xyz-to-lchab clcl:c)
+	      (apply #'clcl:xyy-to-xyz it))))
+
 (defparameter value-list '(0 1 2 3 4 5 6 7 8 9 10 0.2 0.4 0.6 0.8))
 (defparameter value-variety (length value-list))
 
@@ -175,9 +205,16 @@
   (make-array (list 40 11 half-chroma-variety 3)
 	      :element-type 'double-float))
 
-
 ;; separate the data whose values are within [0, 1]
 (defparameter mrd-array-dark
+  (make-array (list 40 6 half-chroma-variety 3)
+	      :element-type 'double-float))
+
+(defparameter mrd-array-lchab
+  (make-array (list 40 11 half-chroma-variety 3)
+	      :element-type 'double-float))
+
+(defparameter mrd-array-lchab-dark
   (make-array (list 40 6 half-chroma-variety 3)
 	      :element-type 'double-float))
   
@@ -185,6 +222,14 @@
 ;; construct mrd-array
 
 (defparameter large-negative-float -1d99)
+
+(defun xyy-to-lchab (x y largey)
+  (destructuring-bind (lstar cstarab hab)
+      (apply (alexandria:rcurry #'clcl:xyz-to-lchab clcl:c)
+	     (clcl:xyy-to-xyz x y largey))
+    (list (alexandria:clamp lstar 0d0 100d0)
+	  cstarab
+	  hab)))
 
 (dotimes (hue 40)
   (dolist (value '(0 1 2 3 4 5 6 7 8 9 10))
@@ -194,11 +239,19 @@
 	  (progn
 	    (setf (aref mrd-array hue value half-chroma 0) large-negative-float)
 	    (setf (aref mrd-array hue value half-chroma 1) large-negative-float)
-	    (setf (aref mrd-array hue value half-chroma 2) large-negative-float))
-	  (progn
-	    (setf (aref mrd-array hue value half-chroma 0) (coerce (first xyy) 'double-float))
-	    (setf (aref mrd-array hue value half-chroma 1) (coerce (second xyy) 'double-float))
-	    (setf (aref mrd-array hue value half-chroma 2) (munsell-value-to-y value))))))))
+	    (setf (aref mrd-array hue value half-chroma 2) large-negative-float)
+	    (setf (aref mrd-array-lchab hue value half-chroma 0) large-negative-float)
+	    (setf (aref mrd-array-lchab hue value half-chroma 1) large-negative-float)
+	    (setf (aref mrd-array-lchab hue value half-chroma 2) large-negative-float))
+	  (destructuring-bind (x y largey) xyy
+	    (setf largey (munsell-value-to-y value))
+	    (destructuring-bind (lstar cstarab hab) (xyy-to-lchab x y largey)
+	      (setf (aref mrd-array hue value half-chroma 0) (coerce x 'double-float))
+	      (setf (aref mrd-array hue value half-chroma 1) (coerce y 'double-float))
+	      (setf (aref mrd-array hue value half-chroma 2) largey)
+	      (setf (aref mrd-array-lchab hue value half-chroma 0) lstar)
+	      (setf (aref mrd-array-lchab hue value half-chroma 1) cstarab)
+	      (setf (aref mrd-array-lchab hue value half-chroma 2) hab))))))))
 
 ;; construct mrd-array-dark
 (dotimes (hue 40)
@@ -210,11 +263,20 @@
 	      (progn
 		(setf (aref mrd-array-dark hue value-idx half-chroma 0) large-negative-float)
 		(setf (aref mrd-array-dark hue value-idx half-chroma 1) large-negative-float)
-		(setf (aref mrd-array-dark hue value-idx half-chroma 2) large-negative-float))
-	      (progn
-		(setf (aref mrd-array-dark hue value-idx half-chroma 0) (coerce (first xyy) 'double-float))
-		(setf (aref mrd-array-dark hue value-idx half-chroma 1) (coerce (second xyy) 'double-float))
-		(setf (aref mrd-array-dark hue value-idx half-chroma 2) (munsell-value-to-y value)))))))))
+		(setf (aref mrd-array-dark hue value-idx half-chroma 2) large-negative-float)
+		(setf (aref mrd-array-lchab-dark hue value-idx half-chroma 0) large-negative-float)
+		(setf (aref mrd-array-lchab-dark hue value-idx half-chroma 1) large-negative-float)
+		(setf (aref mrd-array-lchab-dark hue value-idx half-chroma 2) large-negative-float))
+	      (destructuring-bind (x y largey) xyy
+		(setf largey (munsell-value-to-y value))
+		(destructuring-bind (lstar cstarab hab) (xyy-to-lchab x y largey)
+		  (setf (aref mrd-array-dark hue value-idx half-chroma 0) (coerce x 'double-float))
+		  (setf (aref mrd-array-dark hue value-idx half-chroma 1) (coerce y 'double-float))
+		  (setf (aref mrd-array-dark hue value-idx half-chroma 2) largey)
+		  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 0) lstar)
+		  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 1) cstarab)
+		  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 2) hab)))))))))
+
 
 
 (defun array-to-list (array)
@@ -249,6 +311,8 @@
   (format out "(in-package :clcl)~%~%")
   (print-make-array "mrd-array" mrd-array out)
   (print-make-array "mrd-array-dark" mrd-array-dark out)
+  (print-make-array "mrd-array-lchab" mrd-array-lchab out)
+  (print-make-array "mrd-array-lchab-dark" mrd-array-lchab-dark out)
   (print-make-array "max-chroma-arr" max-chroma-arr out)
   (print-make-array "max-chroma-arr-dark" max-chroma-arr-dark out)
   (print-make-array "y-to-munsell-value-arr" y-to-munsell-value-arr out))

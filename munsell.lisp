@@ -107,11 +107,22 @@
 		       (munsell-hvc-to-xyy-simplest-case hue value half-chroma nil)))))
 
 ;; CAUTION: This LCH(ab) values are under Illuminant C.
+;; (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
+;;   (apply #'(lambda (lstar cstarab hab) (list (clamp lstar 0d0 100d0) cstarab hab))
+;; 	 (apply #'lab-to-lchab
+;; 		(apply (rcurry #'xyy-to-lab clcl:c)
+;; 		       (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark)))))
+
 (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
-  (apply #'(lambda (lstar cstarab hab) (list (clamp lstar 0d0 100d0) cstarab hab))
-	 (apply #'lab-to-lchab
-		(apply (rcurry #'xyy-to-lab clcl:c)
-		       (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark)))))
+  (let ((hue (mod hue40 40)))
+    (if dark
+	(list (aref mrd-array-lchab-dark hue tmp-value half-chroma 0)
+	      (aref mrd-array-lchab-dark hue tmp-value half-chroma 1)
+	      (aref mrd-array-lchab-dark hue tmp-value half-chroma 2))
+	(list (aref mrd-array-lchab hue tmp-value half-chroma 0)
+	      (aref mrd-array-lchab hue tmp-value half-chroma 1)
+	      (aref mrd-array-lchab hue tmp-value half-chroma 2)))))
+
 	 
 
 (defun munsell-hvc-to-xyy-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
@@ -250,7 +261,7 @@
       (munsell-hvc-to-lchab-general-case hue40 value (/ chroma 2) nil)
       (munsell-hvc-to-lchab-general-case hue40 (* value 5) (/ chroma 2) t)))
 
-(defun test-munsell-converter (mc)
+(defun compare-munsell-converter (mc)
   (let ((deltaes nil)
 	(max-deltae 0)
 	(outlier nil)
@@ -258,27 +269,30 @@
     (dotimes (x mc)
       (let* ((hue40 (random 40d0))
 	     (value (+ 0.2d0 (random 9.8d0)))
-	     (chroma (random (coerce (clcl:max-chroma hue40 value) 'double-float))))
-	(let* ((lab1 (apply #'clcl:xyy-to-lab (clcl:munsell-hvc-to-xyy hue40 value chroma)))
-	       (lab2 (apply #'clcl:lchab-to-lab (clcl::munsell-hvc-to-lchab hue40 value chroma)))
-	       (deltae (apply #'clcl:deltae (append lab1 lab2))))
-	  (unless (nth-value 1 (clcl:munsell-hvc-to-lrgb hue40 value chroma :threshold 0))
+	     (chroma (random (coerce (max-chroma hue40 value) 'double-float))))
+	(let* ((lab1 (apply (rcurry #'xyy-to-lab clcl:c)
+			    (munsell-hvc-to-xyy hue40 value chroma)))
+	       (lab2 (apply #'lchab-to-lab
+			    (munsell-hvc-to-lchab hue40 value chroma)))
+	       (deltae (apply #'deltae (append lab1 lab2))))
+	  (unless (nth-value 1 (munsell-hvc-to-lrgb hue40 value chroma :threshold 0))
 	    (incf number-within-gamut)
 	    (when (> deltae max-deltae)
 	      (setf max-deltae deltae)
 	      (setf outlier (list hue40 value chroma)))
 	    (push deltae deltaes)))))
-    (format t "Processed colors within sRGB gamut = ~A~%" number-within-gamut)
+    (format t "Processed colors within sRGB(d65) gamut = ~A~%" number-within-gamut)
     (format t "Mean Delta E = ~A~%" (funcall #'alexandria:mean deltaes))
     (format t "Maximum Delta E = ~A~%" (apply #'max deltaes))
     (format t "Outlier (H, V, C) = ~A~%" outlier)))
 
-;; (clcl::test-munsell-converter 100000)
+;; (clcl::compare-munsell-converter 100000)
 ;; =>
-;; Processed colors within sRGB gamut = 48585
-;; Mean Delta E = 4.445772812346427d0
-;; Maximum Delta E = 8.753060852088298d0
-;; Outlier (H, V, C) = (30.770467203255123d0 3.2341004792255665d0 26.69890821729271d0)
+;; Processed colors within sRGB(d65) gamut = 48480
+;; Mean Delta E = 0.35641873193747986d0
+;; Maximum Delta E = 4.67977844149827d0
+;; Outlier (H, V, C) = (15.07830806002132d0 1.4835458770925156d0
+;;                      5.06906007523528d0)
 
 (defun munsell-hvc-to-lab (hue40 value chroma)
   (apply #'xyy-to-lab (munsell-hvc-to-xyy hue40 value chroma)))
