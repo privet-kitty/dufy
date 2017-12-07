@@ -107,9 +107,10 @@
 	   :munsell-hvc-to-lrgb
 	   :munsell-hvc-to-rgb255
 	   :munsell-hvc-to-lchab
-	   :munsellspec-to-xyy
-	   :munsellspec-to-hvc
-	   :munsellspec-to-rgb255
+	   :munsell-hvc-to-spec
+	   :munsell-spec-to-xyy
+	   :munsell-spec-to-hvc
+	   :munsell-spec-to-rgb255
 	   :max-chroma
 ))
 

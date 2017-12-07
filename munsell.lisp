@@ -338,7 +338,7 @@
 	(values rgb255 out-of-gamut))))
 
 
-(defun munsellspec-to-hvc (spec)
+(defun munsell-spec-to-hvc (spec)
   (destructuring-bind (hue-suffix value chroma)
       (mapcar #'read-from-string (cl-ppcre:split "[^0-9.a-z#\-]+" spec))
     (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" spec))
@@ -351,20 +351,29 @@
 	    value
 	    chroma))))
 
+(defun munsell-hvc-to-spec (hue40 value chroma &optional (digits 2))
+  (let* ((hue40$ (mod hue40 40d0))
+	 (hue-number (floor (/ hue40$ 4)))
+	 (hue-suffix (* (mod hue40$ 4) 2.5d0))
+	 (hue-name (aref #("R" "YR" "Y" "GY" "G" "BG" "B" "PB" "P" "RP") hue-number))
+	 (unit (concatenate 'string "~," (write-to-string digits) "F")))
+    (format nil (concatenate 'string unit "~A " unit "/" unit)
+	    hue-suffix hue-name value chroma)))
+
 ;; (clcl:munsellspec-to-hvc "2.13d-2R .8999/   #x0f")
 ;; => (0.00852d0 0.8999 15)
 ;; (clcl:munsellspec-to-hvc "2.13D-2R .8999/   #x0F")
 ;; => ERROR
 
 ;; return multiple values: (x, y, Y), out-of-macadam-limit-p
-(defun munsellspec-to-xyy (spec)
+(defun munsell-spec-to-xyy (spec)
   (destructuring-bind (h v c) (munsellspec-to-hvc spec)
     (if (> c (max-chroma h v))
 	(values (list most-negative-single-float most-negative-single-float most-negative-single-float) t) ;out of MacAdam limit
 	(values (funcall #'munsell-hvc-to-xyy h v c) nil))))
 
 ;; return multiple values: (x, y, Y), out-of-gamut-p
-(defun munsellspec-to-rgb255 (spec &key (threshold 0.0001d0))
+(defun munsell-spec-to-rgb255 (spec &key (threshold 0.0001d0))
   (destructuring-bind (nil v chroma) (munsellspec-to-hvc spec)
     (multiple-value-bind (xyy out-of-macadam-limit) (munsellspec-to-xyy spec)
       (if out-of-macadam-limit
