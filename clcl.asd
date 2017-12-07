@@ -8,7 +8,7 @@
   :author "Hugo I."
   :license "MIT"
   :serial t
-  :depends-on (:cl-ppcre :nibbles :alexandria)
+  :depends-on (:cl-ppcre :alexandria)
   :components ((:file "clcl")
 	       (:file "deltae" :depends-on ("clcl"))
 	       (:file "munsell-renotation-data")
