@@ -3,7 +3,7 @@
 (in-package :cl-user)
 
 (asdf:defsystem :clcl
-  :version "0.0.3"
+  :version "0.0.4"
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"
