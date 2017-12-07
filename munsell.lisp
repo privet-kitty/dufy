@@ -360,22 +360,22 @@
     (format nil (concatenate 'string unit "~A " unit "/" unit)
 	    hue-suffix hue-name value chroma)))
 
-;; (clcl:munsellspec-to-hvc "2.13d-2R .8999/   #x0f")
+;; (clcl:munsell-spec-to-hvc "2.13d-2R .8999/   #x0f")
 ;; => (0.00852d0 0.8999 15)
-;; (clcl:munsellspec-to-hvc "2.13D-2R .8999/   #x0F")
+;; (clcl:munsell-spec-to-hvc "2.13D-2R .8999/   #x0F")
 ;; => ERROR
 
 ;; return multiple values: (x, y, Y), out-of-macadam-limit-p
 (defun munsell-spec-to-xyy (spec)
-  (destructuring-bind (h v c) (munsellspec-to-hvc spec)
+  (destructuring-bind (h v c) (munsell-spec-to-hvc spec)
     (if (> c (max-chroma h v))
 	(values (list most-negative-single-float most-negative-single-float most-negative-single-float) t) ;out of MacAdam limit
 	(values (funcall #'munsell-hvc-to-xyy h v c) nil))))
 
 ;; return multiple values: (x, y, Y), out-of-gamut-p
 (defun munsell-spec-to-rgb255 (spec &key (threshold 0.0001d0))
-  (destructuring-bind (nil v chroma) (munsellspec-to-hvc spec)
-    (multiple-value-bind (xyy out-of-macadam-limit) (munsellspec-to-xyy spec)
+  (destructuring-bind (nil v chroma) (munsell-spec-to-hvc spec)
+    (multiple-value-bind (xyy out-of-macadam-limit) (munsell-spec-to-xyy spec)
       (if out-of-macadam-limit
 	  (values (list -1 -1 -1) t)
 	  (multiple-value-bind (rgb255 out-of-gamut) 
