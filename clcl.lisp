@@ -92,8 +92,13 @@
 	   :hsv-to-xyz
 	   :xyz-to-hsv
 
-	   :mrd-filename
-	   :mrd-pathname
+	   :hsl-to-rgb
+	   :rgb-to-hsl
+	   :hsl-to-rgb255
+	   :rgb255-to-hsl
+	   :hsl-to-xyz
+	   :xyz-to-hsl
+
 	   :munsell-value-to-y
 	   :y-to-munsell-value
 	   :rgb255-to-munsell-value
@@ -106,12 +111,6 @@
 	   :munsellspec-to-hvc
 	   :munsellspec-to-rgb255
 	   :max-chroma
-	   :interpolatedp
-	   :make-munsell-inversion-data
-	   :interpolate-munsell-inversion-data
-	   :load-munsell-inversion-data
-	   :save-munsell-inversion-data
-	   :rgb255-to-munsell-hvc
 ))
 
 (in-package :clcl)
@@ -347,8 +346,8 @@
 	(illuminant-index to-illuminant)))
 
 ;; get a function for chromatic adaptation
-(defun get-ca-converter (from-illuminant to-illuminant)
-  (let ((mat (calc-ca-matrix from-illuminant to-illuminant)))
+(defun get-ca-converter (from-illuminant to-illuminant &optional (tmatrix bradford))
+  (let ((mat (calc-ca-matrix from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))
 
@@ -358,8 +357,7 @@
 (defun bradford (x y z from-illuminant to-illuminant)
   (if (or (< (illuminant-index from-illuminant) 0)
 	  (< (illuminant-index to-illuminant) 0))
-      (error "The function BRADFORD cannot take a user-defined standard illuminant.
-Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
+      (error "The function BRADFORD cannot take a user-defined standard illuminant.~%Do (FUNCALL (CLCL:GET-CA-CONVERTER FROM-ILLUMINANT TO-ILLUMINANT) X Y Z) instead.~%")
       (multiply-matrix-and-vec
        (get-bradford-transformation-matrix from-illuminant to-illuminant)
        x y z)))
@@ -751,13 +749,13 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 ;;; HSV/HSL
 
 ;; H is in R/360. S and V are in [0, 1].
-(defun hsv-to-rgb (h s v)
-  (let* ((c (* v s))
-	 (h-prime (/ (mod h 360d0) 60d0))
+(defun hsv-to-rgb (hue sat val)
+  (let* ((c (coerce (* val sat) 'double-float))
+	 (h-prime (/ (mod hue 360d0) 60d0))
 	 (h-prime-int (floor h-prime))
 	 (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
-	 (base (- v c)))
-    (cond ((= s 0d0) (list base base base))
+	 (base (- val c)))
+    (cond ((= sat 0d0) (list base base base))
 	  ((= 0 h-prime-int) (list (+ base c) (+ base x) base))
 	  ((= 1 h-prime-int) (list (+ base x) (+ base c) base))
 	  ((= 2 h-prime-int) (list base (+ base c) (+ base x)))
@@ -765,13 +763,13 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
 	  ((= 4 h-prime-int) (list (+ base x) base (+ base c)))
 	  ((= 5 h-prime-int) (list (+ base c) base (+ base x))))))
 	 
-(defun hsv-to-rgb255 (h s v)
+(defun hsv-to-rgb255 (hue sat val)
   (mapcar #'(lambda (x) (round (* x 255d0)))
-	  (hsv-to-rgb h s v)))
+	  (hsv-to-rgb hue sat val)))
 
 ;; The received HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
-(defun hsv-to-xyz (h s v &optional (rgbspace srgbd65))
-  (destructuring-bind (r g b) (hsv-to-rgb h s v)
+(defun hsv-to-xyz (hue sat val &optional (rgbspace srgbd65))
+  (destructuring-bind (r g b) (hsv-to-rgb hue sat val)
     (rgb-to-xyz r g b rgbspace)))
 
 ;; R, G and B should be in [0, 1].
@@ -794,6 +792,68 @@ Use CALC-CA-MATRIX and CHROMATIC-ADAPTATION instead.")
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
     (values (apply #'rgb-to-hsv
+		   (mapcar #'(lambda (i) (clamp i 0d0 1d0)) rgb))
+	    out-of-gamut)))
+  
+
+(defun hsl-to-rgb (hue sat lum)
+  (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (- (* lum 2d0) 1d0)))))
+	 (max (+ lum tmp))
+	 (min (- lum tmp))
+	 (delta (- max min))
+	 (h-prime (/ (mod hue 360d0) 60d0))
+	 (h-prime-int (floor h-prime)))
+    (cond ((= sat 0d0) (list max max max))
+	  ((= 0 h-prime-int) (list max
+				   (+ min (* delta hue 0.016666666666666667d0))
+				   min))
+	  ((= 1 h-prime-int) (list (+ min (* delta (- 120d0 hue) 0.016666666666666667d0))
+				   max
+				   min))
+	  ((= 2 h-prime-int) (list min
+				   max
+				   (+ min (* delta (- hue 120d0) 0.016666666666666667d0))))
+	  ((= 3 h-prime-int) (list min
+				   (+ min (* delta (- 240d0 hue) 0.016666666666666667d0))
+				   max))
+	  ((= 4 h-prime-int) (list (+ min (* delta (- hue 240d0) 0.016666666666666667d0))
+				   min
+				   max))
+	  ((= 5 h-prime-int) (list max
+				   min
+				   (+ min (* delta (- 360d0 hue) 0.016666666666666667d0)))))))
+				   
+
+(defun hsl-to-rgb255 (hue sat lum)
+  (mapcar #'(lambda (x) (round (* x 255d0)))
+	  (hsl-to-rgb hue sat lum)))
+
+;; The received HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
+(defun hsl-to-xyz (hue sat lum &optional (rgbspace srgbd65))
+  (destructuring-bind (r g b) (hsl-to-rgb hue sat lum)
+    (rgb-to-xyz r g b rgbspace)))
+
+(defun rgb-to-hsl (r g b)
+  (let ((min (min r g b))
+	(max (max r g b)))
+    (let ((hue (cond ((= min max) 0d0)
+		     ((= min b) (+ 60d0 (* 60d0 (/ (- g r) (- max min)))))
+		     ((= min r) (+ 180d0 (* 60d0 (/ (- b g) (- max min)))))
+		     ((= min g) (+ 300d0 (* 60d0 (/ (- r b) (- max min))))))))
+      (list hue
+	    (/ (- max min) (- 1d0 (abs (+ max min -1d0))))
+	    (* 0.5d0 (+ max min))))))
+	  
+
+(defun rgb255-to-hsl (r g b)
+  (rgb-to-hsl (* r 0.00392156862745098d0)
+	      (* g 0.00392156862745098d0)
+	      (* b 0.00392156862745098d0)))
+
+(defun xyz-to-hsl (x y z &key (rgbspace srgbd65) (threshold 0))
+  (multiple-value-bind (rgb out-of-gamut)
+      (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
+    (values (apply #'rgb-to-hsl
 		   (mapcar #'(lambda (i) (clamp i 0d0 1d0)) rgb))
 	    out-of-gamut)))
   

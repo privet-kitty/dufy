@@ -301,7 +301,8 @@
   (apply #'lchab-to-lab (munsell-hvc-to-lchab hue40 value chroma)))
 
 (defun munsell-hvc-to2-xyy (hue40 value chroma)
-  (apply #'lchab-to-xyy (munsell-hvc-to-lchab hue40 value chroma)))
+  (apply (rcurry #'lchab-to-xyy clcl:c)
+	 (munsell-hvc-to-lchab hue40 value chroma)))
 
 (defun munsell-hvc-to-xyz (hue40 value chroma)
   (apply (rcurry #'bradford clcl:c clcl:d65)

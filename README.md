@@ -5,9 +5,8 @@ CLCL is a library for an exact color manipulation and conversion in various colo
 
 * Munsell color system
 * all kinds of RGB spaces: sRGB, Adobe RGB, etc. (CLCL can handle a user-defined RGB working space.)
-* HSV
-* XYZ
-* xyY
+* XYZ and xyY
+* HSV and HSL
 * CIELAB and LCH(ab)
 * CIELUV and LCH(uv)
 
@@ -24,7 +23,7 @@ All dependent libraries can be installed with quicklisp.
 
 # Install
 
-It is best to use quicklisp. The following is an example of installation on SBCL:
+The easiest way is to use quicklisp. The following is an example of installation on SBCL:
 
     > sbcl
 
@@ -39,7 +38,8 @@ It is best to use quicklisp. The following is an example of installation on SBCL
     * (ql:register-local-projects)
     * (ql:quickload :clcl)
 
-If you'd like to use ASDF directly, you should put the CLCL directory to an appropriate location and do `(asdf:load-system :clcl)`.
+If you'd like to use ASDF without quicklisp, you should put the CLCL directory to an appropriate location and do `(asdf:load-system :clcl)`.
 
 # Usage
 
+To Do

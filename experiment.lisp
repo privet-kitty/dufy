@@ -40,8 +40,9 @@
 (defsketch test ((width w) (height h))
   (with-pen (make-pen :weight 2  :stroke +red+)
     (background +white+)
+    
+    (draw-isovalue-plane 1.24d0 2d0 +red+ 0.2d0)
     (dotter 0.31006 0.31616 +black+ 2)
-    (draw-isovalue-plane 1.24d0 2d0 +red+ 0.1d0)
     ;(hvc-dotter (+ 0.7d0 0.1d0 0.1d0 0.1d0) 2.84d0 3d0)
 ))
 
