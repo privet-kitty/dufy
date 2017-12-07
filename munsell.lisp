@@ -328,6 +328,14 @@
 	(values rgb255 nil)
 	(values rgb255 out-of-gamut))))
 
+(defun munsell-hvc-to2-rgb255 (hue40 value chroma &key (threshold 0.001d0))
+  (multiple-value-bind (rgb255 out-of-gamut)
+      (apply (rcurry #'xyz-to-rgb255 :threshold threshold)
+	     (munsell-hvc-to2-xyz hue40 value chroma))
+    (if (and (= chroma 0))
+	(values rgb255 nil)
+	(values rgb255 out-of-gamut))))
+
 
 (defun munsellspec-to-hvc (spec)
   (destructuring-bind (hue-suffix value chroma)
@@ -514,7 +522,7 @@
 			       (if (= n-u32 +maxu32+)
 				   most-positive-double-float
 				   (destructuring-bind (n-x n-y n-z)
-				       (apply #'clcl:munsell-hvc-to-xyz (decode-munsell-hvc n-u32))
+				       (apply #'clcl::munsell-hvc-to2-xyz (decode-munsell-hvc n-u32))
 				     (clcl:xyz-deltae x y z n-x n-y n-z)))))
 			 neighbors))))
 		  (if (= (aref source-mid nearest-hex) +maxu32+)
@@ -532,7 +540,7 @@
 	     (progn
 	       (format t "Loop: ~a: Perfectly interpolated.~%" (incf i))
 	       (return))
-	     (format t "Loop: ~a: Remaining nodes = ~A~%." (incf i) remaining))))))
+	     (format t "Loop: ~a: Remaining nodes = ~A~%" (incf i) remaining))))))
 
 ; set value by y-to-munsell-value in MID. Thereby chroma is properly corrected.
 (defun set-atsm-value (munsell-inversion-data)
@@ -676,7 +684,7 @@
       (let ((u32 (aref munsell-inversion-data hex)))
 	(if (interpolatedp u32)
 	    (destructuring-bind  (r1 g1 b1) (clcl:hex-to-rgb255 hex)
-	      (destructuring-bind (r2 g2 b2) (apply #'clcl:munsell-hvc-to-rgb255 (decode-munsell-hvc u32))
+	      (destructuring-bind (r2 g2 b2) (apply #'clcl::munsell-hvc-to2-rgb255 (decode-munsell-hvc u32))
 		(let ((delta (clcl:rgb255-deltae r1 g1 b1 r2 g2 b2)))
 		  (setf sum (+ sum delta))
 		  (when (> delta maximum)
@@ -687,11 +695,21 @@
     (format t "Mean Color Difference: ~a~%" (/ sum nodes))
     (format t "Maximum Color Difference: ~a at hex ~a~%" maximum worst-hex)))
 
-;;; Errors of the interpolated nodes of MID with threshold 0.001:
+;;; xyY interpolation version
 ;; Number of Interpolated Nodes = 3729095 (22.227%)
 ;; Mean Color Difference: 0.3134200498636899d0
 ;; Maximum Color Difference: 8.859190406312553d0 at hex 19198
 
+;;; LCH(ab) version
+;; (clcl::examine-interpolation-error mid)
+;; Number of Interpolated Nodes = 3716977 (22.155%)
+;; Mean Color Difference: 0.32306184556274486d0
+;; Maximum Color Difference: 10.38150980126532d0 at hex 17908
+
+;; (clcl::examine-interpolation-error mid #x282828)
+;; Number of Interpolated Nodes = 2683082 (17.965%)
+;; Mean Color Difference: 0.281657302033876d0
+;; Maximum Color Difference: 5.651441223834461d0 at hex 4269568
 
 ;; get the maximun radius of the spheres of missing values in the non-interpolated munsell inversion data.
 (defun get-radius-of-blank-sphere (mid depth r g b)
