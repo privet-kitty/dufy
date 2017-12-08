@@ -27,14 +27,14 @@
       (do ((chroma chroma-start (+ chroma 1d0)))
 	  ((>= chroma mchroma))
 	;(unless (nth-value 1 (clcl:munsell-hvc-to-lrgb hue40 value chroma :threshold 0))
-	  (destructuring-bind (x y nil) (clcl::munsell-hvc-to2-xyy hue40 value chroma)
+	  (destructuring-bind (x y nil) (clcl::munsell-hvc-to-xyy hue40 value chroma)
 	    (dotter x y col))
 	;  )
 	))))
 
 (defun hvc-dotter (hue40 value chroma &optional (col +blue+))
   (destructuring-bind (x y nil)
-      (clcl::munsell-hvc-to2-xyy hue40 value chroma)
+      (clcl::munsell-hvc-to-xyy hue40 value chroma)
     (dotter x y col 3)))
 
 (defsketch test ((width w) (height h))

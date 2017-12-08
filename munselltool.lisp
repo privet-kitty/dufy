@@ -63,7 +63,7 @@
 	    (dotimes (c500 maxc500)
 	      (let ((chroma (/ c500 10.0d0)))
 		(destructuring-bind (x y z)
-		    (clcl::munsell-hvc-to2-xyz hue value chroma)
+		    (clcl::munsell-hvc-to-xyz hue value chroma)
 		  (multiple-value-bind (rgb255 out-of-gamut)
 		      (clcl:xyz-to-rgb255 x y z :threshold 0.001d0)
 		    (unless out-of-gamut
@@ -166,7 +166,7 @@
 			       (if (= n-u32 +maxu32+)
 				   most-positive-double-float
 				   (destructuring-bind (n-x n-y n-z)
-				       (apply #'clcl::munsell-hvc-to2-xyz (decode-munsell-hvc n-u32))
+				       (apply #'clcl::munsell-hvc-to-xyz (decode-munsell-hvc n-u32))
 				     (clcl:xyz-deltae x y z n-x n-y n-z)))))
 			 neighbors))))
 		  (if (= (aref source-mid nearest-hex) +maxu32+)
@@ -328,7 +328,7 @@
       (let ((u32 (aref munsell-inversion-data hex)))
 	(if (interpolatedp u32)
 	    (destructuring-bind  (r1 g1 b1) (clcl:hex-to-rgb255 hex)
-	      (destructuring-bind (r2 g2 b2) (apply #'clcl::munsell-hvc-to2-rgb255 (decode-munsell-hvc u32))
+	      (destructuring-bind (r2 g2 b2) (apply #'clcl::munsell-hvc-to-rgb255 (decode-munsell-hvc u32))
 		(let ((delta (clcl:rgb255-deltae r1 g1 b1 r2 g2 b2)))
 		  (setf sum (+ sum delta))
 		  (when (> delta maximum)
