@@ -75,7 +75,7 @@ Likewise most converters regard the implicit standard illuminant as D65. You can
     * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:c)
     => (0.11987634685509602d0 0.1699996724486797d0 0.25072173849374196d0)
 
-When you nest two or more converters, you may want to use higher-order functions as [alexandria:curry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):
+When you nest two or more converters, you may want to use higher-order functions as [alexandria:rcurry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):
 
     * (apply #'clcl:xyz-to-rgb255
              (clcl:lab-to-xyz 87.0676 -78.1391 -20.5142))
