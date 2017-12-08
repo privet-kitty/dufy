@@ -39,8 +39,9 @@ The path of the local projects is holded in `ql:*local-project-directories*`.
 If you want to use ASDF without quicklisp, you should put the CLCL directory to an appropriate location and do `(asdf:load-system :clcl)`.
 
 # Usage
+## Basics
 
-The basic color space of CLCL is XYZ. There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
+The basic color space of CLCL is CIE XYZ. There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
 
     * (clcl:lab-to-xyz 48.26 -28.84 -8.475)
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
@@ -68,12 +69,12 @@ Which gamut, however? By default, `xyz-to-rgb255` (and most other converters) re
 
 Likewise most converters regard the implicit standard illuminant as D65. You can also specify it explicitly:
 
-    * (clcl:lab-to-xyz 48.26 -28.84 -8.475)
-    * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:d65)
+    * (clcl:lab-to-xyz 48.26 -28.84 -8.475)          ; Illuminant D65 
+    * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:d65) ; Illuminant D65
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
 
-    * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:c)
-    => (0.11987634685509602d0 0.1699996724486797d0 0.25072173849374196d0)
+    * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:a)   ; Illuminant A
+    => (0.13427072267932444d0 0.1699996724486797d0 0.07545996979158637d0)
 
 When you nest two or more converters, you may want to use higher-order functions as [alexandria:rcurry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):
 
@@ -85,7 +86,7 @@ When you nest two or more converters, you may want to use higher-order functions
     * (apply #'clcl:xyz-to-rgb255
              (clcl:lab-to-xyz 87.0676 -78.1391 -20.5142)
 	     :rgbspace clcl:adobe)
-    => GRAMMATICAL ERROR.
+    ERROR
 
     * (apply (alexandria:rcurry #'clcl:xyz-to-rgb255 :rgbspace clcl:adobe)
              (clcl:lab-to-xyz 87.0676 -78.1391 -20.5142))

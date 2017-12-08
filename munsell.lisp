@@ -69,7 +69,9 @@
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
   (list 0.31006d0 0.31616d0
-	(clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v) 0.975d0)
+	(clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0)
+			v)
+		  0.975d0)
 	       0d0 1d0)))
 
 ;; y should be in [0,1]
@@ -256,11 +258,18 @@
 ;;       (munsell-hvc-to-xyy-general-case hue40 value (/ chroma 2) nil)
 ;;       (munsell-hvc-to-xyy-general-case hue40 (* value 5) (/ chroma 2) t)))
 
+
+(defun munsell-hvc-out-of-mrd-p (hue40 value chroma)
+  (or (> value 10) (< value 0)
+      (> chroma (max-chroma hue40 value))))
+
 ; CAUTION: the Standard Illuminant is C
 (defun munsell-hvc-to-lchab (hue40 value chroma)
-  (if (>= value 1)
-      (munsell-hvc-to-lchab-general-case hue40 value (/ chroma 2) nil)
-      (munsell-hvc-to-lchab-general-case hue40 (* value 5) (/ chroma 2) t)))
+  (if (munsell-hvc-out-of-mrd-p hue40 value chroma)
+      (error "Out of Munsell renotation data.")
+      (if (>= value 1)
+	  (munsell-hvc-to-lchab-general-case hue40 value (/ chroma 2) nil)
+	  (munsell-hvc-to-lchab-general-case hue40 (* value 5) (/ chroma 2) t))))
 
 ;; (defun compare-munsell-converter (mc)
 ;;   (let ((deltaes nil)
@@ -348,51 +357,76 @@
 
 
 (defun munsell-spec-to-hvc (spec)
-  (destructuring-bind (hue-prefix value chroma)
-      (mapcar #'read-from-string (cl-ppcre:split "[^0-9.a-z#\-]+" spec))
+  (let ((lst (mapcar #'read-from-string
+		     (remove "" (cl-ppcre:split "[^0-9.a-z#\-]+" spec) :test #'string=))))
     (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" spec))
 	   (hue-number
 	    (switch (hue-name :test #'string=)
 	      ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
-	      ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9)
+	      ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9) ("N" -1)
 	      (t (error "invalid spec")))))
-      (list (+ (* hue-number 4) (/ (* hue-prefix 2) 5))
-	    value
-	    chroma))))
+      (if (< hue-number 0)
+	  (list 0 (car lst) 0)
+	  (progn
+	    (setf (car lst) (+ (* hue-number 4) (/ (* (car lst) 2) 5)))
+	    lst)))))
 
 (defun munsell-hvc-to-spec (hue40 value chroma &optional (digits 2))
-  (let* ((hue40$ (mod hue40 40d0))
-	 (hue-number (floor (/ hue40$ 4)))
-	 (hue-prefix (* (mod hue40$ 4) 2.5d0))
-	 (hue-name (aref #("R" "YR" "Y" "GY" "G" "BG" "B" "PB" "P" "RP") hue-number))
-	 (unit (concatenate 'string "~," (write-to-string digits) "F")))
-    (format nil (concatenate 'string unit "~A " unit "/" unit)
-	    hue-prefix hue-name value chroma)))
+  (let ((unit (concatenate 'string "~," (write-to-string digits) "F")))
+    (if (< chroma (expt 0.09999999999999999d0 digits)) ; achromatic color
+	(format nil (concatenate 'string "N " unit) value)
+	(let* ((hue40$ (mod hue40 40d0))
+	       (hue-number (floor (/ hue40$ 4)))
+	       (hue-prefix (* (mod hue40$ 4) 2.5d0))
+	       (hue-name (aref #("R" "YR" "Y" "GY" "G" "BG" "B" "PB" "P" "RP") hue-number)))
+	  (format nil (concatenate 'string unit "~A " unit "/" unit)
+		  hue-prefix hue-name value chroma)))))
 
 ;; (clcl:munsell-spec-to-hvc "2.13d-2R .8999/   #x0f")
 ;; => (0.00852d0 0.8999 15)
 ;; (clcl:munsell-spec-to-hvc "2.13D-2R .8999/   #x0F")
 ;; => ERROR
 
-;; return multiple values: (x, y, Y), out-of-macadam-limit-p
+(defun munsell-spec-out-of-mrd-p (spec)
+  (apply #'munsell-hvc-out-of-mrd-p (munsell-spec-to-hvc spec)))
+
+;; return multiple values: (L C H), out-of-munsell-renotation-data-p
+;; Illuminant C
+(defun munsell-spec-to-lchab (spec)
+  (destructuring-bind (hue40 value chroma) (munsell-spec-to-hvc spec)
+    (if (munsell-hvc-out-of-mrd-p hue40 value chroma)
+	(values (list most-negative-double-float most-negative-double-float most-negative-double-float)
+		t)
+	(values (funcall #'munsell-hvc-to-lchab hue40 value chroma)
+		nil))))
+
+;; return multiple values: (X Y Z), out-of-munsell-renotation-data-p
+;; Illuminant D65
+(defun munsell-spec-to-xyz (spec)
+  (destructuring-bind (hue40 value chroma) (munsell-spec-to-hvc spec)
+    (if (munsell-hvc-out-of-mrd-p hue40 value chroma)
+	(values (list most-negative-double-float most-negative-double-float most-negative-double-float)
+		t)
+	(values (funcall #'munsell-hvc-to-xyz hue40 value chroma)
+		nil))))
+
+;; return multiple values: (x, y, Y), out-of-munsell-renotation-data-p
 ;; Illuminant D65
 (defun munsell-spec-to-xyy (spec)
-  (destructuring-bind (h v chroma) (munsell-spec-to-hvc spec)
-    (if (> chroma (max-chroma h v))
-	(values (list most-negative-single-float most-negative-single-float most-negative-single-float) t) ;out of MacAdam limit
-	(values (funcall #'munsell-hvc-to-xyy h v chroma) nil))))
+  (multiple-value-bind (xyz out-of-mrd)
+      (munsell-spec-to-xyz spec)
+    (values (apply #'xyz-to-xyy xyz)
+	    out-of-mrd)))
 
-;; return multiple values: (x, y, Y), out-of-gamut-p
+;; return multiple values: (R, G, B), out-of-gamut-p
 ;; Illuminant D65
-(defun munsell-spec-to-rgb255 (spec &key (rgbspace clcl:srgb) (threshold 0.0001d0))
-  (destructuring-bind (nil v chroma) (munsell-spec-to-hvc spec)
-    (multiple-value-bind (xyy out-of-macadam-limit) (munsell-spec-to-xyy spec)
-      (if out-of-macadam-limit
-	  (values (list -1 -1 -1) t)
-	  (multiple-value-bind (rgb255 out-of-gamut) 
-	      (apply (rcurry #'xyz-to-rgb255 :rgbspace rgbspace :threshold threshold)
-		     (apply #'xyy-to-xyz xyy))
-	    (if (and (= v 10) (= chroma 0))
-		(values rgb255 nil)
-		(values rgb255 out-of-gamut)))))))
+;; the standard illuminant of rgbspace must be D65
+(defun munsell-spec-to-rgb255 (spec &key (rgbspace clcl:srgb) (threshold 0.001d0))
+  (multiple-value-bind (xyz out-of-mrd) (munsell-spec-to-xyz spec)
+    (if out-of-mrd
+	(values (list -1 -1 -1) t)
+	(multiple-value-bind (rgb255 out-of-gamut) 
+	    (apply (rcurry #'xyz-to-rgb255 :rgbspace rgbspace :threshold threshold)
+		   xyz)
+	  (values rgb255 out-of-gamut)))))
 

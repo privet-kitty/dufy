@@ -13,6 +13,7 @@
 	   :illuminant-largez
 	   :new-illuminant
 	   :defilluminant
+	   :a :e
 	   :c :d50 :d65
 	   :calc-ca-matrix
 	   :get-ca-converter
@@ -102,14 +103,18 @@
 	   :munsell-value-to-y
 	   :y-to-munsell-value
 	   :rgb255-to-munsell-value
+	   :munsell-hvc-out-of-mrd-p
 	   :munsell-hvc-to-xyy
 	   :munsell-hvc-to-xyz
 	   :munsell-hvc-to-lrgb
 	   :munsell-hvc-to-rgb255
 	   :munsell-hvc-to-lchab
 	   :munsell-hvc-to-spec
-	   :munsell-spec-to-xyy
 	   :munsell-spec-to-hvc
+	   :munsell-spec-out-of-mrd-p
+	   :munsell-spec-to-lchab
+	   :munsell-spec-to-xyz
+	   :munsell-spec-to-xyy
 	   :munsell-spec-to-rgb255
 	   :max-chroma
 ))
@@ -130,6 +135,11 @@
       (and (<= (- number (car more-numbers)) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
+(defun nearly< (threshold number &rest more-numbers)
+  (if (null more-numbers)
+      t
+      (and (< (- number (car more-numbers)) threshold)
+	   (apply #'nearly<= threshold more-numbers))))
 
 ;; (defun rcurry (fn &rest args) 
 ;;   #'(lambda  (&rest args2) 
