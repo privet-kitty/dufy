@@ -41,7 +41,7 @@ If you want to use ASDF without quicklisp, you should put the CLCL directory to 
 # Usage
 ## Basics
 
-The basic color space of CLCL is CIE XYZ. There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
+The fundamental color space of CLCL is CIE XYZ. There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
 
     * (clcl:lab-to-xyz 48.26 -28.84 -8.475)
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
@@ -55,15 +55,16 @@ In the above example of a conversion from CIELAB to RGB, `xyz-to-rgb255` returns
     * (clcl:xyz-to-rgb255 0.37314 0.70144 1.0601)
     => (0 255 255)
     => T
-    ; i.e. The input color is out of gamut, to which the color (0 255 255) is close.
+    ; i.e. The input XYZ color is out of gamut,
+    ; to which the RGB color (0 255 255) is close.
 
 Which gamut, however? By default, `xyz-to-rgb255` (and most other converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
 
-    * (clcl:xyz-to-rgb255 0.37314 0.70144 1.0601 :rgbspace clcl:srgb)
+    * (clcl:xyz-to-rgb255 0.37314 0.70144 1.0601 :rgbspace clcl:srgb)  ; sRGB
     => (0 255 255)
     => T 
 
-    * (clcl:xyz-to-rgb255 0.37314 0.70144 1.0601 :rgbspace clcl:adobe)
+    * (clcl:xyz-to-rgb255 0.37314 0.70144 1.0601 :rgbspace clcl:adobe) ; Adobe RGB
     => (0 255 255)
     => NIL
 
