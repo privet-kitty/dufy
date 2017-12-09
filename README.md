@@ -56,9 +56,8 @@ In the above example of a conversion from CIELAB to RGB, `xyz-to-rgb255` returns
     => (0 255 255)
     => T
     ; i.e. The input XYZ color is out of gamut,
-    ; to which the RGB color (0 255 255) is close.
 
-Which gamut, however? By default, `xyz-to-rgb255` (and other `-to-rgb255` converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
+Out of which gamut, however? By default, `xyz-to-rgb255` (and other `-to-rgb255` converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
 
     * (clcl:xyz-to-rgb255 0.37314 0.70144 1.0601 :rgbspace clcl:srgb)  ; sRGB
     => (0 255 255)
@@ -70,7 +69,7 @@ Which gamut, however? By default, `xyz-to-rgb255` (and other `-to-rgb255` conver
 
 Likewise most converters regard the implicit standard illuminant as D65. You can also specify it explicitly:
 
-    * (clcl:lab-to-xyz 48.26 -28.84 -8.475)          ; Illuminant D65 
+    * (clcl:lab-to-xyz 48.26 -28.84 -8.475)                ; Illuminant D65 
     * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:illum-d65) ; Illuminant D65
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
 

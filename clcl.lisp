@@ -135,12 +135,6 @@
       (and (<= (- number (car more-numbers)) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
-(defun nearly< (threshold number &rest more-numbers)
-  (if (null more-numbers)
-      t
-      (and (< (- number (car more-numbers)) threshold)
-	   (apply #'nearly<= threshold more-numbers))))
-
 ;; (defun rcurry (fn &rest args) 
 ;;   #'(lambda  (&rest args2) 
 ;;     (apply fn (append args2 args))))
