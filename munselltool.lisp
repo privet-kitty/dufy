@@ -192,7 +192,7 @@
     (destructuring-bind (h1000 nil c500)
 	(decode-munsell-hvc1000 (aref munsell-inversion-data hex))
       (let* ((hue40 (clamp (/ h1000 25.0) 0 40))
-	     (new-value (y-to-munsell-value (second (apply (rcurry #'bradford clcl:d65 clcl:c)
+	     (new-value (y-to-munsell-value (second (apply (rcurry #'bradford illum-d65 illum-c)
 							(apply #'rgb255-to-xyz
 							       (hex-to-rgb255 hex))))))
 	     (chroma (* c500 0.1))

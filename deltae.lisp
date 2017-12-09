@@ -9,7 +9,7 @@
 	     (* deltaa deltaa)
 	     (* deltab deltab)))))
 
-(defun xyz-deltae (x1 y1 z1 x2 y2 z2 &optional (illuminant d65))
+(defun xyz-deltae (x1 y1 z1 x2 y2 z2 &optional (illuminant illum-d65))
   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
       (deltae l1 a1 b1 l2 a2 b2))))

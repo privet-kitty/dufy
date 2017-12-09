@@ -71,10 +71,10 @@ Which gamut, however? By default, `xyz-to-rgb255` (and most other converters) re
 Likewise most converters regard the implicit standard illuminant as D65. You can also specify it explicitly:
 
     * (clcl:lab-to-xyz 48.26 -28.84 -8.475)          ; Illuminant D65 
-    * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:d65) ; Illuminant D65
+    * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:illum-d65) ; Illuminant D65
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
 
-    * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:a)   ; Illuminant A
+    * (clcl:lab-to-xyz 48.26 -28.84 -8.475 clcl:illum-a)   ; Illuminant A
     => (0.13427072267932444d0 0.1699996724486797d0 0.07545996979158637d0)
 
 When you nest two or more converters, you may want to use higher-order functions as [alexandria:rcurry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):

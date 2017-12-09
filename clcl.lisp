@@ -13,8 +13,8 @@
 	   :illuminant-largez
 	   :new-illuminant
 	   :defilluminant
-	   :a :e
-	   :c :d50 :d65
+	   :illum-a :illum-e
+	   :illum-c :illum-d50 :illum-d65
 	   :calc-ca-matrix
 	   :get-ca-converter
 	   :bradford
@@ -204,11 +204,11 @@
 			  :index (get-new-illuminant-index))))
        (vector-push-extend ,name illuminant-array))))
 
-(defilluminant a 0.44757d0 0.40745d0)
-(defilluminant c 0.31006d0 0.31616d0)
-(defilluminant d50 0.34567d0 0.35850d0)
-(defilluminant d65 0.31271d0 0.32902d0)
-(defilluminant e 0.33333d0 0.33333d0)
+(defilluminant illum-a 0.44757d0 0.40745d0)
+(defilluminant illum-c 0.31006d0 0.31616d0)
+(defilluminant illum-d50 0.34567d0 0.35850d0)
+(defilluminant illum-d65 0.31271d0 0.32902d0)
+(defilluminant illum-e 0.33333d0 0.33333d0)
 
 (defparameter bradford
   (make-array '(3 3)
@@ -373,7 +373,7 @@
        (get-bradford-transformation-matrix from-illuminant to-illuminant)
        x y z)))
 
-(defun xyz-to-xyy (x y z &optional (illuminant d65))
+(defun xyz-to-xyy (x y z &optional (illuminant illum-d65))
   (if (= x y z 0)
       (list (illuminant-x illuminant) (illuminant-y illuminant) y)
       (list (/ x (+ x y z)) (/ y (+ x y z)) y)))
@@ -395,13 +395,13 @@
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
   (xb 0d0 :type double-float) (yb 0d0 :type double-float)
-  (illuminant d65)
+  (illuminant illum-d65)
   (linearizer #'identity)
   (delinearizer #'identity)
   (to-xyz-matrix identity-matrix :type (simple-array double-float (3 3)))
   (from-xyz-matrix identity-matrix :type (simple-array double-float (3 3))))
 
-(defun new-rgbspace (xr yr xg yg xb yb &key (illuminant d65) (linearizer #'identity) (delinearizer #'identity))
+(defun new-rgbspace (xr yr xg yg xb yb &key (illuminant illum-d65) (linearizer #'identity) (delinearizer #'identity))
   (let ((coordinates
 	 (make-array '(3 3)
 		     :element-type 'double-float
@@ -459,7 +459,7 @@
 
 (defparameter ntsc1953
   (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
-		:illuminant clcl:c
+		:illuminant illum-c
 		:linearizer (genlinearizer 2.2d0)
 		:delinearizer (gendelinearizer 2.2d0)))
 
@@ -554,7 +554,7 @@
       (expt x 0.3333333333d0)
       (+ (* 7.78703703704d0 x) 0.13793103448d0)))
 
-(defun xyz-to-lab (x y z &optional (illuminant d65))
+(defun xyz-to-lab (x y z &optional (illuminant illum-d65))
   (let ((fx (function-f (/ x (illuminant-largex illuminant))))
 	(fy (function-f y))
 	(fz (function-f (/ z (illuminant-largez illuminant)))))
@@ -562,11 +562,11 @@
 	  (* 500 (- fx fy))
 	  (* 200 (- fy fz)))))
 
-(defun xyy-to-lab (x y largey &optional (illuminant d65))
+(defun xyy-to-lab (x y largey &optional (illuminant illum-d65))
   (destructuring-bind (x y z) (xyy-to-xyz x y largey)
     (xyz-to-lab x y z illuminant)))
 
-(defun lab-to-xyz (lstar astar bstar &optional (illuminant d65))
+(defun lab-to-xyz (lstar astar bstar &optional (illuminant illum-d65))
   (let* ((fy (* (+ lstar 16) 0.008620689655172414d0))
 	 (fx (+ fy (* astar 0.002d0)))
 	 (fz (- fy (* bstar 0.005d0))))
@@ -580,7 +580,7 @@
 	      (* (illuminant-largez illuminant) fz fz fz)
 	      (* (- fz 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largez illuminant))))))
 
-(defun lab-to-xyy (lstar astar bstar &optional (illuminant d65))
+(defun lab-to-xyy (lstar astar bstar &optional (illuminant illum-d65))
   (destructuring-bind (x y z) (lab-to-xyz lstar astar bstar illuminant)
     (xyz-to-xyy x y z illuminant)))
 
@@ -596,17 +596,17 @@
   (let ((hue-two-pi (* hab CONST-TWO-PI/360)))
     (list lstar (* cstarab (cos hue-two-pi)) (* cstarab (sin hue-two-pi)))))
 
-(defun xyz-to-lchab (x y z &optional (illuminant d65))
+(defun xyz-to-lchab (x y z &optional (illuminant illum-d65))
   (apply #'lab-to-lchab (xyz-to-lab x y z illuminant)))
 
-(defun xyy-to-lchab (x y largey &optional (illuminant d65))
+(defun xyy-to-lchab (x y largey &optional (illuminant illum-d65))
   (apply #'lab-to-lchab (xyy-to-lab x y largey illuminant)))
 
-(defun lchab-to-xyz (lstar cstarab hab &optional (illuminant d65))
+(defun lchab-to-xyz (lstar cstarab hab &optional (illuminant illum-d65))
   (destructuring-bind (l a b) (lchab-to-lab lstar cstarab hab)
     (lab-to-xyz l a b illuminant)))
 
-(defun lchab-to-xyy (lstar cstarab hab &optional (illuminant d65))
+(defun lchab-to-xyy (lstar cstarab hab &optional (illuminant illum-d65))
   (destructuring-bind (x y z) (lchab-to-xyz lstar cstarab hab illuminant)
     (xyz-to-xyy x y z illuminant)))
 
@@ -624,7 +624,7 @@
     (list (/ (* 4d0 x) denom)
 	  (/ (* 9d0 y) denom))))
 
-(defun xyz-to-luv (x y z &optional (illuminant d65))
+(defun xyz-to-luv (x y z &optional (illuminant illum-d65))
   (destructuring-bind (uprime vprime) (calc-uvprime-from-xyz x y z)
     (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-x illuminant) (illuminant-y illuminant))
       (let* ((yr (/ y (illuminant-largey illuminant)))
@@ -635,7 +635,7 @@
 	      (* 13d0 lstar (- uprime urprime))
 	      (* 13d0 lstar (- vprime vrprime)))))))
 
-(defun luv-to-xyz (lstar ustar vstar &optional (illuminant d65))
+(defun luv-to-xyz (lstar ustar vstar &optional (illuminant illum-d65))
   (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-x illuminant) (illuminant-y illuminant))
     (let* ((uprime (+ (/ ustar (* 13d0 lstar)) urprime))
 	   (vprime (+ (/ vstar (* 13d0 lstar)) vrprime))
@@ -659,32 +659,13 @@
   (let ((hue-two-pi (* huv CONST-TWO-PI/360)))
     (list lstar (* cstaruv (cos hue-two-pi)) (* cstaruv (sin hue-two-pi)))))
 
-(defun xyz-to-lchuv (x y z &optional (illuminant d65))
+(defun xyz-to-lchuv (x y z &optional (illuminant illum-d65))
   (apply #'luv-to-lchuv (xyz-to-luv x y z illuminant)))
 
-(defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant d65))
+(defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant illum-d65))
   (destructuring-bind (l u v) (lchuv-to-luv lstar cstaruv huv)
     (luv-to-xyz l u v illuminant)))
 
-
-;; CIE76
-(defun deltae (l1 a1 b1 l2 a2 b2)
-  (let ((deltal (- l1 l2))
-	(deltaa (- a1 a2))
-	(deltab (- b1 b2)))
-    (sqrt (+ (* deltal deltal)
-	     (* deltaa deltaa)
-	     (* deltab deltab)))))
-
-(defun xyz-deltae (x1 y1 z1 x2 y2 z2 &optional (illuminant d65))
-  (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-    (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-      (deltae l1 a1 b1 l2 a2 b2))))
-
-(defun rgb255-deltae (r1 g1 b1 r2 g2 b2 &optional (rgbspace srgbd65))
-  (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
-    (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
-      (xyz-deltae x1 y1 z1 x2 y2 z2 (rgbspace-illuminant rgbspace)))))
 
 ;; obsolete
 ;; (defun xyzc-to-xyzd65 (x y z)

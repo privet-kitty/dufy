@@ -54,13 +54,13 @@
 	 (largez (+ (* 0.0193339d0 y) (* 0.1191920d0 y) (* 0.9503041d0 y))))
     (apply #'(lambda (x y largey) (list x y (clamp largey 0d0 1d0)))
 	   (apply #'xyz-to-xyy
-		  (bradford largex largey largez clcl:d65 clcl:c)))))
+		  (bradford largex largey largez illum-d65 illum-c)))))
 
 (defun munsell-value-to-achromatic-lchab (v)
   (apply #'lab-to-lchab
-	 (apply (rcurry #'xyz-to-lab clcl:c)
-		(xyy-to-xyz (illuminant-x clcl:c)
-			    (illuminant-y clcl:c)
+	 (apply (rcurry #'xyz-to-lab illum-c)
+		(xyy-to-xyz (illuminant-x illum-c)
+			    (illuminant-y illum-c)
 			    (munsell-value-to-y v)))))
 
 ;; the version corresponding with Y of the munsell renotation data
@@ -104,7 +104,7 @@
 
 ;; (defun munsell-hvc-to-lrgb-simplest-case (hue value half-chroma)
 ;;   (apply #'xyz-to-lrgb
-;; 	 (apply (rcurry #'bradford clcl:c clcl:d65)
+;; 	 (apply (rcurry #'bradford illum-c illum-d65)
 ;; 		(apply #'xyy-to-xyz
 ;; 		       (munsell-hvc-to-xyy-simplest-case hue value half-chroma nil)))))
 
@@ -112,7 +112,7 @@
 ;; (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
 ;;   (apply #'(lambda (lstar cstarab hab) (list (clamp lstar 0d0 100d0) cstarab hab))
 ;; 	 (apply #'lab-to-lchab
-;; 		(apply (rcurry #'xyy-to-lab clcl:c)
+;; 		(apply (rcurry #'xyy-to-lab illum-c)
 ;; 		       (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark)))))
 
 (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
@@ -280,7 +280,7 @@
 ;;       (let* ((hue40 (random 40d0))
 ;; 	     (value (+ 0.2d0 (random 9.8d0)))
 ;; 	     (chroma (random (coerce (max-chroma hue40 value) 'double-float))))
-;; 	(let* ((lab1 (apply (rcurry #'xyy-to-lab clcl:c)
+;; 	(let* ((lab1 (apply (rcurry #'xyy-to-lab illum-c)
 ;; 			    (munsell-hvc-to-xyy hue40 value chroma)))
 ;; 	       (lab2 (apply #'lchab-to-lab
 ;; 			    (munsell-hvc-to-lchab hue40 value chroma)))
@@ -313,8 +313,8 @@
 
 ;; Illuminant D65
 (defun munsell-hvc-to-xyz (hue40 value chroma)
-  (apply (rcurry #'bradford clcl:c clcl:d65)
-	 (apply (rcurry #'lchab-to-xyz clcl:c)
+  (apply (rcurry #'bradford illum-c illum-d65)
+	 (apply (rcurry #'lchab-to-xyz illum-c)
 		(munsell-hvc-to-lchab hue40 value chroma))))
 
 ;; Illuminant D65
@@ -323,7 +323,7 @@
 	 (munsell-hvc-to-xyz hue40 value chroma)))
 
 ;; (defun munsell-hvc-to-xyz (hue40 value chroma)
-;;   (apply (rcurry #'bradford clcl:c clcl:d65)
+;;   (apply (rcurry #'bradford illum-c illum-d65)
 ;; 	 (apply #'xyy-to-xyz (munsell-hvc-to-xyy hue40 value chroma))))
 
 ;; return multiple values: (lr lg lb),  out-of-gamut-p
