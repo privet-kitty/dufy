@@ -58,7 +58,7 @@ In the above example of a conversion from CIELAB to RGB, `xyz-to-rgb255` returns
     ; i.e. The input XYZ color is out of gamut,
     ; to which the RGB color (0 255 255) is close.
 
-Which gamut, however? By default, `xyz-to-rgb255` (and most other converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
+Which gamut, however? By default, `xyz-to-rgb255` (and other `-to-rgb255` converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
 
     * (clcl:xyz-to-rgb255 0.37314 0.70144 1.0601 :rgbspace clcl:srgb)  ; sRGB
     => (0 255 255)
@@ -86,8 +86,8 @@ When you nest two or more converters, you may want to use higher-order functions
 
     * (apply #'clcl:xyz-to-rgb255
              (clcl:lab-to-xyz 87.0676 -78.1391 -20.5142)
-	     :rgbspace clcl:adobe)
-    ERROR
+             :rgbspace clcl:adobe)
+    => GRAMMATICAL ERROR
 
     * (apply (alexandria:rcurry #'clcl:xyz-to-rgb255 :rgbspace clcl:adobe)
              (clcl:lab-to-xyz 87.0676 -78.1391 -20.5142))
