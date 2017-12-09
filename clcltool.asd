@@ -7,6 +7,6 @@
   :author "privet-kitty"
   :license "MIT"
   :serial t
-  :depends-on (:clcl :nibbles :alexandria)
+  :depends-on (:clcl :nibbles :alexandria :fast-io)
   :components ((:file "munselltool"))
 )

@@ -121,7 +121,7 @@
 
 (in-package :clcl)
 
-(defconstant TWO-PI (+ PI PI))
+(define-constant TWO-PI (+ PI PI))
 
 (defun nearly= (threshold number &rest more-numbers)
   (if (null more-numbers)

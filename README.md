@@ -41,7 +41,7 @@ If you want to use ASDF without quicklisp, you should put the CLCL directory to 
 # Usage
 ## Basics
 
-The fundamental color space of CLCL is CIE XYZ. There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
+The fundamental color space of CLCL is CIE XYZ: There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
 
     * (clcl:lab-to-xyz 48.26 -28.84 -8.475)
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)

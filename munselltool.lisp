@@ -209,9 +209,19 @@
 			 :direction :output
 			 :element-type '(unsigned-byte 8)
 			 :if-exists :supersede)
-      (dotimes (x possible-colors)
-	(nibbles:write-ub32/be (aref munsell-inversion-data x) out))
+      (fast-io:with-fast-output  (buf out)
+	(dotimes (x possible-colors)
+	  (fast-io:writeu32-be (aref munsell-inversion-data x) buf)))
       (format t "Munsell inversion data is saved in ~A.~%" path))))
+
+;; (defun load-munsell-inversion-data (&optional (filename "srgbd65-to-munsell-be.dat"))
+;;   (let ((path (merge-pathnames (asdf:system-source-directory :clcl) filename)))
+;;     (with-open-file (in path
+;; 			:direction :input
+;; 			:element-type '(unsigned-byte 8))
+;;       (let ((munsell-inversion-data (make-array possible-colors :element-type '(unsigned-byte 32) :initial-element +maxu32+)))
+;; 	(dotimes (x possible-colors munsell-inversion-data)
+;; 	  (setf (aref munsell-inversion-data x) (nibbles:read-ub32/be in)))))))
 
 (defun load-munsell-inversion-data (&optional (filename "srgbd65-to-munsell-be.dat"))
   (let ((path (merge-pathnames (asdf:system-source-directory :clcl) filename)))
@@ -219,8 +229,10 @@
 			:direction :input
 			:element-type '(unsigned-byte 8))
       (let ((munsell-inversion-data (make-array possible-colors :element-type '(unsigned-byte 32) :initial-element +maxu32+)))
-	(dotimes (x possible-colors munsell-inversion-data)
-	  (setf (aref munsell-inversion-data x) (nibbles:read-ub32/be in)))))))
+	(fast-io:with-fast-input (buf nil in)
+	  (dotimes (x possible-colors munsell-inversion-data)
+	    (setf (aref munsell-inversion-data x) (fast-io:readu32-be buf))))))))
+	
 
 (defun check-data-from-srgb (munsell-inversion-data r g b)
   (let ((u32 (aref munsell-inversion-data (clcl:rgb255-to-hex r g b))))
@@ -328,7 +340,7 @@
       (let ((u32 (aref munsell-inversion-data hex)))
 	(if (interpolatedp u32)
 	    (destructuring-bind  (r1 g1 b1) (clcl:hex-to-rgb255 hex)
-	      (destructuring-bind (r2 g2 b2) (apply #'clcl::munsell-hvc-to-rgb255 (decode-munsell-hvc u32))
+	      (destructuring-bind (r2 g2 b2) (apply #'clcl:munsell-hvc-to-rgb255 (decode-munsell-hvc u32))
 		(let ((delta (clcl:rgb255-deltae r1 g1 b1 r2 g2 b2)))
 		  (setf sum (+ sum delta))
 		  (when (> delta maximum)
