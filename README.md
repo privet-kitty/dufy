@@ -1,10 +1,10 @@
-DUFY - Color Library for Common Lisp
+Dufy - Color Library for Common Lisp
 ====
 
-DUFY is a library for an exact color manipulation and conversion in various color models. It supports following color spaces:
+Dufy is a library for an exact color manipulation and conversion in various color models. It supports following color spaces:
 
 * Munsell color system
-* all kinds of RGB spaces: sRGB, Adobe RGB, etc. (DUFY can handle a user-defined RGB working space.)
+* all kinds of RGB spaces: sRGB, Adobe RGB, etc. (Dufy can handle a user-defined RGB working space.)
 * XYZ
 * xyY
 * HSV
@@ -12,7 +12,7 @@ DUFY is a library for an exact color manipulation and conversion in various colo
 * CIELAB and LCH(ab)
 * CIELUV and LCH(uv)
 
-DUFY has following features:
+Dufy has following features:
 
 * It can deal with a prepared or user-defined standard illuminant for each of the color spaces.
 * It avoids defining special structures or classes to express a color: e.g., a converter from RGB to XYZ receives just three numbers and returns (a list of) three numbers. 
@@ -25,7 +25,7 @@ All of the dependent libraries can be installed with quicklisp.
 
 # Install
 
-The easiest way to install DUFY is to use quicklisp. The following is an example of the installation on SBCL:
+The easiest way to install Dufy is to use quicklisp. The following is an example of the installation on SBCL:
 
     > cd ~/quicklisp/local-projects
     > git clone git@github.com:privet-kitty/dufy.git
@@ -36,12 +36,12 @@ The easiest way to install DUFY is to use quicklisp. The following is an example
 
 The path of the local projects is holded in `ql:*local-project-directories*`.
 
-If you want to use ASDF without quicklisp, you should put the DUFY directory to an appropriate location and do `(asdf:load-system :dufy)`.
+If you want to use ASDF without quicklisp, you should put the Dufy directory to an appropriate location and do `(asdf:load-system :dufy)`.
 
 # Usage
 ## Basics
 
-The fundamental color space of DUFY is CIE XYZ: There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
+The fundamental color space of Dufy is CIE XYZ: There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
 
     * (dufy:lab-to-xyz 48.26 -28.84 -8.475)
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
