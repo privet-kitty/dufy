@@ -1,6 +1,6 @@
 (in-package :cl-user)
 
-(defpackage :clcl
+(defpackage :dufy
   (:use :common-lisp :alexandria)
   ;(:shadowing-import-from :alexandria :rcurry :clamp)
   (:export :xyy-to-xyz
@@ -119,7 +119,7 @@
 	   :max-chroma
 ))
 
-(in-package :clcl)
+(in-package :dufy)
 
 (define-constant TWO-PI (+ PI PI))
 
@@ -377,7 +377,7 @@
 (defun bradford (x y z from-illuminant to-illuminant)
   (if (or (< (illuminant-index from-illuminant) 0)
 	  (< (illuminant-index to-illuminant) 0))
-      (error "The function BRADFORD cannot take a user-defined standard illuminant.~%Do (FUNCALL (CLCL:GET-CA-CONVERTER FROM-ILLUMINANT TO-ILLUMINANT) X Y Z) instead.~%")
+      (error "The function BRADFORD cannot take a user-defined standard illuminant.~%Do (FUNCALL (DUFY:GET-CA-CONVERTER FROM-ILLUMINANT TO-ILLUMINANT) X Y Z) instead.~%")
       (multiply-matrix-and-vec
        (get-bradford-transformation-matrix from-illuminant to-illuminant)
        x y z)))

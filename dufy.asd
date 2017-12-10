@@ -1,15 +1,15 @@
-;;;; clcl.asd -*- Mode: Lisp;-*-
+;;;; dufy.asd -*- Mode: Lisp;-*-
 
 (in-package :cl-user)
 
-(asdf:defsystem :clcl
+(asdf:defsystem :dufy
   :version "0.0.4"
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"
   :serial t
   :depends-on (:cl-ppcre :alexandria)
-  :components ((:file "clcl")
-	       (:file "deltae" :depends-on ("clcl"))
+  :components ((:file "dufy")
+	       (:file "deltae" :depends-on ("dufy"))
 	       (:file "munsell-renotation-data")
-	       (:file "munsell" :depends-on ("clcl" "munsell-renotation-data" "deltae"))))
+	       (:file "munsell" :depends-on ("dufy" "munsell-renotation-data" "deltae"))))

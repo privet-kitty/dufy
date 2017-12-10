@@ -1,4 +1,4 @@
-(in-package :clcl)
+(in-package :dufy)
 
 ;; (require :cl-ppcre)
 
@@ -249,8 +249,8 @@
 		    (lab-to-lchab lstar astar bstar)))))))))
 
 ; Error:
-; (clcl::munsell-hvc-to2-xyy 0.9999999999999999d0 2.84d0 3d0)
-; (clcl::munsell-hvc-to-lchab-value-chroma-integer-case 0.9999999999999999d0 2 1)
+; (dufy::munsell-hvc-to2-xyy 0.9999999999999999d0 2.84d0 3d0)
+; (dufy::munsell-hvc-to-lchab-value-chroma-integer-case 0.9999999999999999d0 2 1)
 
 ; CAUTION: the Standard Illuminant is C
 ;; (defun munsell-hvc-to-xyy (hue40 value chroma)
@@ -296,7 +296,7 @@
 ;;     (format t "Maximum Delta E = ~A~%" (apply #'max deltaes))
 ;;     (format t "Outlier (H, V, C) = ~A~%" outlier)))
 
-;; (clcl::compare-munsell-converter 100000)
+;; (dufy::compare-munsell-converter 100000)
 ;; =>
 ;; Processed colors within sRGB(d65) gamut = 48480
 ;; Mean Delta E = 0.35641873193747986d0
@@ -331,7 +331,7 @@
 
 ;; Illuminant D65
 ;; The standard illuminant of RGBSPACE must be D65.
-(defun munsell-hvc-to-lrgb (hue40 value chroma &key (rgbspace clcl:srgb) (threshold 0.001d0))
+(defun munsell-hvc-to-lrgb (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
   (apply (rcurry #'xyz-to-lrgb :rgbspace rgbspace :threshold threshold)
 	 (munsell-hvc-to-xyz hue40 value chroma)))
 
@@ -347,7 +347,7 @@
 
 ;; Illuminant D65
 ;; The standard illuminant of RGBSPACE must be D65.
-(defun munsell-hvc-to-rgb255 (hue40 value chroma &key (rgbspace clcl:srgb) (threshold 0.001d0))
+(defun munsell-hvc-to-rgb255 (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
   (multiple-value-bind (rgb255 out-of-gamut)
       (apply (rcurry #'xyz-to-rgb255 :rgbspace rgbspace :threshold threshold)
 	     (munsell-hvc-to-xyz hue40 value chroma))
@@ -382,9 +382,9 @@
 	  (format nil (concatenate 'string unit "~A " unit "/" unit)
 		  hue-prefix hue-name value chroma)))))
 
-;; (clcl:munsell-spec-to-hvc "2.13d-2R .8999/   #x0f")
+;; (dufy:munsell-spec-to-hvc "2.13d-2R .8999/   #x0f")
 ;; => (0.00852d0 0.8999 15)
-;; (clcl:munsell-spec-to-hvc "2.13D-2R .8999/   #x0F")
+;; (dufy:munsell-spec-to-hvc "2.13D-2R .8999/   #x0F")
 ;; => ERROR
 
 (defun munsell-spec-out-of-mrd-p (spec)
@@ -421,7 +421,7 @@
 ;; return multiple values: (R, G, B), out-of-gamut-p
 ;; Illuminant D65
 ;; the standard illuminant of rgbspace must be D65
-(defun munsell-spec-to-rgb255 (spec &key (rgbspace clcl:srgb) (threshold 0.001d0))
+(defun munsell-spec-to-rgb255 (spec &key (rgbspace dufy:srgb) (threshold 0.001d0))
   (multiple-value-bind (xyz out-of-mrd) (munsell-spec-to-xyz spec)
     (if out-of-mrd
 	(values (list -1 -1 -1) t)

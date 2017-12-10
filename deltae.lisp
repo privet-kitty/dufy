@@ -1,4 +1,4 @@
-(in-package :clcl)
+(in-package :dufy)
 
 ;; CIE76
 (defun deltae (l1 a1 b1 l2 a2 b2)
