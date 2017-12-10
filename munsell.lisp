@@ -34,7 +34,7 @@
 	       (max-chroma-integer-case-dark hue2 dark-val1)
 	       (max-chroma-integer-case-dark hue2 dark-val2))))))
 
-
+    
 ;; convert munsell value to Y in [0, 1]
 (defun munsell-value-to-y (v)
   (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0))
@@ -430,3 +430,9 @@
 		   xyz)
 	  (values rgb255 out-of-gamut)))))
 
+
+; LCH(ab) value of maximum chroma boundary in MRD.
+(defun max-chroma-lchab (hue40 value &key (use-dark t))
+  (munsell-hvc-to-lchab hue40
+			value
+			(max-chroma hue40 value :use-dark use-dark)))

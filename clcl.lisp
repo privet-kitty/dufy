@@ -330,19 +330,34 @@
 		   (setf (aref matrix2 i j) sum)))))
 	  matrix2)))))
     
-(defparameter bradford-dictionary
-  (make-array (list *number-of-illuminants* *number-of-illuminants*)
-	      :element-type '(simple-array double-float (3 3))))
+;; (defparameter bradford-dictionary
+;;   (make-array (list *number-of-illuminants* *number-of-illuminants*)
+;; 	      :element-type '(simple-array double-float (3 3))))
 	      
-(defun reconstruct-bradford-dictionary ()
-  (dotimes (from-index *number-of-illuminants*)
-    (dotimes (to-index *number-of-illuminants*)
-      (setf (aref bradford-dictionary from-index to-index)
-	    (calc-ca-matrix
-	     (aref illuminant-array from-index)
-	     (aref illuminant-array to-index))))))
+;; (defun reconstruct-bradford-dictionary ()
+;;   (dotimes (from-index *number-of-illuminants*)
+;;     (dotimes (to-index *number-of-illuminants*)
+;;       (setf (aref bradford-dictionary from-index to-index)
+;; 	    (calc-ca-matrix
+;; 	     (aref illuminant-array from-index)
+;; 	     (aref illuminant-array to-index))))))
 
-(reconstruct-bradford-dictionary)
+;; (reconstruct-bradford-dictionary)
+
+(defun make-bradford-dictionary ()
+  (let ((dict (make-array (list *number-of-illuminants* *number-of-illuminants*)
+			  :element-type '(simple-array double-float (3 3)))))
+    (dotimes (from-index *number-of-illuminants*)
+      (dotimes (to-index *number-of-illuminants*)
+	(setf (aref dict from-index to-index)
+	      (calc-ca-matrix
+	       (aref illuminant-array from-index)
+	       (aref illuminant-array to-index)))))
+    dict))
+
+(defparameter bradford-dictionary (make-bradford-dictionary))
+
+
 
 ;; get a transformation matrix by the above constructed dictionary
 (defun get-bradford-transformation-matrix (from-illuminant to-illuminant)
