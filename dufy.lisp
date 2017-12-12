@@ -1,3 +1,5 @@
+
+
 (in-package :cl-user)
 
 (defpackage :dufy
@@ -44,6 +46,7 @@
 
 	   :xyz-to-lab
 	   :lab-to-xyz
+	   :lstar-to-y
 	   :rgb255-to-lab
 	   :lab-to-lchab
 	   :lchab-to-lab
@@ -64,6 +67,9 @@
 	   :deltae
 	   :xyz-deltae
 	   :rgb255-deltae
+	   :deltae94
+	   :xyz-deltae94
+	   :rgb255-deltae94
 
 	   :delinearize
 	   :linearize
@@ -134,6 +140,56 @@
       t
       (and (<= (- number (car more-numbers)) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
+
+(defun subtract-with-mod (x y &optional (divisor TWO-PI))
+  (mod (- x y) divisor))
+
+(defun nearer-in-circle-group (theta1 x theta2 &optional (perimeter TWO-PI))
+  (if (<= (subtract-with-mod x theta1 perimeter) (subtract-with-mod theta2 x perimeter))
+      theta1
+      theta2))
+
+(defun clamp-in-circle-group (number min max &optional (perimeter TWO-PI))
+  (let ((number$ (mod number perimeter))
+	(min$ (mod min perimeter))
+	(max$ (mod max perimeter)))
+    (if (<= min$ max$)
+	(if (<= min$ number$)
+	    (if (<= number$ max$)
+		number$ ; [min, number, max]
+		(nearer-in-circle-group max$ number$ min$))   ; [min, max, number]
+	    (nearer-in-circle-group max$ number$ min$)) ; [number, min, max]
+	(if (or (<= number$ max$)  (<= min$ number$))
+	    number$ ;[number, max, min] or [max, min, number]
+	    (nearer-in-circle-group max$ number$ min$))))) ; [max, number, min]
+
+;; counterclockwise linear interpolation from theta1 to theta2 in a circle group
+;; (defun lerp-in-circle-group (theta1 theta2 coef &optional (perimeter TWO-PI))
+;;   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+;;     (mod (+ theta1 (* dtheta coef)) perimeter)))
+
+;; a version preventing the floating-point error, 
+;; It doesn't exceed the given interval from theta1 to theta2.
+(defun lerp-in-circle-group (theta1 theta2 coef &optional (perimeter TWO-PI))
+  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+    (clamp-in-circle-group (mod (+ theta1 (* dtheta coef)) perimeter)
+			   theta1
+			   theta2
+			   perimeter)))
+
+(defun lerp-in-circle-group-old (theta1 theta2 coef &optional (perimeter TWO-PI))
+  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+    (mod (+ theta1 (* dtheta coef)) perimeter)))
+
+(defun member-in-circle-group (x theta1 theta2 &optional (perimeter TWO-PI))
+  (let ((x-m (mod x perimeter))
+	(theta1-m (mod theta1 perimeter))
+	(theta2-m (mod theta2 perimeter)))
+    (if (<= theta1-m theta2-m)
+	(and (<= theta1-m x-m)
+	     (<= x-m theta2))
+	(or (<= theta1-m x-m)
+	    (<= x-m theta2)))))
 
 ;; (defun rcurry (fn &rest args) 
 ;;   #'(lambda  (&rest args2) 
@@ -344,18 +400,19 @@
 
 ;; (reconstruct-bradford-dictionary)
 
-(defun make-bradford-dictionary ()
-  (let ((dict (make-array (list *number-of-illuminants* *number-of-illuminants*)
-			  :element-type '(simple-array double-float (3 3)))))
-    (dotimes (from-index *number-of-illuminants*)
-      (dotimes (to-index *number-of-illuminants*)
-	(setf (aref dict from-index to-index)
-	      (calc-ca-matrix
-	       (aref illuminant-array from-index)
+  (defun make-bradford-dictionary ()
+    (let ((dict (make-array (list *number-of-illuminants* *number-of-illuminants*)
+			    :element-type '(simple-array double-float (3 3))
+			    :initial-element (make-array '(3 3) :element-type 'double-float))))
+      (dotimes (from-index *number-of-illuminants*)
+	(dotimes (to-index *number-of-illuminants*)
+	  (setf (aref dict from-index to-index)
+		(calc-ca-matrix
+		 (aref illuminant-array from-index)
 	       (aref illuminant-array to-index)))))
-    dict))
+      dict))
 
-(defparameter bradford-dictionary (make-bradford-dictionary))
+(defparameter bradford-dictionary (load-time-value (make-bradford-dictionary)))
 
 
 
@@ -589,6 +646,12 @@
 	      (* (illuminant-largez illuminant) fz fz fz)
 	      (* (- fz 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largez illuminant))))))
 
+(defun lstar-to-y (lstar)
+  (let* ((fy (* (+ lstar 16) 0.008620689655172414d0)))
+    (if (> fy 0.20689655172413793d0)
+	(* fy fy fy)
+	(* (- fy 0.13793103448275862d0) 0.12841854934601665d0))))
+ 
 (defun lab-to-xyy (lstar astar bstar &optional (illuminant illum-d65))
   (destructuring-bind (x y z) (lab-to-xyz lstar astar bstar illuminant)
     (xyz-to-xyy x y z illuminant)))
@@ -687,46 +750,6 @@
 ;;   (list (+ (* 1.009778518523861d0 x) (* 0.007041913032199525d0 y) (* 0.012797129456767808d0 z))
 ;; 	(+ (* 0.012311347023773754d0 x) (* 0.9847093981360044d0 y) (* 0.0032962316048580284d0 z))
 ;; 	(+ (* 0.003828375092859271d0 x) (* -0.0072330611330787d0 y) (* 1.0891638781614845d0 z))))
-
-(defun subtract-with-mod (x y &optional (divisor TWO-PI))
-  (mod (- x y) divisor))
-
-(defun nearer-in-circle-group (theta1 x theta2 &optional (perimeter TWO-PI))
-  (if (<= (subtract-with-mod x theta1 perimeter) (subtract-with-mod theta2 x perimeter))
-      theta1
-      theta2))
-
-(defun clamp-in-circle-group (number min max &optional (perimeter TWO-PI))
-  (let ((number$ (mod number perimeter))
-	(min$ (mod min perimeter))
-	(max$ (mod max perimeter)))
-    (if (<= min$ max$)
-	(if (<= min$ number$)
-	    (if (<= number$ max$)
-		number$ ; [min, number, max]
-		(nearer-in-circle-group max$ number$ min$))   ; [min, max, number]
-	    (nearer-in-circle-group max$ number$ min$)) ; [number, min, max]
-	(if (or (<= number$ max$)  (<= min$ number$))
-	    number$ ;[number, max, min] or [max, min, number]
-	    (nearer-in-circle-group max$ number$ min$))))) ; [max, number, min]
-
-;; counterclockwise linear interpolation from theta1 to theta2 in a circle group
-;; (defun lerp-in-circle-group (theta1 theta2 coef &optional (perimeter TWO-PI))
-;;   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
-;;     (mod (+ theta1 (* dtheta coef)) perimeter)))
-
-;; a version preventing the floating-point error, 
-;; It doesn't exceed the given interval from theta1 to theta2.
-(defun lerp-in-circle-group (theta1 theta2 coef &optional (perimeter TWO-PI))
-  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
-    (clamp-in-circle-group (mod (+ theta1 (* dtheta coef)) perimeter)
-			   theta1
-			   theta2
-			   perimeter)))
-
-(defun lerp-in-circle-group-old (theta1 theta2 coef &optional (perimeter TWO-PI))
-  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
-    (mod (+ theta1 (* dtheta coef)) perimeter)))
 
 
 (defun polar-mean-of-xy (x1 y1 x2 y2)

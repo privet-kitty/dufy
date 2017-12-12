@@ -436,3 +436,23 @@
   (munsell-hvc-to-lchab hue40
 			value
 			(max-chroma hue40 value :use-dark use-dark)))
+
+; avoid that x exceeds an integer slightly 
+(defun modify-float-error (x epsilon)
+  (if (<= (- x (floor x)) epsilon)
+      (floor x)
+      x))
+			   
+;; (defun find-hue40-floor-with-max-chroma (lstar hab)
+;;   (let* ((inf 0)
+;; 	 (sup 40)
+;; 	 (value (lstar 
+;; 	 (lchab-inf (list lstar
+;; 			  (max-chroma-lchab inf (
+;;     (loop
+;; 	 (if (<= (- sup inf) 1)
+;; 	     (return inf)
+;; 	     (let ((mid (round (/ (+ sup inf) 2))))
+	       
+	       
+	   
