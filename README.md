@@ -4,7 +4,7 @@ Dufy - Color Library for Common Lisp
 Dufy is a library for an exact color manipulation and conversion in various color models. It supports following color spaces:
 
 * Munsell color system
-* all kinds of RGB spaces: sRGB, Adobe RGB, etc. (Dufy can handle a user-defined RGB working space.)
+* all kinds of RGB spaces: sRGB, Adobe RGB, etc. (It can handle a user-defined RGB working space.)
 * XYZ
 * xyY
 * HSV
@@ -14,7 +14,7 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 
 Dufy has following features:
 
-* It can deal with a prepared or user-defined standard illuminant for each of the color spaces.
+* It can deal with a prepared or user-defined standard illuminant for each of the color spaces. It has various chromatic adapatation routines between two standard illuminants: Bradford, Von Kries, CIECAT02, etc.
 * It avoids defining special structures or classes to express a color: e.g., a converter from RGB to XYZ receives just three numbers and returns (a list of) three numbers. 
 
 # Dependencies
@@ -36,12 +36,12 @@ The easiest way to install Dufy is to use quicklisp. The following is an example
 
 The path of the local projects is holded in `ql:*local-project-directories*`.
 
-If you want to use ASDF without quicklisp, you should put the Dufy directory to an appropriate location and do `(asdf:load-system :dufy)`.
+If you want to use ASDF without quicklisp, you should put the directory of Dufy to an appropriate location and do `(asdf:load-system :dufy)`.
 
 # Usage
 ## Basics
 
-The fundamental color space of Dufy is CIE XYZ: There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
+The fundamental color space of Dufy is CIE XYZ (Illuminant D65): There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
 
     * (dufy:lab-to-xyz 48.26 -28.84 -8.475)
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)

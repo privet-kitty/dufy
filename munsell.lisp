@@ -456,3 +456,9 @@
 	       
 	       
 	   
+(defun rough-munsell-hue-to-hab (h)
+  (mod (* h 9) 360))
+
+(defun rough-munsell-chroma-to-cstarab (c)
+  (* c 5))
+

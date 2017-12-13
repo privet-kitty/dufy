@@ -26,9 +26,7 @@
 	   :cmccat2000
 
 	   :rgbspace
-	   :srgb
-	   :srgbd65
-	   :adobe
+	   :srgb :srgbd65 :adobe :ntsc1953 :pal/secam :prophoto
 	   :new-rgbspace
 	   :rgbspace-linearizer
 	   :rgbspace-delinearizer
@@ -41,8 +39,8 @@
 	   :rgbspace-yb
 	   :rgbspace-to-xyz-matrix
 	   :rgbspace-from-xyz-matrix
-	   :genlinearizer
-	   :gendelinearizer
+	   :gen-linearizer
+	   :gen-delinearizer
 
 	   :xyz-to-lab
 	   :lab-to-xyz
@@ -258,7 +256,7 @@
 (defilluminant illum-c 0.31006d0 0.31616d0)
 (defilluminant illum-d50 0.34567d0 0.35850d0)
 (defilluminant illum-d65 0.31271d0 0.32902d0)
-(defilluminant illum-e 0.33333d0 0.33333d0)
+(defilluminant illum-e #.(float 1/3 1d0) #.(float 1/3 1d0))
 
 (defparameter bradford
   (make-array '(3 3)
@@ -451,11 +449,13 @@
   (make-array '(3 3) :element-type 'double-float
 	      :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 
-(defun genlinearizer (gamma)
-  #'(lambda (x) (expt x (coerce gamma 'double-float))))
+(defun gen-linearizer (gamma)
+  (let ((gamma$ (coerce gamma 'double-float)))
+    #'(lambda (x) (expt x gamma$))))
 
-(defun gendelinearizer (gamma)
-  #'(lambda (x) (expt x (/ 1d0 (coerce gamma 'double-float)))))
+(defun gen-delinearizer (gamma)
+  (let ((gamma-recipro (/ 1d0 (coerce gamma 'double-float))))
+    #'(lambda (x) (expt x gamma-recipro))))
 
 (defstruct rgbspace
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
@@ -526,14 +526,28 @@
 (defparameter ntsc1953
   (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
 		:illuminant illum-c
-		:linearizer (genlinearizer 2.2d0)
-		:delinearizer (gendelinearizer 2.2d0)))
+		:linearizer (gen-linearizer 2.2d0)
+		:delinearizer (gen-delinearizer 2.2d0)))
 
 (defparameter pal/secam
   (new-rgbspace 0.64d0 0.33d0 0.29d0 0.60d0 0.15d0 0.06d0
-		:linearizer (genlinearizer 2.8d0)
-		:delinearizer (gendelinearizer 2.8d0)))
+		:linearizer (gen-linearizer 2.8d0)
+		:delinearizer (gen-delinearizer 2.8d0)))
 
+
+(defparameter prophoto
+  (new-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
+		:illuminant illum-d50
+		:linearizer #'(lambda (x)
+				(if (<= x #.(* 1/512 16d0))
+				    (* x #.(float 1/16 1d0))
+				    (expt x 1.8d0)))
+		:delinearizer #'(lambda (x)
+				  (if (<= x (float 1/512 1d0))
+				      (* x 16d0)
+				      (expt x #.(/ 1 1.8d0))))))
+				      
+ 
 ;; (defun delinearize (x &optional (rgbspace srgb))
 ;;   (if (<= x 0.0031308d0)
 ;;       (* x 12.92d0)
