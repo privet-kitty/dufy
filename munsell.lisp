@@ -462,3 +462,16 @@
 (defun rough-munsell-chroma-to-cstarab (c)
   (* c 5))
 
+(defun lstar-to-munsell-value (lstar)
+  (y-to-munsell-value (lstar-to-y lstar)))
+
+;; (defun lchab-to-hvc-in-block (lstar cstarab hab hue40-rb ch-rb hue40-lb ch-lb hue40-rt ch-rt hue40-lt ch-lt)
+;;   (let ((munsell-v (lstar-to-munsell-value lstar)))
+;;     (destructuring-bind (nil cstarab-rb hab-rb)
+;; 	(munsell-hvc-to-lchab hue40-rb munsell-v ch-rb)
+;;       (destructuring-bind (nil cstarab-lb hab-lb)
+;; 	  (munsell-hvc-to-lchab hue40-lb munsell-v ch-lb)
+;; 	(destructuring-bind (nil cstarab-rt hab-rt)
+;; 	    (munsell-hvc-to-lchab hue40-rt munsell-v ch-rt)
+;; 	  (destructuring-bind (nil cstarab-lt hab-lt)
+;; 	      (munsell-hvc-to-lchab hue40-lt munsell-v ch-lt)

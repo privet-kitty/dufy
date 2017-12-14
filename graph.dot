@@ -1,0 +1,18 @@
+graph g {
+  node [shape = "box"]
+  "xyz" -- "xyy"
+  "xyz" -- "lrgb"
+  "lrgb" -- "rgb"
+  "rgb" -- "rgb255"
+  "rgb255" -- "hex"
+  
+  "xyz" -- "lab"
+  "lab" -- "lchab"
+  "xyz" -- "luv"
+  "luv" -- "lchuv"
+  "rgb" -- "hsv"
+  "rgb" -- "hsl"
+
+  "lchab" -- "munsell-hvc"
+  "munsell-hvc" -- "munsell-spec"
+}

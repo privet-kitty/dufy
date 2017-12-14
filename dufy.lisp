@@ -19,11 +19,13 @@
 	   :illum-c :illum-d50 :illum-d65
 	   :calc-ca-matrix
 	   :get-ca-converter
+	   
 	   :bradford
 	   :xyz-scaling
 	   :von-kries
 	   :cmccat97
 	   :cmccat2000
+	   :cat02
 
 	   :rgbspace
 	   :srgb :srgbd65 :adobe :ntsc1953 :pal/secam :prophoto
@@ -68,6 +70,9 @@
 	   :deltae94
 	   :xyz-deltae94
 	   :rgb255-deltae94
+	   :deltae00
+	   :xyz-deltae00
+	   :rgb255-deltae00
 
 	   :delinearize
 	   :linearize
@@ -290,6 +295,13 @@
 	      :initial-contents  '((0.7982d0 0.3389d0 -0.1371d0)
 				   (-0.5918d0 1.5512d0 0.0406d0)
 				   (0.0008d0 0.0239d0 0.9753d0))))
+
+(defparameter cat02
+  (make-array '(3 3)
+	      :element-type 'double-float
+	      :initial-contents '((0.7328d0 0.4296d0 -0.1624d0)
+				  (-0.7036d0 1.6975d0 0.0061d0)
+				  (0.0030d0 0.0136d0 0.9834d0))))
 
 ;; (defparameter inverted-bradford-matrix
 ;;   #2A((0.98699290546671d0 -0.147054256421d0 0.15996265166373d0)
