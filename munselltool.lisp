@@ -143,7 +143,7 @@
 			(car lst)))
 
 ; destructive
-(defun interpolate-once (munsell-inversion-data)
+(defun interpolate-once (munsell-inversion-data &optional (xyz-deltae #'dufy:xyz-deltae))
   (let ((source-mid (copy-seq munsell-inversion-data))
 	(not-interpolated 0))
     (dotimes (hex possible-colors not-interpolated)
@@ -168,7 +168,7 @@
 				   most-positive-double-float
 				   (destructuring-bind (n-x n-y n-z)
 				       (apply #'dufy::munsell-hvc-to-xyz (decode-munsell-hvc n-u32))
-				     (dufy:xyz-deltae x y z n-x n-y n-z)))))
+				     (funcall xyz-deltae x y z n-x n-y n-z)))))
 			 neighbors))))
 		  (if (= (aref source-mid nearest-hex) +maxu32+)
 		      (incf not-interpolated)
@@ -178,10 +178,10 @@
 
 
 ; destructive
-(defun interpolate-munsell-inversion-data (munsell-inversion-data)
+(defun interpolate-munsell-inversion-data (munsell-inversion-data &optional (xyz-deltae #'dufy:xyz-deltae))
   (let ((i 0))
     (loop
-       (let ((remaining (interpolate-once munsell-inversion-data)))
+       (let ((remaining (interpolate-once munsell-inversion-data xyz-deltae)))
 	 (if (zerop remaining)
 	     (progn
 	       (format t "Loop: ~a: Perfectly interpolated.~%" (incf i))
@@ -354,6 +354,12 @@
     (format t "Mean Color Difference: ~a~%" (/ sum nodes))
     (format t "Maximum Color Difference: ~a at hex ~a~%" maximum worst-hex)))
 
+(defun delete-interpolated-nodes (mid)
+  (dotimes (hex possible-colors)
+    (let ((node (aref mid hex)))
+      (when (interpolatedp node)
+	(setf (aref mid hex) +maxu32+)))))
+  
 ;;; xyY interpolation version
 ;; Number of Interpolated Nodes = 3729095 (22.227%)
 ;; Mean Color Difference: 0.3134200498636899d0

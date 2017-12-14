@@ -112,9 +112,6 @@
 		      (sin (* 60d0
 			      (exp (- (expt (/ (- Havgprime 275d0) 25d0) 2)))
 			      #.(/ PI 180))))))
-      (print hprime1)
-      (print hprime2)
-      (print Havgprime)
       (sqrt (+ (/ (* deltaLprime deltaLprime)
 		  (* varSL varSL))
 	       (/ (* deltaCprime deltaCPrime)

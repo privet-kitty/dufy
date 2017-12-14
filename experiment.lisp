@@ -29,7 +29,7 @@
 	;(unless (nth-value 1 (dufy:munsell-hvc-to-lrgb hue40 value chroma :threshold 0))
 	  (destructuring-bind (x y nil) (dufy::munsell-hvc-to-xyy hue40 value chroma)
 	    (dotter x y col))
-	;  )
+	 ; )
 	))))
 
 (defun hvc-dotter (hue40 value chroma &optional (col +blue+))
@@ -41,8 +41,9 @@
   (with-pen (make-pen :weight 2  :stroke +red+)
     (background +white+)
     
-    (draw-isovalue-plane 1.24d0 2d0 +red+ 0.2d0)
+    (draw-isovalue-plane 3.909951463412984d0 2d0 +red+ 1 0 40)
     (dotter 0.31006 0.31616 +black+ 2)
+    (dotter 0.15809582179333503d0 0.08882161617037922d0 +blue+ 3)
     ;(hvc-dotter (+ 0.7d0 0.1d0 0.1d0 0.1d0) 2.84d0 3d0)
 ))
 
