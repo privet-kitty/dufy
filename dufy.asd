@@ -1,15 +1,17 @@
 ;;;; dufy.asd -*- Mode: Lisp;-*-
 
-(in-package :cl-user)
+(cl:in-package :asdf)
 
-(asdf:defsystem :dufy
+(defsystem :dufy
   :version "0.0.5"
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"
   :serial t
   :depends-on (:cl-ppcre :alexandria)
-  :components ((:file "dufy")
-	       (:file "deltae" :depends-on ("dufy"))
+  :components ((:file "package")
+	       (:file "fundamental-data" :depends-on ("package"))
+	       (:file "dufy" :depends-on ("package" "fundamental-data"))
+	       (:file "deltae" :depends-on ("package" "dufy"))
 	       (:file "munsell-renotation-data")
-	       (:file "munsell" :depends-on ("dufy" "munsell-renotation-data" "deltae"))))
+	       (:file "munsell" :depends-on ("package" "dufy" "munsell-renotation-data" "deltae"))))

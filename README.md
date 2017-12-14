@@ -15,7 +15,7 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 Dufy has following features:
 
 * It can deal with a prepared or user-defined standard illuminant for each of the color spaces. It has various chromatic adapatation routines between two standard illuminants: Bradford, Von Kries, CIECAT02, etc.
-* It avoids defining special structures or classes to express a color: e.g., a converter from RGB to XYZ receives just three numbers and returns (a list of) three numbers. 
+* It avoids defining special structures or classes to express a color: e.g., a converter from RGB to XYZ receives just three numbers and returns (a list of) three numbers.
 
 # Dependencies
 * alexandria

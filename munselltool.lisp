@@ -143,7 +143,7 @@
 			(car lst)))
 
 ; destructive
-(defun interpolate-once (munsell-inversion-data &optional (xyz-deltae #'dufy:xyz-deltae))
+(defun interpolate-once (munsell-inversion-data &optional (deltae #'dufy:xyz-deltae))
   (let ((source-mid (copy-seq munsell-inversion-data))
 	(not-interpolated 0))
     (dotimes (hex possible-colors not-interpolated)
@@ -168,7 +168,7 @@
 				   most-positive-double-float
 				   (destructuring-bind (n-x n-y n-z)
 				       (apply #'dufy::munsell-hvc-to-xyz (decode-munsell-hvc n-u32))
-				     (funcall xyz-deltae x y z n-x n-y n-z)))))
+				     (funcall deltae x y z n-x n-y n-z)))))
 			 neighbors))))
 		  (if (= (aref source-mid nearest-hex) +maxu32+)
 		      (incf not-interpolated)
@@ -306,7 +306,7 @@
 	       (incf gaps))))
        (format t "b = ~a, gap rate = ~a~%" b (/ gaps 65536.0))
        (setf gaps-sum (+ gaps-sum gaps))))
-    (format t "total gap rate = ~a~%" (/ gaps-sum (float possible-colors)))))
+    (format t "total gap rate = ~a~% (~A nodes)" (/ gaps-sum (float possible-colors)) gaps-sum)))
 
 (defun gap-rate-by-brightness (munsell-inversion-data)
   (let ((gaps-sum 0))
@@ -334,7 +334,7 @@
     
 
 ;; examine the total error of interpolated data in MID	
-(defun examine-interpolation-error (munsell-inversion-data &optional (start 0) (end possible-colors))
+(defun examine-interpolation-error (munsell-inversion-data &key (start 0) (end possible-colors) (deltae #'dufy:rgb255-deltae))
   (let ((maximum 0)
 	(worst-hex nil)
 	(sum 0)
@@ -344,7 +344,7 @@
 	(if (interpolatedp u32)
 	    (destructuring-bind  (r1 g1 b1) (dufy:hex-to-rgb255 hex)
 	      (destructuring-bind (r2 g2 b2) (apply #'dufy:munsell-hvc-to-rgb255 (decode-munsell-hvc u32))
-		(let ((delta (dufy:rgb255-deltae r1 g1 b1 r2 g2 b2)))
+		(let ((delta (funcall deltae r1 g1 b1 r2 g2 b2)))
 		  (setf sum (+ sum delta))
 		  (when (> delta maximum)
 		    (setf maximum delta)
@@ -354,12 +354,6 @@
     (format t "Mean Color Difference: ~a~%" (/ sum nodes))
     (format t "Maximum Color Difference: ~a at hex ~a~%" maximum worst-hex)))
 
-(defun delete-interpolated-nodes (mid)
-  (dotimes (hex possible-colors)
-    (let ((node (aref mid hex)))
-      (when (interpolatedp node)
-	(setf (aref mid hex) +maxu32+)))))
-  
 ;;; xyY interpolation version
 ;; Number of Interpolated Nodes = 3729095 (22.227%)
 ;; Mean Color Difference: 0.3134200498636899d0
@@ -371,11 +365,37 @@
 ;; Mean Color Difference: 0.32306184556274486d0
 ;; Maximum Color Difference: 10.38150980126532d0 at hex 17908
 
-;; (dufy::examine-interpolation-error mid #x282828)
+;; (dufy::examine-interpolation-error mid ;start #x282828)
 ;; Number of Interpolated Nodes = 2683082 (17.965%)
 ;; Mean Color Difference: 0.281657302033876d0
 ;; Maximum Color Difference: 5.651441223834461d0 at hex 4269568
 
+;;; LCH(ab) version interpolated with CIEDE2000
+;; (dufy-tools:examine-interpolation-error mid :deltae #'dufy:rgb255-deltae00)
+;; Number of Interpolated Nodes = 3716977 (22.155%)
+;; Mean Color Difference: 0.12893330932202843d0
+;; Maximum Color Difference: 4.6450716410739465d0 at hex 4269568
+
+;; (dufy-tools:examine-interpolation-error mid)
+;; Number of Interpolated Nodes = 3716977 (22.155%)
+;; Mean Color Difference: 0.3276992106139137d0
+;; Maximum Color Difference: 10.38150980126532d0 at hex 17908
+
+(defun check-error-of-hex (hex mid &optional (deltae #'dufy:rgb255-deltae))
+  (let* ((rgb1 (dufy:hex-to-rgb255 hex))
+	 (rgb2 (apply #'dufy:munsell-hvc-to-rgb255
+		      (apply (rcurry #'rgb255-to-munsell-hvc mid)
+			     rgb1))))
+    (print rgb1)
+    (print rgb2)
+    (format t "~%Delta E = ~A~%" (apply deltae (append rgb1 rgb2)))))
+
+(defun delete-interpolated-nodes (mid)
+  (dotimes (hex possible-colors)
+    (let ((node (aref mid hex)))
+      (when (interpolatedp node)
+	(setf (aref mid hex) +maxu32+)))))
+  
 ;; get the maximun radius of the spheres of missing values in the non-interpolated munsell inversion data.
 (defun get-radius-of-blank-sphere (mid depth r g b)
   (if (not (= +maxu32+ (aref mid (dufy:rgb255-to-hex r g b))))

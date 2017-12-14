@@ -137,39 +137,6 @@
 ;;       (apply #'max rows))))
 
 
-;; convert munsell value to Y in [0, 1]
-(defun munsell-value-to-y (v)
-  (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0))
-
-(defun root-finding (func rhs a b threshold)
-  (let* ((mid (* 0.5d0 (+ a b)))
-	 (lhs (funcall func mid))
-	 (delta (abs (- lhs rhs))))
-    (if (<= delta threshold)
-	mid
-	(if (> lhs rhs)
-	    (root-finding func rhs a mid threshold)
-	    (root-finding func rhs mid b threshold)))))
-
-(defparameter y-to-munsell-value-arr (make-array 1001 :element-type 'double-float :initial-element 0.0d0))
-
-(setf (aref y-to-munsell-value-arr 0) 0.0d0)
-(setf (aref y-to-munsell-value-arr 1000) 10.0d0)
-(loop for y from 1 to 999 do
-  (setf (aref y-to-munsell-value-arr y)
-	(root-finding #'munsell-value-to-y (* y 0.001d0) 0 10 1.0d-6)))
-
-;; y should be in [0,1]
-(defun y-to-munsell-value (y)
-  (let* ((y1000 (* (alexandria:clamp y 0 1) 1000))
-	 (y1 (floor y1000))
-	 (y2 (ceiling y1000)))
-    (if (= y1 y2)
-	(aref y-to-munsell-value-arr y1)
-	(let ((r (- y1000 y1)))
-	  (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
-	     (* r (aref y-to-munsell-value-arr y2)))))))
-
 ;; get data without correcting the luminance factor, i.e. max(Y) = 1.0257 (not 1.00)
 ;; The data with value=0 are substituted with the data with value=0.2.
 (defun get-xyy-from-dat (hue-num value chroma)
@@ -314,8 +281,7 @@
   (print-make-array "mrd-array-lchab" mrd-array-lchab out)
   (print-make-array "mrd-array-lchab-dark" mrd-array-lchab-dark out)
   (print-make-array "max-chroma-arr" max-chroma-arr out)
-  (print-make-array "max-chroma-arr-dark" max-chroma-arr-dark out)
-  (print-make-array "y-to-munsell-value-arr" y-to-munsell-value-arr out))
+  (print-make-array "max-chroma-arr-dark" max-chroma-arr-dark out))
 
 (format t "Munsell Renotation Data is successfully fetched and converted.~%")
 (format t "The file is saved at ~A~%" mrd-pathname)

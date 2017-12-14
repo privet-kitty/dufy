@@ -1,8 +1,8 @@
 ;;;; dufy-tools.asd -*- Mode: Lisp;-*-
 
-(in-package :cl-user)
+(cl:in-package :asdf)
 
-(asdf:defsystem :dufy-tools
+(defsystem :dufy-tools
   :description "DUFY examples"
   :author "privet-kitty"
   :license "MIT"
