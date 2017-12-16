@@ -1,6 +1,7 @@
 (require :drakma)
 (require :babel)
 (require :dufy)
+(require :alexandria)
 
 ;;; This is a script file which fetches the Munsell renotation data and saves several arrays as a .lisp file.
 
@@ -28,8 +29,10 @@
 
 (defun quantize-40hue (hue-name hue-prefix)
   (let ((hue-number
-	 (ecase hue-name
-	   (R 0) (YR 1) (Y 2) (GY 3) (G 4) (BG 5) (B 6) (PB 7) (P 8) (RP 9))))
+	 (alexandria:switch (hue-name :test #'string=)
+	   ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
+	   ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9)
+	   (t (error "invalid spec")))))
     (mod (+ (* 4 hue-number) (round (/ hue-prefix 2.5))) 40)))
 
 (defparameter munsell-renotation-data nil)
@@ -54,7 +57,7 @@
   (let ((quantized-data nil))
     (dolist (x munsell-renotation-data)
       (let* ((hue-str (string (car x)))
-	     (hue-name (intern (subseq-if #'alpha-char-p hue-str)))
+	     (hue-name (subseq-if #'alpha-char-p hue-str))
 	     (hue-prefix (read-from-string (subseq-if (complement #'alpha-char-p) hue-str))))
 	(push (cons (quantize-40hue hue-name hue-prefix) (cdr x)) quantized-data)))
     (setf munsell-renotation-data quantized-data)))
@@ -211,7 +214,7 @@
 	    (setf (aref mrd-array-lchab hue value half-chroma 1) large-negative-float)
 	    (setf (aref mrd-array-lchab hue value half-chroma 2) large-negative-float))
 	  (destructuring-bind (x y largey) xyy
-	    (setf largey (munsell-value-to-y value))
+	    (setf largey (dufy:munsell-value-to-y value))
 	    (destructuring-bind (lstar cstarab hab) (xyy-to-lchab x y largey)
 	      (setf (aref mrd-array hue value half-chroma 0) (coerce x 'double-float))
 	      (setf (aref mrd-array hue value half-chroma 1) (coerce y 'double-float))
@@ -235,7 +238,7 @@
 		(setf (aref mrd-array-lchab-dark hue value-idx half-chroma 1) large-negative-float)
 		(setf (aref mrd-array-lchab-dark hue value-idx half-chroma 2) large-negative-float))
 	      (destructuring-bind (x y largey) xyy
-		(setf largey (munsell-value-to-y value))
+		(setf largey (dufy:munsell-value-to-y value))
 		(destructuring-bind (lstar cstarab hab) (xyy-to-lchab x y largey)
 		  (setf (aref mrd-array-dark hue value-idx half-chroma 0) (coerce x 'double-float))
 		  (setf (aref mrd-array-dark hue value-idx half-chroma 1) (coerce y 'double-float))

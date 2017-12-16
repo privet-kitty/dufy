@@ -16,7 +16,7 @@
 	   :illum-a :illum-e
 	   :illum-c :illum-d50 :illum-d65
 	   :calc-ca-matrix
-	   :get-ca-converter
+	   :gen-ca-converter
 	   
 	   :bradford
 	   :xyz-scaling
@@ -130,4 +130,5 @@
 	   :color-matching-z
 	   :color-matching
 	   :spectrum-to-xyz
+	   :optimal-spectrum
 ))

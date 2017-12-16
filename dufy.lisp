@@ -267,45 +267,31 @@
 		  ((= k 3) 
 		   (setf (aref matrix2 i j) sum)))))
 	  matrix2)))))
-    
-;; (defparameter bradford-dictionary
-;;   (make-array (list *number-of-illuminants* *number-of-illuminants*)
-;; 	      :element-type '(simple-array double-float (3 3))))
-	      
-;; (defun reconstruct-bradford-dictionary ()
-;;   (dotimes (from-index *number-of-illuminants*)
-;;     (dotimes (to-index *number-of-illuminants*)
-;;       (setf (aref bradford-dictionary from-index to-index)
-;; 	    (calc-ca-matrix
-;; 	     (aref illuminant-array from-index)
-;; 	     (aref illuminant-array to-index))))))
 
-;; (reconstruct-bradford-dictionary)
+;; (defun make-bradford-dictionary ()
+;;   (let ((dict (make-array (list *number-of-illuminants* *number-of-illuminants*)
+;; 			  :element-type '(simple-array double-float (3 3))
+;; 			  :initial-element (make-array '(3 3) :element-type 'double-float))))
+;;     (dotimes (from-index *number-of-illuminants*)
+;;       (dotimes (to-index *number-of-illuminants*)
+;; 	(setf (aref dict from-index to-index)
+;; 		(calc-ca-matrix
+;; 		 (aref illuminant-array from-index)
+;; 		 (aref illuminant-array to-index)))))
+;;     dict))
 
-  (defun make-bradford-dictionary ()
-    (let ((dict (make-array (list *number-of-illuminants* *number-of-illuminants*)
-			    :element-type '(simple-array double-float (3 3))
-			    :initial-element (make-array '(3 3) :element-type 'double-float))))
-      (dotimes (from-index *number-of-illuminants*)
-	(dotimes (to-index *number-of-illuminants*)
-	  (setf (aref dict from-index to-index)
-		(calc-ca-matrix
-		 (aref illuminant-array from-index)
-	       (aref illuminant-array to-index)))))
-      dict))
-
-(defparameter bradford-dictionary (load-time-value (make-bradford-dictionary)))
+;; (defparameter bradford-dictionary (make-bradford-dictionary))
 
 
 
 ;; get a transformation matrix by the above constructed dictionary
-(defun get-bradford-transformation-matrix (from-illuminant to-illuminant)
-  (aref bradford-dictionary
-	(illuminant-index from-illuminant)
-	(illuminant-index to-illuminant)))
+;; (defun get-bradford-transformation-matrix (from-illuminant to-illuminant)
+;;   (aref bradford-dictionary
+;; 	(illuminant-index from-illuminant)
+;; 	(illuminant-index to-illuminant)))
 
 ;; get a function for chromatic adaptation
-(defun get-ca-converter (from-illuminant to-illuminant &optional (tmatrix bradford))
+(defun gen-ca-converter (from-illuminant to-illuminant &optional (tmatrix bradford))
   (let ((mat (calc-ca-matrix from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))
@@ -313,13 +299,13 @@
 
 
 ;; special function for Bradford transformation between default standard illuminants
-(defun bradford (x y z from-illuminant to-illuminant)
-  (if (or (< (illuminant-index from-illuminant) 0)
-	  (< (illuminant-index to-illuminant) 0))
-      (error "The function BRADFORD cannot take a user-defined standard illuminant.~%Do (FUNCALL (DUFY:GET-CA-CONVERTER FROM-ILLUMINANT TO-ILLUMINANT) X Y Z) instead.~%")
-      (multiply-matrix-and-vec
-       (get-bradford-transformation-matrix from-illuminant to-illuminant)
-       x y z)))
+;; (defun bradford (x y z from-illuminant to-illuminant)
+;;   (if (or (< (illuminant-index from-illuminant) 0)
+;; 	  (< (illuminant-index to-illuminant) 0))
+;;       (error "The function BRADFORD cannot take a user-defined standard illuminant.~%Do (FUNCALL (DUFY:GEN-CA-CONVERTER FROM-ILLUMINANT TO-ILLUMINANT) X Y Z) instead.~%")
+;;       (multiply-matrix-and-vec
+;;        (get-bradford-transformation-matrix from-illuminant to-illuminant)
+;;        x y z)))
 
 (defun xyz-to-xyy (x y z &optional (illuminant illum-d65))
   (if (= x y z 0)
@@ -455,7 +441,7 @@
 
 
 ;; convert XYZ to linear RGB in [0, 1]
-;; return multiple values: (lr lg lb) and out-of-gamut flag
+;; return multiple values: (lr lg lb), out-of-gamut-p
 (defun xyz-to-lrgb (x y z &key (rgbspace srgbd65) (threshold 0))
   (destructuring-bind (lr lg lb)
       (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
@@ -470,7 +456,7 @@
 			    lr lg lb))		       
 
 ;; convert XYZ to non-linear (i.e. gamma corrected) RGB in [0, 1]
-;; return multiple values: (lr lg lb) and out-of-gamut flag
+;; return multiple values: (lr lg lb), out-of-gamut-p
 (defun xyz-to-rgb (x y z &key (rgbspace srgbd65) (threshold 0))
   (multiple-value-bind (lrgb out-of-gamut)
       (xyz-to-lrgb x y z :rgbspace rgbspace :threshold threshold)
@@ -828,12 +814,22 @@
 ;; 	    (aref color-matching-arr (- wavelength 360) 1)
 ;; 	    (aref color-matching-arr (- wavelength 360) 2))))
 
-(defun spectrum-to-xyz (spectrum-func &optional (band 1))
-  (let ((x 0) (y 0) (z 0))
+
+(defun spectrum-sum (spectrum-func &optional (band 1))
+  (loop for wl from 360 to 780 by band
+     sum (funcall spectrum-func wl)))
+
+;; Illuminant E
+;; SPECTRUM-FUNC must be normalized.
+(defun spectrum-to-xyz (spectrum-func &key (band 1))
+  (let ((const 0.009358326136267765d0)
+	(x 0)
+	(y 0)
+	(z 0))
     (do ((wl 360 (+ wl band)))
-	((< 780 wl) (list (* band x 0.009358326136267765d0)
-			  (* band y 0.009358326136267765d0)
-			  (* band z 0.009358326136267765d0)))
+	((< 780 wl) (list (* band x const)
+			  (* band y const)
+			  (* band z const)))
       (let ((p (funcall spectrum-func wl))
 	    (idx (- wl 360)))
 	(incf x (* (aref color-matching-arr idx 0) p))
@@ -845,3 +841,14 @@
   (let ((wlm (* wavelength 1d-9)))
     (/ (* 3.74183d-16 (expt wlm -5d0))
        (- (exp (/ 1.4388d-2 (* wlm temperature))) 1d0))))
+
+(defun optimal-spectrum (wavelength &optional (wl-begin 360) (wl-end 780))
+  (if (<= wl-begin wl-end)
+      (if (<= wl-begin wavelength wl-end) 1 0)
+      (if (or (<= wavelength wl-end) (<= wl-begin wavelength)) 1 0)))
+
+(do* ((temp 2000 (+ temp 500)))
+     ((>= temp 10000))
+  ;(print (spectrum-sum (rcurry #'bb-spectrum temp)))
+  (format t "~AK, ~A~%" temp (spectrum-to-xyz (compose (rcurry #'* (/ (spectrum-sum (rcurry #'bb-spectrum temp))))
+				   (rcurry #'bb-spectrum temp)))))

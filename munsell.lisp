@@ -1,10 +1,14 @@
 (in-package :dufy)
 
-;; (require :cl-ppcre)
+;; the bradford transformation D65 <-> C is frequently used here.
+(defparameter d65-to-c
+  (gen-ca-converter illum-d65 illum-c))
+(defparameter c-to-d65
+  (gen-ca-converter illum-c illum-d65))
 
-;; the largest chroma in the Munsell renotation data
-;; (defparameter max-chroma-overall (apply #'max (mapcar #'third munsell-renotation-data)))
-(defparameter *max-chroma-overall* 50)
+(defparameter *max-chroma-overall* 50
+  "The largest chroma in the Munsell renotation data.
+for devel.: (defparameter max-chroma-overall (apply #'max (mapcar #'third munsell-renotation-data)))")
 
 (defun max-chroma-integer-case (hue40 value)
   (aref max-chroma-arr hue40 value))
@@ -12,9 +16,9 @@
 (defun max-chroma-integer-case-dark (hue40 dark-value)
   (aref max-chroma-arr-dark hue40 dark-value))
 
-;; max-chroma returns the largest chroma which the MUNSELL-HVC-TO- functions can receive.
-;; The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is larger than (max-chroma hue value)
 (defun max-chroma (hue40 value &key (use-dark t))
+  "returns the largest chroma which the MUNSELL-HVC-TO- functions can receive.
+The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is larger than (MAC-CHROMA HUE40 VALUE)."
   (let* ((hue (mod hue40 40))
 	 (hue1 (floor hue))
 	 (hue2 (mod (ceiling hue) 40)))
@@ -54,7 +58,7 @@
 	 (largez (+ (* 0.0193339d0 y) (* 0.1191920d0 y) (* 0.9503041d0 y))))
     (apply #'(lambda (x y largey) (list x y (clamp largey 0d0 1d0)))
 	   (apply #'xyz-to-xyy
-		  (bradford largex largey largez illum-d65 illum-c)))))
+		  (funcall d65-to-c largex largey largez)))))
 
 (defun munsell-value-to-achromatic-lchab (v)
   (apply #'lab-to-lchab
@@ -104,7 +108,7 @@
 
 ;; (defun munsell-hvc-to-lrgb-simplest-case (hue value half-chroma)
 ;;   (apply #'xyz-to-lrgb
-;; 	 (apply (rcurry #'bradford illum-c illum-d65)
+;; 	 (apply c-to-d65
 ;; 		(apply #'xyy-to-xyz
 ;; 		       (munsell-hvc-to-xyy-simplest-case hue value half-chroma nil)))))
 
@@ -229,9 +233,9 @@
 	   (lstar (munsell-value-to-lstar true-value)))
       (if (= tmp-val1 tmp-val2)
 	  (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark)
-	  ; If the given color is too dark to interpolate it by the MRD,
+	  ; If the given color is too dark to interpolate it,
 	  ; we use the fact that the chroma of LCH(ab) corresponds roughly
-	  ; to the one of Munsell.
+	  ; to that of Munsell.
 	  (if (= tmp-val1 0)
 	      (destructuring-bind (nil cstarab hab)
 		  (munsell-hvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
@@ -263,8 +267,8 @@
   (or (> value 10) (< value 0)
       (> chroma (max-chroma hue40 value))))
 
-; CAUTION: the Standard Illuminant is C
 (defun munsell-hvc-to-lchab (hue40 value chroma)
+  "CAUTION: The Standard Illuminant is C."
   (if (munsell-hvc-out-of-mrd-p hue40 value chroma)
       (error "Out of Munsell renotation data.")
       (if (>= value 1)
@@ -311,27 +315,25 @@
 ;; (defun munsell-hvc-to-lab (hue40 value chroma)
 ;;   (apply #'lchab-to-lab (munsell-hvc-to-lchab hue40 value chroma)))
 
-;; Illuminant D65
 (defun munsell-hvc-to-xyz (hue40 value chroma)
-  (apply (rcurry #'bradford illum-c illum-d65)
+  "Illuminant D65"
+  (apply c-to-d65
 	 (apply (rcurry #'lchab-to-xyz illum-c)
 		(munsell-hvc-to-lchab hue40 value chroma))))
 
-;; Illuminant D65
 (defun munsell-hvc-to-xyy (hue40 value chroma)
+  "Illuminant D65"
   (apply #'xyz-to-xyy
 	 (munsell-hvc-to-xyz hue40 value chroma)))
 
 ;; (defun munsell-hvc-to-xyz (hue40 value chroma)
-;;   (apply (rcurry #'bradford illum-c illum-d65)
+;;   (apply c-to-d65
 ;; 	 (apply #'xyy-to-xyz (munsell-hvc-to-xyy hue40 value chroma))))
 
-;; return multiple values: (lr lg lb),  out-of-gamut-p
-;; Note that the pure white (N 10.0) could be judged as out of gamut by numerical error, if threshold is too small.
-
-;; Illuminant D65
-;; The standard illuminant of RGBSPACE must be D65.
 (defun munsell-hvc-to-lrgb (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
+  "The standard illuminant is D65: that of RGBSPACE must also be D65.
+It returns multiple values: (LR LG LB),  out-of-gamut-p.
+Note that the pure white (N 10.0) could be judged as out-of-gamut by numerical error, if threshold is too small."
   (apply (rcurry #'xyz-to-lrgb :rgbspace rgbspace :threshold threshold)
 	 (munsell-hvc-to-xyz hue40 value chroma)))
 
@@ -345,9 +347,9 @@
 ;; 	(values rgb255 nil)
 ;; 	(values rgb255 out-of-gamut))))
 
-;; Illuminant D65
-;; The standard illuminant of RGBSPACE must be D65.
+
 (defun munsell-hvc-to-rgb255 (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
+  "The standard illuminant is D65: that of RGBSPACE must also be D65."
   (multiple-value-bind (rgb255 out-of-gamut)
       (apply (rcurry #'xyz-to-rgb255 :rgbspace rgbspace :threshold threshold)
 	     (munsell-hvc-to-xyz hue40 value chroma))
@@ -390,9 +392,9 @@
 (defun munsell-spec-out-of-mrd-p (spec)
   (apply #'munsell-hvc-out-of-mrd-p (munsell-spec-to-hvc spec)))
 
-;; return multiple values: (L C H), out-of-munsell-renotation-data-p
-;; Illuminant C
 (defun munsell-spec-to-lchab (spec)
+  "return multiple values: (L* C*ab Hab), out-of-munsell-renotation-data-p.
+Illuminant C."
   (destructuring-bind (hue40 value chroma) (munsell-spec-to-hvc spec)
     (if (munsell-hvc-out-of-mrd-p hue40 value chroma)
 	(values (list most-negative-double-float most-negative-double-float most-negative-double-float)
@@ -400,9 +402,9 @@
 	(values (funcall #'munsell-hvc-to-lchab hue40 value chroma)
 		nil))))
 
-;; return multiple values: (X Y Z), out-of-munsell-renotation-data-p
-;; Illuminant D65
 (defun munsell-spec-to-xyz (spec)
+    "return multiple values: (X Y Z), out-of-munsell-renotation-data-p.
+Illuminant D65."
   (destructuring-bind (hue40 value chroma) (munsell-spec-to-hvc spec)
     (if (munsell-hvc-out-of-mrd-p hue40 value chroma)
 	(values (list most-negative-double-float most-negative-double-float most-negative-double-float)
@@ -410,18 +412,19 @@
 	(values (funcall #'munsell-hvc-to-xyz hue40 value chroma)
 		nil))))
 
-;; return multiple values: (x, y, Y), out-of-munsell-renotation-data-p
-;; Illuminant D65
+
 (defun munsell-spec-to-xyy (spec)
+  "return multiple values: (x y Y), out-of-munsell-renotation-data-p.
+Illuminant D65."
   (multiple-value-bind (xyz out-of-mrd)
       (munsell-spec-to-xyz spec)
     (values (apply #'xyz-to-xyy xyz)
 	    out-of-mrd)))
 
-;; return multiple values: (R, G, B), out-of-gamut-p
-;; Illuminant D65
-;; the standard illuminant of rgbspace must be D65
+
 (defun munsell-spec-to-rgb255 (spec &key (rgbspace dufy:srgb) (threshold 0.001d0))
+  "return multiple values: (R G B), out-of-gamut-p.
+The standard illuminant of RGBSPACE must be D65."
   (multiple-value-bind (xyz out-of-mrd) (munsell-spec-to-xyz spec)
     (if out-of-mrd
 	(values (list -1 -1 -1) t)

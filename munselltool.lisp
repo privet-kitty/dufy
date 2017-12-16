@@ -189,15 +189,17 @@
 	     (format t "Loop: ~a: Remaining nodes = ~A~%" (incf i) remaining))))))
 
 ; set value by y-to-munsell-value in MID. Thereby chroma is properly corrected.
-; destrtuctive
+					; destrtuctive
+(defparameter d65-to-c (get-ca-converter illum-d65 illum-c))
+
 (defun set-atsm-value (munsell-inversion-data)
   (dotimes (hex possible-colors)
     (destructuring-bind (h1000 nil c500)
 	(decode-munsell-hvc1000 (aref munsell-inversion-data hex))
       (let* ((hue40 (clamp (/ h1000 25d0) 0 40))
-	     (new-value (y-to-munsell-value (second (apply (rcurry #'bradford illum-d65 illum-c)
-							(apply #'rgb255-to-xyz
-							       (hex-to-rgb255 hex))))))
+	     (new-value (y-to-munsell-value (second (apply d65-to-c
+							   (apply #'rgb255-to-xyz
+								  (hex-to-rgb255 hex))))))
 	     (chroma (* c500 0.1d0))
 	     (v1000-new (round (* new-value 100)))
 	     (c500-new (round (* (min (max-chroma hue40 new-value) chroma) 10))))

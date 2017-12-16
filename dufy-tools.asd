@@ -7,6 +7,6 @@
   :author "privet-kitty"
   :license "MIT"
   :serial t
-  :depends-on (:dufy :nibbles :alexandria :fast-io)
+  :depends-on (:dufy :alexandria :fast-io)
   :components ((:file "munselltool"))
 )
