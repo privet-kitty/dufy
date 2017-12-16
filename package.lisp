@@ -78,8 +78,12 @@
 	   :nearly<=
 	   :xyz-to-lrgb
 	   :lrgb-to-xyz
+	   :rgb-to-lrgb
+	   :lrgb-to-rgb
 	   :xyz-to-rgb
 	   :rgb-to-xyz
+	   :rgb-to-rgb255
+	   :rgb255-to-rgb
 	   :xyz-to-rgb255
 	   :rgb255-to-xyz
 	   :rgb255-to-hex
@@ -130,5 +134,6 @@
 	   :color-matching-z
 	   :color-matching
 	   :spectrum-to-xyz
+	   :bb-spectrum
 	   :optimal-spectrum
 ))

@@ -321,11 +321,11 @@
 
 (defun gen-linearizer (gamma)
   (let ((gamma$ (coerce gamma 'double-float)))
-    #'(lambda (x) (expt x gamma$))))
+    #'(lambda (x) (clamp (expt x gamma$) 0 1))))
 
 (defun gen-delinearizer (gamma)
   (let ((gamma-recipro (/ 1d0 (coerce gamma 'double-float))))
-    #'(lambda (x) (expt x gamma-recipro))))
+    #'(lambda (x) (clamp (expt x gamma-recipro) 0 1))))
 
 (defstruct rgbspace
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
@@ -368,31 +368,33 @@
 		       :to-xyz-matrix m
 		       :from-xyz-matrix (invert-matrix33 m))))))
 
-
-   
 (defparameter srgb
   (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		      :linearizer #'(lambda (x)
-					 (if (<= x 0.04045d0)
-					     (/ x 12.92d0)
-					     (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0)))
-		      :delinearizer #'(lambda (x)
-					(if (<= x 0.0031308d0)
-					    (* x 12.92d0)
-					    (- (* 1.055d0 (expt x 0.41666666666d0)) 0.055d0)))))
+		:linearizer #'(lambda (x)
+				(clamp (if (<= x 0.04045d0)
+					   (/ x 12.92d0)
+					   (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0))
+				       0 1))				
+		:delinearizer #'(lambda (x)
+				  (clamp (if (<= x 0.0031308d0)
+					     (* x 12.92d0)
+					     (- (* 1.055d0 (expt x #.(/ 1 2.4d0))) 0.055d0))
+					 0 1))))
+
 (defparameter srgbd65 srgb)
 (defparameter adobe
   (new-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
 		:linearizer #'(lambda (x)
-				(if (<= x 0.0556d0)
-				    (* x 0.03125d0)
-				    (expt x 2.2d0)))		  
+				(clamp (if (<= x 0.0556d0)
+					   (* x #.(float 1/32 1d0))
+					   (expt x 2.2d0))
+				       0 1))
 		:delinearizer #'(lambda (x)
-				  (if (<= x 0.00174d0)
-				      (* x 32d0)
-				      (expt x 0.45454545454d0)))))
-
-
+				  (clamp (if (<= x 0.00174d0)
+					     (* x 32d0)
+					     (expt x #.(/ 1 2.2d0)))
+					 0 1))))
+				  
 (defparameter ntsc1953
   (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
 		:illuminant illum-c
@@ -409,14 +411,15 @@
   (new-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
 		:illuminant illum-d50
 		:linearizer #'(lambda (x)
-				(if (<= x #.(* 1/512 16d0))
-				    (* x #.(float 1/16 1d0))
-				    (expt x 1.8d0)))
+				(clamp (if (<= x #.(* 1/512 16d0))
+					   (* x #.(float 1/16 1d0))
+					   (expt x 1.8d0))
+				       0 1))
 		:delinearizer #'(lambda (x)
-				  (if (<= x (float 1/512 1d0))
-				      (* x 16d0)
-				      (expt x #.(/ 1 1.8d0))))))
-				      
+				  (clamp (if (<= x (float 1/512 1d0))
+					     (* x 16d0)
+					     (expt x #.(/ 1 1.8d0)))
+					 0 1))))			      
  
 ;; (defun delinearize (x &optional (rgbspace srgb))
 ;;   (if (<= x 0.0031308d0)
@@ -441,8 +444,8 @@
 
 
 ;; convert XYZ to linear RGB in [0, 1]
-;; return multiple values: (lr lg lb), out-of-gamut-p
 (defun xyz-to-lrgb (x y z &key (rgbspace srgbd65) (threshold 0))
+  "return multiple values: (lr lg lb), out-of-gamut-p."
   (destructuring-bind (lr lg lb)
       (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
 				x y z)
@@ -455,24 +458,42 @@
   (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
 			    lr lg lb))		       
 
-;; convert XYZ to non-linear (i.e. gamma corrected) RGB in [0, 1]
-;; return multiple values: (lr lg lb), out-of-gamut-p
+(defun lrgb-to-rgb (lr lg lb &optional (rgbspace srgb))
+  (let ((delin (rgbspace-delinearizer rgbspace)))
+    (list (funcall delin lr)
+	  (funcall delin lg)
+	  (funcall delin lb))))
+
+(defun rgb-to-lrgb (r g b &optional (rgbspace srgb))
+  (let ((lin (rgbspace-linearizer rgbspace)))
+    (list (funcall lin r)
+	  (funcall lin g)
+	  (funcall lin b))))
+
 (defun xyz-to-rgb (x y z &key (rgbspace srgbd65) (threshold 0))
+  "return multiple values: (r g b), out-of-gamut-p."
   (multiple-value-bind (lrgb out-of-gamut)
       (xyz-to-lrgb x y z :rgbspace rgbspace :threshold threshold)
     (values (mapcar (rgbspace-delinearizer rgbspace) lrgb)
 	    out-of-gamut)))
 
 (defun rgb-to-xyz (r g b &optional (rgbspace srgb))
-  (let ((lr (linearize r rgbspace))
-	(lg (linearize g rgbspace))
-	(lb (linearize b rgbspace)))
-    (lrgb-to-xyz lr lg lb rgbspace)))
+  (apply (rcurry #'lrgb-to-xyz rgbspace)
+	 (rgb-to-lrgb r g b rgbspace)))
 
 
-;; convert XYZ to RGB in {0, 1, ..., 255}
-;; return multiple values: (r g b) and out-of-gamut-p
+(defun rgb-to-rgb255 (r g b)
+  (list (round (* r 255))
+	(round (* g 255))
+	(round (* b 255))))
+
+(defun rgb255-to-rgb (r255 g255 b255)
+  (list (/ r255 255d0)
+	(/ g255 255d0)
+	(/ b255 255d0)))
+
 (defun xyz-to-rgb255 (x y z &key (rgbspace srgbd65) (threshold 0))
+  "return multiple values: (r255 g255 b255), out-of-gamut-p."
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
     (values (mapcar #'(lambda (x) (round (* (clamp x 0 1) 255d0))) rgb)
@@ -847,8 +868,31 @@
       (if (<= wl-begin wavelength wl-end) 1 0)
       (if (or (<= wavelength wl-end) (<= wl-begin wavelength)) 1 0)))
 
-(do* ((temp 2000 (+ temp 500)))
-     ((>= temp 10000))
-  ;(print (spectrum-sum (rcurry #'bb-spectrum temp)))
-  (format t "~AK, ~A~%" temp (spectrum-to-xyz (compose (rcurry #'* (/ (spectrum-sum (rcurry #'bb-spectrum temp))))
-				   (rcurry #'bb-spectrum temp)))))
+(defun scale-xyz (x y z &optional (scale-to 1))
+  "X, Y, Z are scaled so as to satisfy X+Y+Z = SCALE-TO."
+  (let ((factor (* scale-to (/ (+ x y z)))))
+    (list (* x factor)
+	  (* y factor)
+	  (* z factor))))
+
+(defun scale-lrgb-until-saturated (lr lg lb)
+  "LR, LG, LB are scaled so that one of them is saturated."
+  (let ((max (max lr lg lb)))
+    (if (<= max 0)
+	(list lr lg lb)
+	(let ((factor (/ max)))
+	  (list (* lr factor)
+		(* lg factor)
+		(* lb factor))))))
+
+(let ((e-to-d65 (gen-ca-converter illum-e illum-d65)))
+  (defun temperature-test (temp)
+    (apply #'rgb-to-rgb255
+	   (apply #'lrgb-to-rgb
+		  (apply #'scale-lrgb-until-saturated
+			 (mapcar (rcurry #'clamp 0 1)
+				 (apply #'xyz-to-lrgb
+					(apply e-to-d65
+					       (spectrum-to-xyz (compose (rcurry #'* (/ (spectrum-sum (rcurry #'bb-spectrum temp))))
+									 (rcurry #'bb-spectrum temp)))))))))))
+  
