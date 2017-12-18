@@ -333,7 +333,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 (defun munsell-hvc-to-lrgb (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
   "The standard illuminant is D65: that of RGBSPACE must also be D65.
 It returns multiple values: (LR LG LB),  out-of-gamut-p.
-Note that the pure white (N 10.0) could be judged as out-of-gamut by numerical error, if threshold is too small."
+Note that boundary colors, e.g. pure white (N 10.0), could be judged as out-of-gamut by numerical error, if threshold is too small."
   (apply (rcurry #'xyz-to-lrgb :rgbspace rgbspace :threshold threshold)
 	 (munsell-hvc-to-xyz hue40 value chroma)))
 
