@@ -10,10 +10,11 @@
 (make-instance 'test)
 
 (defun dotter (x y &optional (col +black+) (size 1))
-  (let* ((half-w (* w 0.5d0))
-	 (half-h (* h 0.5d0))
-	 (coor-x (+ half-w (* (- x 0.31006d0) w 1.5d0)))
-	 (coor-y (- half-h (* (- y 0.31616d0) h 1.5d0))))
+  (let* ((half-w (* w 0.7d0))
+	 (half-h (* h 0.1d0))
+	 (zoom 3.0d0)
+	 (coor-x (+ half-w (* (- x 0.31006d0) w zoom)))
+	 (coor-y (- half-h (* (- y 0.31616d0) h zoom))))
     (with-pen (make-pen :fill col :stroke col :weight 0)
       (circle coor-x coor-y size))))
 
@@ -39,11 +40,12 @@
 
 (defsketch test ((width w) (height h))
   (with-pen (make-pen :weight 2  :stroke +red+)
-    (background +white+)
-    
-    (draw-isovalue-plane 3.909951463412984d0 2d0 +red+ 1 0 40)
-    (dotter 0.31006 0.31616 +black+ 2)
-    (dotter 0.15809582179333503d0 0.08882161617037922d0 +blue+ 3)
-    ;(hvc-dotter (+ 0.7d0 0.1d0 0.1d0 0.1d0) 2.84d0 3d0)
-))
+    (let ((value 3.909951463412984d0))
+      (background +white+)
+      (draw-isovalue-plane value 2d0 +red+ 1 0 40)
+      (dotter 0.31006 0.31616 +black+ 2)
+      (dotter 0.15809582179333503d0 0.08882161617037922d0 +blue+ 3)
+					;(hvc-dotter (+ 0.7d0 0.1d0 0.1d0 0.1d0) 2.84d0 3d0)
+      (hvc-dotter 31 value 30 +green+)
+)))
 

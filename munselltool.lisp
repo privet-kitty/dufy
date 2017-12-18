@@ -190,7 +190,7 @@
 
 ; set value by y-to-munsell-value in MID. Thereby chroma is properly corrected.
 					; destrtuctive
-(defparameter d65-to-c (get-ca-converter illum-d65 illum-c))
+(defparameter d65-to-c (gen-ca-converter illum-d65 illum-c))
 
 (defun set-atsm-value (munsell-inversion-data)
   (dotimes (hex possible-colors)
