@@ -7,13 +7,13 @@
 (defun nearly= (threshold number &rest more-numbers)
   (if (null more-numbers)
       t
-      (and (<= (abs (- number (car more-numbers))) threshold)
+      (and (<= (abs (- number (car (the cons more-numbers)))) threshold)
 	   (apply #'nearly= threshold more-numbers))))
 
 (defun nearly<= (threshold number &rest more-numbers)
   (if (null more-numbers)
       t
-      (and (<= (- number (car more-numbers)) threshold)
+      (and (<= (- number (car (the cons more-numbers))) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
@@ -696,7 +696,7 @@
   (mapcar #'(lambda (x) (round (* x 255d0)))
 	  (hsv-to-rgb hue sat val)))
 
-;; The received HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
+;; The given HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
 (defun hsv-to-xyz (hue sat val &optional (rgbspace srgbd65))
   (destructuring-bind (r g b) (hsv-to-rgb hue sat val)
     (rgb-to-xyz r g b rgbspace)))
@@ -757,7 +757,7 @@
   (mapcar #'(lambda (x) (round (* x 255d0)))
 	  (hsl-to-rgb hue sat lum)))
 
-;; The received HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
+;; The given HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
 (defun hsl-to-xyz (hue sat lum &optional (rgbspace srgbd65))
   (destructuring-bind (r g b) (hsl-to-rgb hue sat lum)
     (rgb-to-xyz r g b rgbspace)))
