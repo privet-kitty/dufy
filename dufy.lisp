@@ -787,45 +787,68 @@
 	    out-of-gamut)))
   
 
-;; CIE 1931 Color Matching Functions
+;; CIE 1931/1964 Color Matching Functions
 
-(defun color-matching-x (wavelength)
+
+(defun color-matching-x (wavelength &optional (observer :1931))
   (if (or (< wavelength 360) (< 830 wavelength))
       0
       (multiple-value-bind (quot rem) (floor wavelength)
-	(lerp rem
-	      (aref color-matching-arr (- quot 360) 0)
-	      (aref color-matching-arr (1+ (- quot 360)) 0)))))
+	(if (eq observer :1931)
+	    (lerp rem
+		  (aref color-matching-arr-1931 (- quot 360) 0)
+		  (aref color-matching-arr-1931 (1+ (- quot 360)) 0))
+	    (lerp rem
+		  (aref color-matching-arr-1964 (- quot 360) 0)
+		  (aref color-matching-arr-1964 (1+ (- quot 360)) 0))))))
 
-(defun color-matching-y (wavelength)
+(defun color-matching-y (wavelength &optional (observer :1931))
   (if (or (< wavelength 360) (< 830 wavelength))
       0
       (multiple-value-bind (quot rem) (floor wavelength)
-	(lerp rem
-	      (aref color-matching-arr (- quot 360) 1)
-	      (aref color-matching-arr (1+ (- quot 360)) 1)))))
-
-(defun color-matching-z (wavelength)
+	(if (eq observer :1931)
+	    (lerp rem
+		  (aref color-matching-arr-1931 (- quot 360) 1)
+		  (aref color-matching-arr-1931 (1+ (- quot 360)) 1))
+	    (lerp rem
+		  (aref color-matching-arr-1964 (- quot 360) 1)
+		  (aref color-matching-arr-1964 (1+ (- quot 360)) 1))))))
+	
+(defun color-matching-z (wavelength &optional (observer :1931))
   (if (or (< wavelength 360) (< 830 wavelength))
       0
       (multiple-value-bind (quot rem) (floor wavelength)
-	(lerp rem
-	      (aref color-matching-arr (- quot 360) 2)
-	      (aref color-matching-arr (1+ (- quot 360)) 2)))))
+	(if (eq observer :1931)
+	    (lerp rem
+		  (aref color-matching-arr-1931 (- quot 360) 2)
+		  (aref color-matching-arr-1931 (1+ (- quot 360)) 2))
+	    (lerp rem
+		  (aref color-matching-arr-1964 (- quot 360) 2)
+		  (aref color-matching-arr-1964 (1+ (- quot 360)) 2))))))
 
-(defun color-matching (wavelength)
+(defun color-matching (wavelength &optional (observer :1931))
   (if (or (< wavelength 360) (< 830 wavelength))
       0
       (multiple-value-bind (quot rem) (floor wavelength)
-	(list (lerp rem
-		    (aref color-matching-arr (- quot 360) 0)
-		    (aref color-matching-arr (1+ (- quot 360)) 0))
-	      (lerp rem
-		    (aref color-matching-arr (- quot 360) 1)
-		    (aref color-matching-arr (1+ (- quot 360)) 1))
-	      (lerp rem
-		    (aref color-matching-arr (- quot 360) 2)
-		    (aref color-matching-arr (1+ (- quot 360)) 2))))))
+	(if (eq observer :1931)
+	    (list (lerp rem
+			(aref color-matching-arr-1931 (- quot 360) 0)
+			(aref color-matching-arr-1931 (1+ (- quot 360)) 0))
+		  (lerp rem
+			(aref color-matching-arr-1931 (- quot 360) 1)
+			(aref color-matching-arr-1931 (1+ (- quot 360)) 1))
+		  (lerp rem
+			(aref color-matching-arr-1931 (- quot 360) 2)
+			(aref color-matching-arr-1931 (1+ (- quot 360)) 2)))
+	    (list (lerp rem
+			(aref color-matching-arr-1964 (- quot 360) 0)
+			(aref color-matching-arr-1964 (1+ (- quot 360)) 0))
+		  (lerp rem
+			(aref color-matching-arr-1964 (- quot 360) 1)
+			(aref color-matching-arr-1964 (1+ (- quot 360)) 1))
+		  (lerp rem
+			(aref color-matching-arr-1964 (- quot 360) 2)
+			(aref color-matching-arr-1964 (1+ (- quot 360)) 2)))))))
 
 
 ;; (defun color-matching-int (wavelength)
@@ -842,7 +865,7 @@
 
 ;; Illuminant E
 ;; SPECTRUM-FUNC must be normalized.
-(defun spectrum-to-xyz (spectrum-func &key (band 1))
+(defun spectrum-to-xyz (spectrum-func &key (band 1) (observer :1931))
   (let ((const 0.009358326136267765d0)
 	(x 0)
 	(y 0)
@@ -853,9 +876,16 @@
 			  (* band z const)))
       (let ((p (funcall spectrum-func wl))
 	    (idx (- wl 360)))
-	(incf x (* (aref color-matching-arr idx 0) p))
-	(incf y (* (aref color-matching-arr idx 1) p))
-	(incf z (* (aref color-matching-arr idx 2) p))))))
+	(if (eq observer :1931)
+	    (progn
+	      (incf x (* (aref color-matching-arr-1931 idx 0) p))
+	      (incf y (* (aref color-matching-arr-1931 idx 1) p))
+	      (incf z (* (aref color-matching-arr-1931 idx 2) p)))
+	    (progn
+	      (incf x (* (aref color-matching-arr-1964 idx 0) p))
+	      (incf y (* (aref color-matching-arr-1964 idx 1) p))
+	      (incf z (* (aref color-matching-arr-1964 idx 2) p))))))))
+
 
 ;; the spectrum of a black body
 (defun bb-spectrum (wavelength &optional (temperature 5000))
