@@ -91,9 +91,9 @@
 	   :two-pi
 	   :subtract-with-mod
 	   :circular-lerp
-	   :polar-mean-of-xy
-	   :xy-to-polar
-	   :polar-to-xy
+	   ;:polar-mean-of-xy
+	   ;:xy-to-polar
+	   ;:polar-to-xy
 	   :rgb1+
 	   :rgb1-
 

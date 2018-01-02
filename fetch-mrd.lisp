@@ -108,7 +108,7 @@
 
 
 ;; (push (append (list 12 0.2d0 2)
-;; 	      (dufy:polar-mean-of-xy 1.434d0 1.459d0 0.713d0 1.414d0)
+;; 	      (dufy::polar-mean-of-xy 1.434d0 1.459d0 0.713d0 1.414d0)
 ;; 	      (list 0.00237d0))
 ;;       munsell-renotation-data)
 
