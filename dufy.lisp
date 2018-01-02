@@ -518,18 +518,20 @@
 
 
 ;;; L*a*b*, L*u*v*, LCH, Delta E
-(defun function-f (x)
-  (if (> x 0.00885645167d0)
-      (expt x 0.3333333333d0)
-      (+ (* 7.78703703704d0 x) 0.13793103448d0)))
+(locally (declare (optimize (speed 3) (safety 0)))
+  (defun function-f (x)
+    (declare (type double-float x))
+    (if (> x #.(float 216/24389 1d0))
+	(expt x #.(float 1/3 1d0))
+	(+ (* #.(/ 24389/27 116d0) x) #.(float 16/116 1d0)))))
 
 (defun xyz-to-lab (x y z &optional (illuminant illum-d65))
-  (let ((fx (function-f (/ x (illuminant-largex illuminant))))
-	(fy (function-f y))
-	(fz (function-f (/ z (illuminant-largez illuminant)))))
-    (list (- (* 116 fy) 16)
-	  (* 500 (- fx fy))
-	  (* 200 (- fy fz)))))
+  (let ((fx (function-f (/ (float x 1d0) (illuminant-largex illuminant))))
+	(fy (function-f (float y 1d0)))
+	(fz (function-f (/ (float z 1d0) (illuminant-largez illuminant)))))
+    (list (- (* 116d0 fy) 16d0)
+	  (* 500d0 (- fx fy))
+	  (* 200d0 (- fy fz)))))
 
 (defun xyy-to-lab (x y largey &optional (illuminant illum-d65))
   (destructuring-bind (x y z) (xyy-to-xyz x y largey)
