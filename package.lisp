@@ -90,7 +90,7 @@
 	   :hex-to-rgb255
 	   :two-pi
 	   :subtract-with-mod
-	   :lerp-in-circle-group
+	   :circular-lerp
 	   :polar-mean-of-xy
 	   :xy-to-polar
 	   :polar-to-xy
