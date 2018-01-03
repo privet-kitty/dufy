@@ -45,7 +45,7 @@
 ;; It doesn't exceed the given interval from theta1 to theta2.
 (defun circular-lerp (theta1 theta2 coef &optional (perimeter TWO-PI))
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
-    (circular-clamp (mod (+ theta1 (* dtheta coef)) perimeter)
+    (circular-clamp (+ theta1 (* dtheta coef))
 		    theta1
 		    theta2
 		    perimeter)))
@@ -54,7 +54,7 @@
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (mod (+ theta1 (* dtheta coef)) perimeter)))
 
-(defun member-in-circle-group (x theta1 theta2 &optional (perimeter TWO-PI))
+(defun circular-member (x theta1 theta2 &optional (perimeter TWO-PI))
   (let ((x-m (mod x perimeter))
 	(theta1-m (mod theta1 perimeter))
 	(theta2-m (mod theta2 perimeter)))
@@ -561,8 +561,8 @@
   (destructuring-bind (x y z) (lab-to-xyz lstar astar bstar illuminant)
     (xyz-to-xyy x y z illuminant)))
 
-(defparameter CONST-TWO-PI/360 (/ TWO-PI 360))
-(defparameter CONST-360/TWO-PI (/ 360 TWO-PI))
+(define-constant CONST-TWO-PI/360 (/ TWO-PI 360))
+(define-constant CONST-360/TWO-PI (/ 360 TWO-PI))
 
 (defun lab-to-lchab (lstar astar bstar)
   (list lstar
