@@ -261,9 +261,14 @@
                                (recurse (1+ n))))))
       (recurse 0))))
 
-(defun print-make-array (var-name array &optional (stream t))
+(defun print-make-array (var-name array &optional (stream t) (declaration t))
   (let ((typ (array-element-type array))
 	(dims (array-dimensions array)))
+    (when declaration
+      (prin1 `(declaim (type (simple-array ,typ ,dims)
+			     ,(intern (string-upcase var-name))))
+	     stream)
+      (terpri stream))
     (format stream "(defparameter ~a ~% #." var-name)
     (prin1 `(make-array (quote ,dims)
 			:element-type (quote ,typ)

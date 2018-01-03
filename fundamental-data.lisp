@@ -2,6 +2,7 @@
 
 (in-package :dufy)
 
+(DECLAIM (TYPE (SIMPLE-ARRAY DOUBLE-FLOAT (471 3)) COLOR-MATCHING-ARR-1931))
 (defparameter color-matching-arr-1931 
  #.(MAKE-ARRAY '(471 3) :ELEMENT-TYPE 'DOUBLE-FLOAT :INITIAL-CONTENTS
                '((1.299d-4 3.917d-6 6.061d-4)
@@ -432,6 +433,7 @@
                  (1.4612882d-6 5.27698d-7 0.0d0)
                  (1.3562146d-6 4.897540000000001d-7 0.0d0)
                  (1.251141d-6 4.5181d-7 0.0d0))))
+(DECLAIM (TYPE (SIMPLE-ARRAY DOUBLE-FLOAT (471 3)) COLOR-MATCHING-ARR-1964))
 (defparameter color-matching-arr-1964 
  #.(MAKE-ARRAY '(471 3) :ELEMENT-TYPE 'DOUBLE-FLOAT :INITIAL-CONTENTS
                '((1.222d-7 1.3398d-8 5.35027d-7)
@@ -878,6 +880,7 @@
                  (1.8704560000000002d-6 7.571759999999999d-7 0.0d0)
                  (1.7646840000000002d-6 7.14684d-7 0.0d0)
                  (1.658912d-6 6.72192d-7 0.0d0) (1.55314d-6 6.297d-7 0.0d0))))
+(DECLAIM (TYPE (SIMPLE-ARRAY DOUBLE-FLOAT (1001)) Y-TO-MUNSELL-VALUE-ARR))
 (defparameter y-to-munsell-value-arr 
  #.(MAKE-ARRAY '(1001) :ELEMENT-TYPE 'DOUBLE-FLOAT :INITIAL-CONTENTS
                '(0.0d0 0.08514404296875d0 0.17242431640625d0 0.26123046875d0

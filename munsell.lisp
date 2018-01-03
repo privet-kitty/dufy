@@ -119,15 +119,17 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 		(apply (rcurry #'xyy-to-lab illum-c)
 ;; 		       (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark)))))
 
-(defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
-  (let ((hue (mod hue40 40)))
+(locally (declare (optimize (speed 3) (safety 0)))
+  "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
+  (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
+    (declare (type fixnum hue40 tmp-value half-chroma))
     (if dark
-	(list (aref mrd-array-lchab-dark hue tmp-value half-chroma 0)
-	      (aref mrd-array-lchab-dark hue tmp-value half-chroma 1)
-	      (aref mrd-array-lchab-dark hue tmp-value half-chroma 2))
-	(list (aref mrd-array-lchab hue tmp-value half-chroma 0)
-	      (aref mrd-array-lchab hue tmp-value half-chroma 1)
-	      (aref mrd-array-lchab hue tmp-value half-chroma 2)))))
+	(list (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 0)
+	      (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 1)
+	      (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 2))
+	(list (aref mrd-array-lchab hue40 tmp-value half-chroma 0)
+	      (aref mrd-array-lchab hue40 tmp-value half-chroma 1)
+	      (aref mrd-array-lchab hue40 tmp-value half-chroma 2)))))
 
 	 
 
@@ -255,12 +257,6 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ; Error:
 ; (dufy::munsell-hvc-to2-xyy 0.9999999999999999d0 2.84d0 3d0)
 ; (dufy::munsell-hvc-to-lchab-value-chroma-integer-case 0.9999999999999999d0 2 1)
-
-; CAUTION: the Standard Illuminant is C
-;; (defun munsell-hvc-to-xyy (hue40 value chroma)
-;;   (if (>= value 1)
-;;       (munsell-hvc-to-xyy-general-case hue40 value (/ chroma 2) nil)
-;;       (munsell-hvc-to-xyy-general-case hue40 (* value 5) (/ chroma 2) t)))
 
 
 (defun munsell-hvc-out-of-mrd-p (hue40 value chroma)
