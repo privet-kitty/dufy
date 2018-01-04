@@ -524,7 +524,7 @@
 ;;; L*a*b*, L*u*v*, LCH, Delta E
 (local-optimize
   (defun function-f (x)
-    (declare (type double-float x))
+    (declare (double-float x))
     (if (> x #.(float 216/24389 1d0))
 	(expt x #.(float 1/3 1d0))
 	(+ (* #.(/ 24389/27 116d0) x) #.(float 16/116 1d0)))))

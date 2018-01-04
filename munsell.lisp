@@ -61,6 +61,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 		  (funcall d65-to-c largex largey largez)))))
 
 (defun munsell-value-to-achromatic-xyy (v)
+  "Illuminant C"
   (list 0.31006d0 0.31616d0 (munsell-value-to-y v)))
 
 (defun munsell-value-to-achromatic-lchab (v)
@@ -112,7 +113,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 (local-optimize
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
   (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
-    (declare (type fixnum hue40 tmp-value half-chroma))
+    (declare (fixnum hue40 tmp-value half-chroma))
     (if dark
 	(list (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 0)
 	      (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 1)
@@ -149,8 +150,8 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 
 (local-optimize
   (defun munsell-hvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
-    (declare (type (double-float 0d0 40d0) hue40)
-	     (type fixnum tmp-value half-chroma))
+    (declare ((double-float 0d0 40d0) hue40)
+	     (fixnum tmp-value half-chroma))
     (let* ((hue1 (floor hue40))
 	   (hue2 (mod (ceiling hue40) 40)))
       (if (= hue1 hue2)
@@ -159,7 +160,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 	      (munsell-hvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
 	    (destructuring-bind (nil cstarab2 hab2)
 		(munsell-hvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
-	      (declare (type double-float lstar cstarab1 hab1 cstarab2 hab2))
+	      (declare (double-float lstar cstarab1 hab1 cstarab2 hab2))
 	      (if (= hab1 hab2)
 		  (list lstar cstarab1 hab1)
 		  (let* ((hab (circular-lerp hab1 hab2 (- hue40 hue1) 360d0))
@@ -188,8 +189,8 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 
 (local-optimize
   (defun munsell-hvc-to-lchab-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
-    (declare (type (double-float 0d0 40d0) hue40 half-chroma)
-	     (type fixnum tmp-value))
+    (declare ((double-float 0d0 40d0) hue40 half-chroma)
+	     (fixnum tmp-value))
     (let ((hchroma1 (floor half-chroma))
 	  (hchroma2 (ceiling half-chroma)))
       (if (= hchroma1 hchroma2)
@@ -200,7 +201,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 	    (destructuring-bind (nil astar2 bstar2)
 		(apply #'lchab-to-lab
 		       (munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma2 dark))
-	      (declare (type double-float lstar astar1 bstar1 astar2 bstar2))
+	      (declare (double-float lstar astar1 bstar1 astar2 bstar2))
 	      (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
 			       (* astar2 (- half-chroma hchroma1))))
 		     (bstar (+ (* bstar1 (- hchroma2 half-chroma))
@@ -226,7 +227,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 
 (local-optimize
   (defun munsell-hvc-to-lchab-general-case (hue40 tmp-value half-chroma &optional (dark nil))
-    (declare (type (double-float 0d0 40d0) hue40 half-chroma tmp-value))
+    (declare ((double-float 0d0 40d0) hue40 half-chroma tmp-value))
     (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
       (let  ((tmp-val1 (floor tmp-value))
 	     (tmp-val2 (ceiling tmp-value))
@@ -246,7 +247,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 		  (destructuring-bind (lstar2 astar2 bstar2)
 		      (apply #'lchab-to-lab
 			     (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
-		    (declare (type double-float lstar lstar1 astar1 bstar1 lstar2 astar2 bstar2))
+		    (declare (double-float lstar lstar1 astar1 bstar1 lstar2 astar2 bstar2))
 		    (let* ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
 				     (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
 			   (bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
@@ -438,7 +439,7 @@ The standard illuminant of RGBSPACE must be D65."
 			value
 			(max-chroma hue40 value :use-dark use-dark)))
 
-; avoid that x exceeds an integer slightly 
+; avoid that x slightly exceeds an integer 
 (defun modify-float-error (x epsilon)
   (if (<= (- x (floor x)) epsilon)
       (floor x)
