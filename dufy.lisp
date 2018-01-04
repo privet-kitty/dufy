@@ -433,10 +433,10 @@
 ;;       (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0)))
 
 ;; the nominal range of x is [0, 1]
-(defun linearize (x &optional (rgbspace srgbd65))
+(defun linearize (x &optional (rgbspace srgb))
   (funcall (rgbspace-linearizer rgbspace) x))
 
-(defun delinearize (x &optional (rgbspace srgbd65))
+(defun delinearize (x &optional (rgbspace srgb))
   (funcall (rgbspace-delinearizer rgbspace) x))
 
 ;; (defun xyz-to-lrgb (x y z &optional (rgbspace srgb))
@@ -446,7 +446,7 @@
 
 
 ;; convert XYZ to linear RGB in [0, 1]
-(defun xyz-to-lrgb (x y z &key (rgbspace srgbd65) (threshold 0))
+(defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 0))
   "return multiple values: (lr lg lb), out-of-gamut-p."
   (destructuring-bind (lr lg lb)
       (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
@@ -456,7 +456,7 @@
 				   (nearly<= threshold 0 lb 1)))))
       (values (list lr lg lb) out-of-gamut))))
 
-(defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgbd65))
+(defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgb))
   (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
 			    lr lg lb))		       
 
@@ -472,7 +472,7 @@
 	  (funcall lin g)
 	  (funcall lin b))))
 
-(defun xyz-to-rgb (x y z &key (rgbspace srgbd65) (threshold 0))
+(defun xyz-to-rgb (x y z &key (rgbspace srgb) (threshold 0))
   "return multiple values: (r g b), out-of-gamut-p."
   (multiple-value-bind (lrgb out-of-gamut)
       (xyz-to-lrgb x y z :rgbspace rgbspace :threshold threshold)
@@ -494,7 +494,7 @@
 	(/ g255 255d0)
 	(/ b255 255d0)))
 
-(defun xyz-to-rgb255 (x y z &key (rgbspace srgbd65) (threshold 0))
+(defun xyz-to-rgb255 (x y z &key (rgbspace srgb) (threshold 0))
   "return multiple values: (r255 g255 b255), out-of-gamut-p."
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
@@ -502,7 +502,7 @@
 	    out-of-gamut)))
 
 ;; convert RGB ({0, 1, ..., 255}) to XYZ ([0, 1])
-(defun rgb255-to-xyz (r g b &optional (rgbspace srgbd65))
+(defun rgb255-to-xyz (r g b &optional (rgbspace srgb))
   (rgb-to-xyz (/ r 255d0) (/ g 255d0) (/ b 255d0) rgbspace))
 
 (defun rgb255-to-hex (r g b)
@@ -513,6 +513,18 @@
 	(logand (ash hex -8) #xff)
 	(logand hex #xff)))
 
+(defun hex-to-xyz (hex &optional (rgbspace srgb))
+  (apply (rcurry #'rgb255-to-xyz rgbspace)
+	 (hex-to-rgb255 hex)))
+
+(defun xyz-to-hex (x y z &key (rgbspace srgb) (threshold 0))
+  "return multiple values: hex, out-of-gamut-p."
+  (multiple-value-bind (rgb255 out-of-gamut)
+      (xyz-to-rgb255 x y z :rgbspace rgbspace :threshold threshold)
+    (values (apply #'rgb255-to-hex rgb255)
+	    out-of-gamut)))
+	 
+  
 (defmacro rgb1+ (x)
   `(clamp (1+ ,x) 0 255))
 
@@ -591,7 +603,7 @@
   (destructuring-bind (x y z) (lchab-to-xyz lstar cstarab hab illuminant)
     (xyz-to-xyy x y z illuminant)))
 
-(defun rgb255-to-lab (r g b &optional (rgbspace srgbd65))
+(defun rgb255-to-lab (r g b &optional (rgbspace srgb))
   (destructuring-bind (x y z) (rgb255-to-xyz r g b rgbspace)
     (xyz-to-lab x y z)))
 
@@ -701,7 +713,7 @@
 	  (hsv-to-rgb hue sat val)))
 
 ;; The given HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
-(defun hsv-to-xyz (hue sat val &optional (rgbspace srgbd65))
+(defun hsv-to-xyz (hue sat val &optional (rgbspace srgb))
   (destructuring-bind (r g b) (hsv-to-rgb hue sat val)
     (rgb-to-xyz r g b rgbspace)))
 
@@ -721,7 +733,7 @@
 	      (* g 0.00392156862745098d0)
 	      (* b 0.00392156862745098d0)))
 
-(defun xyz-to-hsv (x y z &key (rgbspace srgbd65) (threshold 0))
+(defun xyz-to-hsv (x y z &key (rgbspace srgb) (threshold 0))
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
     (values (apply #'rgb-to-hsv
@@ -762,7 +774,7 @@
 	  (hsl-to-rgb hue sat lum)))
 
 ;; The given HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
-(defun hsl-to-xyz (hue sat lum &optional (rgbspace srgbd65))
+(defun hsl-to-xyz (hue sat lum &optional (rgbspace srgb))
   (destructuring-bind (r g b) (hsl-to-rgb hue sat lum)
     (rgb-to-xyz r g b rgbspace)))
 
@@ -783,7 +795,7 @@
 	      (* g 0.00392156862745098d0)
 	      (* b 0.00392156862745098d0)))
 
-(defun xyz-to-hsl (x y z &key (rgbspace srgbd65) (threshold 0))
+(defun xyz-to-hsl (x y z &key (rgbspace srgb) (threshold 0))
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
     (values (apply #'rgb-to-hsl

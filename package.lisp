@@ -88,6 +88,8 @@
 	   :rgb255-to-xyz
 	   :rgb255-to-hex
 	   :hex-to-rgb255
+	   :xyz-to-hex
+	   :hex-to-xyz
 	   :two-pi
 	   :subtract-with-mod
 	   :circular-lerp
