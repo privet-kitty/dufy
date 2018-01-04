@@ -1,6 +1,8 @@
 (in-package :dufy)
 
 ;; the bradford transformation D65 <-> C is frequently used here.
+
+(declaim (type function d65-to-c c-to-d65))
 (defparameter d65-to-c
   (gen-ca-converter illum-d65 illum-c))
 (defparameter c-to-d65
@@ -316,8 +318,9 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 
 (defun munsell-hvc-to-xyz (hue40 value chroma)
   "Illuminant D65"
+  (declare (optimize (speed 3) (safety 1)))
   (apply c-to-d65
-	 (apply (rcurry #'lchab-to-xyz illum-c)
+	 (apply (the function (rcurry #'lchab-to-xyz illum-c))
 		(munsell-hvc-to-lchab hue40 value chroma))))
 
 (defun munsell-hvc-to-xyy (hue40 value chroma)

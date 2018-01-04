@@ -54,7 +54,7 @@
 		    theta2
 		    perimeter)))
 
-(defun circular-lerp-old (theta1 theta2 coef &optional (perimeter TWO-PI))
+(defun circular-lerp-loose (theta1 theta2 coef &optional (perimeter TWO-PI))
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (mod (+ theta1 (* dtheta coef)) perimeter)))
 
