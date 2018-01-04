@@ -109,20 +109,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 	      (aref mrd-array hue tmp-value half-chroma 2)))))
 
 
-;; (defun munsell-hvc-to-lrgb-simplest-case (hue value half-chroma)
-;;   (apply #'xyz-to-lrgb
-;; 	 (apply c-to-d65
-;; 		(apply #'xyy-to-xyz
-;; 		       (munsell-hvc-to-xyy-simplest-case hue value half-chroma nil)))))
-
-;; CAUTION: This LCH(ab) values are under Illuminant C.
-;; (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
-;;   (apply #'(lambda (lstar cstarab hab) (list (clamp lstar 0d0 100d0) cstarab hab))
-;; 	 (apply #'lab-to-lchab
-;; 		(apply (rcurry #'xyy-to-lab illum-c)
-;; 		       (munsell-hvc-to-xyy-simplest-case hue40 tmp-value half-chroma dark)))))
-
-(locally (declare (optimize (speed 3) (safety 0)))
+(local-optimize
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
   (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
     (declare (type fixnum hue40 tmp-value half-chroma))
@@ -160,7 +147,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 					 (subtract-with-mod theta2 theta1))))))
 ;; 		     (append (polar-to-xy r theta) (list largey)))))))))))
 
-(locally (declare (optimize (speed 3) (safety 0)))
+(local-optimize
   (defun munsell-hvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
     (declare (type (double-float 0d0 40d0) hue40)
 	     (type fixnum tmp-value half-chroma))
@@ -199,7 +186,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 	      (list x y largey)))))))
 
 
-(locally (declare (optimize (speed 3) (safety 0)))
+(local-optimize
   (defun munsell-hvc-to-lchab-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
     (declare (type (double-float 0d0 40d0) hue40 half-chroma)
 	     (type fixnum tmp-value))
@@ -237,7 +224,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 			   (* y2 (/ (- largey largey1) (- largey2 largey1))))))
 ;; 		(list x y largey))))))))
 
-;(locally (declare (optimize (speed 3) (safety 0)))
+(local-optimize
   (defun munsell-hvc-to-lchab-general-case (hue40 tmp-value half-chroma &optional (dark nil))
     (declare (type (double-float 0d0 40d0) hue40 half-chroma tmp-value))
     (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
@@ -264,7 +251,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 				     (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
 			   (bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
 				     (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
-		      (lab-to-lchab lstar astar bstar)))))))));)
+		      (lab-to-lchab lstar astar bstar))))))))))
 
 ; Error:
 ; (dufy::munsell-hvc-to2-xyy 0.9999999999999999d0 2.84d0 3d0)

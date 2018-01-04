@@ -4,6 +4,10 @@
 
 (define-constant TWO-PI (+ PI PI))
 
+(defmacro local-optimize (&body body)
+  `(locally (declare (optimize (speed 3) (safety 0)))
+     ,@body))
+  
 (defun nearly= (threshold number &rest more-numbers)
   (if (null more-numbers)
       t
@@ -518,7 +522,7 @@
 
 
 ;;; L*a*b*, L*u*v*, LCH, Delta E
-(locally (declare (optimize (speed 3) (safety 0)))
+(local-optimize
   (defun function-f (x)
     (declare (type double-float x))
     (if (> x #.(float 216/24389 1d0))
