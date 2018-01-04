@@ -7,6 +7,8 @@
 	   :rgb255-to-munsell-hvc
 	   :build-mid
 	   :examine-interpolation-error
+	   :examine-luminance-error
+	   :check-error-of-hex
 	   :encode-munsell-hvc1000
 	   :decode-munsell-hvc1000
 	   :decode-munsell-hvc
@@ -19,6 +21,9 @@
 (defconstant possible-colors 16777216) ;256*256*256
 
 (defun encode-munsell-hvc1000 (h1000 v1000 c500 &optional (flag-interpolated 0))
+  (declare (optimize (speed 3) (safety 0))
+	   ((integer 0 1000) h1000 v1000 c500)
+	   ((integer 0 1) flag-interpolated))
   (+ (ash flag-interpolated 31)
      (ash h1000 20)
      (ash v1000 10)
@@ -51,42 +56,42 @@
 ;; 		    :element-type '(unsigned-byte 32)
 ;; 		    :initial-element +maxu32+)))
 
-(locally (declare (optimize (speed 3) (safety 0)))
-  (defun make-munsell-inversion-data (&optional (with-interpolation t))
-    (let ((mid (make-array possible-colors :element-type '(unsigned-byte 32) :initial-element +maxu32+))
-	  (deltae-arr (make-array possible-colors :element-type 'double-float :initial-element most-positive-double-float)))
-      (dotimes (h1000 1000)
-	(let ((hue (* h1000 0.04d0)))
-	  (format t "processing data at hue ~a / 1000~%" h1000)
-	  (dotimes (v1000 1001)
-	    (let* ((value (* v1000 0.01d0))
-		   (maxc500 (1+ (* (the (integer 0 50) (dufy:max-chroma hue value)) 10))))
-	      (dotimes (c500 maxc500)
-		(let ((chroma (* c500 0.1d0)))
-		  (destructuring-bind (x y z)
-		      (dufy::munsell-hvc-to-xyz hue value chroma)
-		    (multiple-value-bind (rgb255 out-of-gamut)
-			(dufy:xyz-to-rgb255 x y z :threshold 0.001d0)
-		      (unless out-of-gamut
-			(let ((hex (apply #'dufy:rgb255-to-hex rgb255)))
-			  (destructuring-bind (true-x true-y true-z)
-			      (apply #'dufy:rgb255-to-xyz rgb255)
-			    (let ((old-deltae (aref deltae-arr hex))
-				  (new-deltae (dufy:xyz-deltae x y z true-x true-y true-z)))
-			      (declare (double-float old-deltae new-deltae))
-			      (when (< new-deltae old-deltae)
+(defun make-munsell-inversion-data (&optional (with-interpolation t))
+  (declare (optimize (speed 3) (safety 0)))
+  (let ((mid (make-array possible-colors :element-type '(unsigned-byte 32) :initial-element +maxu32+))
+	(deltae-arr (make-array possible-colors :element-type 'double-float :initial-element most-positive-double-float)))
+    (dotimes (h1000 1000)
+      (let ((hue (* h1000 0.04d0)))
+	(format t "processing data at hue ~a / 1000~%" h1000)
+	(dotimes (v1000 1001)
+	  (let* ((value (* v1000 0.01d0))
+		 (maxc500 (1+ (* (the (integer 0 50) (dufy:max-chroma hue value)) 10))))
+	    (dotimes (c500 maxc500)
+	      (let ((chroma (* c500 0.1d0)))
+		(destructuring-bind (x y z)
+		    (dufy::munsell-hvc-to-xyz hue value chroma)
+		  (multiple-value-bind (rgb255 out-of-gamut)
+		      (dufy:xyz-to-rgb255 x y z :threshold 0.001d0)
+		    (unless out-of-gamut
+		      (let ((hex (apply #'dufy:rgb255-to-hex rgb255)))
+			(destructuring-bind (true-x true-y true-z)
+			    (apply #'dufy:rgb255-to-xyz rgb255)
+			  (let ((old-deltae (aref deltae-arr hex))
+				(new-deltae (dufy:xyz-deltae x y z true-x true-y true-z)))
+			    (declare (double-float old-deltae new-deltae))
+			    (when (< new-deltae old-deltae)
 					;rotate if the new color is nearer to the true color than the old one.
-				(setf (aref mid hex)
-				      (encode-munsell-hvc1000 h1000 v1000 c500))
-				(setf (aref deltae-arr hex)
-				      new-deltae))))))))))))))
-      (let ((gaps (count-gaps mid)))
-	(format t "Primary data are set. Number of gaps is ~A (~A).~%"
-		gaps (/ gaps (float possible-colors))))
-      (when with-interpolation
-	(format t "Now interpolating...~%")
-	(interpolate-munsell-inversion-data mid))
-      mid)))
+			      (setf (aref mid hex)
+				    (encode-munsell-hvc1000 h1000 v1000 c500))
+			      (setf (aref deltae-arr hex)
+				    new-deltae))))))))))))))
+    (let ((gaps (count-gaps mid)))
+      (format t "Primary data are set. Number of gaps is ~A (~A).~%"
+	      gaps (/ gaps (float possible-colors))))
+    (when with-interpolation
+      (format t "Now interpolating...~%")
+      (interpolate-munsell-inversion-data mid))
+    mid))
   
 
 ;; return 0 if it is already fully interpolated
@@ -390,11 +395,12 @@
 	 (rgb2 (apply #'dufy:munsell-hvc-to-rgb255
 		      (apply (rcurry #'rgb255-to-munsell-hvc mid)
 			     rgb1))))
-    (print rgb1)
-    (print rgb2)
-    (format t "~%Delta E = ~A~%" (apply deltae (append rgb1 rgb2)))))
+    (format t "Munsell HVC: ~A~%" (decode-munsell-hvc (aref mid hex)))
+    (format t "in MID:~A~%" rgb1)
+    (format t "true: ~A~%" rgb2) 
+    (format t "Delta E = ~A~%" (apply deltae (append rgb1 rgb2)))))
 
-(defun examine-luminance-error (munsell-inversion-data &key (start 0) (end possible-colors) (deltae #'dufy:rgb255-deltae))
+(defun examine-luminance-error (munsell-inversion-data &key (start 0) (end possible-colors))
   (let ((maximum 0)
 	(worst-hex nil)
 	(sum 0)
@@ -402,17 +408,21 @@
     (loop for hex from start below end do
       (let ((u32 (aref munsell-inversion-data hex)))
 	(if (interpolatedp u32)
-	    (destructuring-bind  (r1 g1 b1) (dufy:hex-to-rgb255 hex)
-	      (destructuring-bind (r2 g2 b2) (apply #'dufy:munsell-hvc-to-rgb255 (decode-munsell-hvc u32))
-		(let ((delta (funcall deltae r1 g1 b1 r2 g2 b2)))
-		  (setf sum (+ sum delta))
-		  (when (> delta maximum)
-		    (setf maximum delta)
-		    (setf worst-hex hex))
-		  (incf nodes)))))))
+	    (let ((v1 (dufy:y-to-munsell-value (second (dufy:hex-to-xyz hex))))
+		  (v2 (second (decode-munsell-hvc u32))))
+	      (let ((delta (abs (- v1 v2))))
+		(setf sum (+ sum delta))
+		(when (> delta maximum)
+		  (setf maximum delta)
+		  (setf worst-hex hex))
+		(incf nodes))))))
     (format t "Number of Interpolated Nodes = ~A (~,3F%)~%" nodes (* 100d0 (/ nodes (- end start))))
-    (format t "Mean Color Difference: ~a~%" (/ sum nodes))
-    (format t "Maximum Color Difference: ~a at hex ~a~%" maximum worst-hex)))
+    (format t "Mean Error of Munsell Values: ~a~%" (/ sum nodes))
+    (format t "Maximum Error of Munsell Values: ~a at hex ~a~%" maximum worst-hex)))
+
+;; Number of Interpolated Nodes = 3716977 (22.155%)
+;; Mean Error of Munsell Values: 0.029526621135807438d0
+;; Maximum Error of Munsell Values: 0.36599623828091055d0 at hex 585474
 
 (defun delete-interpolated-nodes (mid)
   (dotimes (hex possible-colors)

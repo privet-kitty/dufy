@@ -112,17 +112,18 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 	      (aref mrd-array hue tmp-value half-chroma 2)))))
 
 
-(local-optimize
+  
+(defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
-  (defun munsell-hvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
-    (declare (fixnum hue40 tmp-value half-chroma))
-    (if dark
-	(list (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 0)
-	      (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 1)
-	      (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 2))
-	(list (aref mrd-array-lchab hue40 tmp-value half-chroma 0)
-	      (aref mrd-array-lchab hue40 tmp-value half-chroma 1)
-	      (aref mrd-array-lchab hue40 tmp-value half-chroma 2)))))
+  (declare (optimize (speed 3) (safety 0))
+	   (fixnum hue40 tmp-value half-chroma))
+  (if dark
+      (list (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 0)
+	    (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 1)
+	    (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 2))
+      (list (aref mrd-array-lchab hue40 tmp-value half-chroma 0)
+	    (aref mrd-array-lchab hue40 tmp-value half-chroma 1)
+	    (aref mrd-array-lchab hue40 tmp-value half-chroma 2))))
 
 	 
 
@@ -150,27 +151,28 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 					 (subtract-with-mod theta2 theta1))))))
 ;; 		     (append (polar-to-xy r theta) (list largey)))))))))))
 
-(local-optimize
-  (defun munsell-hvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
-    (declare ((double-float 0d0 40d0) hue40)
-	     (fixnum tmp-value half-chroma))
-    (let* ((hue1 (floor hue40))
-	   (hue2 (mod (ceiling hue40) 40)))
-      (if (= hue1 hue2)
-	  (munsell-hvc-to-lchab-simplest-case (round hue40) tmp-value half-chroma dark)
-	  (destructuring-bind (lstar cstarab1 hab1)
-	      (munsell-hvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
-	    (destructuring-bind (nil cstarab2 hab2)
-		(munsell-hvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
-	      (declare (double-float lstar cstarab1 hab1 cstarab2 hab2))
-	      (if (= hab1 hab2)
-		  (list lstar cstarab1 hab1)
-		  (let* ((hab (circular-lerp hab1 hab2 (- hue40 hue1) 360d0))
-			 (cstarab (+ (* cstarab1 (/ (the double-float (subtract-with-mod hab2 hab 360d0))
-						    (the double-float (subtract-with-mod hab2 hab1 360d0))))
-				     (* cstarab2 (/ (the double-float (subtract-with-mod hab hab1 360d0))
-						    (the double-float (subtract-with-mod hab2 hab1 360d0)))))))
-		    (list lstar cstarab hab)))))))))
+
+(defun munsell-hvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
+  (declare (optimize (speed 3) (safety 0))
+	   ((double-float 0d0 40d0) hue40)
+	   (fixnum tmp-value half-chroma))
+  (let* ((hue1 (floor hue40))
+	 (hue2 (mod (ceiling hue40) 40)))
+    (if (= hue1 hue2)
+	(munsell-hvc-to-lchab-simplest-case (round hue40) tmp-value half-chroma dark)
+	(destructuring-bind (lstar cstarab1 hab1)
+	    (munsell-hvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
+	  (destructuring-bind (nil cstarab2 hab2)
+	      (munsell-hvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
+	    (declare (double-float lstar cstarab1 hab1 cstarab2 hab2))
+	    (if (= hab1 hab2)
+		(list lstar cstarab1 hab1)
+		(let* ((hab (circular-lerp hab1 hab2 (- hue40 hue1) 360d0))
+		       (cstarab (+ (* cstarab1 (/ (the double-float (subtract-with-mod hab2 hab 360d0))
+						  (the double-float (subtract-with-mod hab2 hab1 360d0))))
+				   (* cstarab2 (/ (the double-float (subtract-with-mod hab hab1 360d0))
+						  (the double-float (subtract-with-mod hab2 hab1 360d0)))))))
+		  (list lstar cstarab hab))))))))
 
 
 ;; (defun munsell-hvc-to-xyy-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
@@ -189,26 +191,26 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 	      (list x y largey)))))))
 
 
-(local-optimize
-  (defun munsell-hvc-to-lchab-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
-    (declare ((double-float 0d0 40d0) hue40 half-chroma)
-	     (fixnum tmp-value))
-    (let ((hchroma1 (floor half-chroma))
-	  (hchroma2 (ceiling half-chroma)))
-      (if (= hchroma1 hchroma2)
-	  (munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value (round half-chroma) dark)
-	  (destructuring-bind (lstar astar1 bstar1)
+(defun munsell-hvc-to-lchab-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
+  (declare (optimize (speed 3) (safety 0))
+	   ((double-float 0d0 40d0) hue40 half-chroma)
+	   (fixnum tmp-value))
+  (let ((hchroma1 (floor half-chroma))
+	(hchroma2 (ceiling half-chroma)))
+    (if (= hchroma1 hchroma2)
+	(munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value (round half-chroma) dark)
+	(destructuring-bind (lstar astar1 bstar1)
+	    (apply #'lchab-to-lab
+		   (munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma1 dark))
+	  (destructuring-bind (nil astar2 bstar2)
 	      (apply #'lchab-to-lab
-		     (munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma1 dark))
-	    (destructuring-bind (nil astar2 bstar2)
-		(apply #'lchab-to-lab
-		       (munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma2 dark))
-	      (declare (double-float lstar astar1 bstar1 astar2 bstar2))
-	      (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
-			       (* astar2 (- half-chroma hchroma1))))
-		     (bstar (+ (* bstar1 (- hchroma2 half-chroma))
-			       (* bstar2 (- half-chroma hchroma1)))))
-		(lab-to-lchab lstar astar bstar))))))))
+		     (munsell-hvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma2 dark))
+	    (declare (double-float lstar astar1 bstar1 astar2 bstar2))
+	    (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
+			     (* astar2 (- half-chroma hchroma1))))
+		   (bstar (+ (* bstar1 (- hchroma2 half-chroma))
+			     (* bstar2 (- half-chroma hchroma1)))))
+	      (lab-to-lchab lstar astar bstar)))))))
 
 ;; (defun munsell-hvc-to-xyy-general-case (hue40 tmp-value half-chroma &optional (dark nil))
 ;;   (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
@@ -227,34 +229,34 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; 			   (* y2 (/ (- largey largey1) (- largey2 largey1))))))
 ;; 		(list x y largey))))))))
 
-(local-optimize
-  (defun munsell-hvc-to-lchab-general-case (hue40 tmp-value half-chroma &optional (dark nil))
-    (declare ((double-float 0d0 40d0) hue40 half-chroma tmp-value))
-    (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
-      (let  ((tmp-val1 (floor tmp-value))
-	     (tmp-val2 (ceiling tmp-value))
-	     (lstar (munsell-value-to-lstar true-value)))
-	(if (= tmp-val1 tmp-val2)
-	    (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark)
-	    ;; If the given color is too dark to interpolate it,
-	    ;; we use the fact that the chroma of LCH(ab) corresponds roughly
-	    ;; to that of Munsell.
-	    (if (= tmp-val1 0)
-		(destructuring-bind (nil cstarab hab)
-		    (munsell-hvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
-		  (list lstar cstarab hab))
-		(destructuring-bind (lstar1 astar1 bstar1)
+(defun munsell-hvc-to-lchab-general-case (hue40 tmp-value half-chroma &optional (dark nil))
+  (declare (optimize (speed 3) (safety 0))
+	   ((double-float 0d0 40d0) hue40 half-chroma tmp-value))
+  (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
+    (let  ((tmp-val1 (floor tmp-value))
+	   (tmp-val2 (ceiling tmp-value))
+	   (lstar (munsell-value-to-lstar true-value)))
+      (if (= tmp-val1 tmp-val2)
+	  (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark)
+	  ;; If the given color is too dark to interpolate it,
+	  ;; we use the fact that the chroma of LCH(ab) corresponds roughly
+	  ;; to that of Munsell.
+	  (if (= tmp-val1 0)
+	      (destructuring-bind (nil cstarab hab)
+		  (munsell-hvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
+		(list lstar cstarab hab))
+	      (destructuring-bind (lstar1 astar1 bstar1)
+		  (apply #'lchab-to-lab
+			 (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark))
+		(destructuring-bind (lstar2 astar2 bstar2)
 		    (apply #'lchab-to-lab
-			   (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark))
-		  (destructuring-bind (lstar2 astar2 bstar2)
-		      (apply #'lchab-to-lab
-			     (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
-		    (declare (double-float lstar lstar1 astar1 bstar1 lstar2 astar2 bstar2))
-		    (let* ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
-				     (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
-			   (bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
-				     (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
-		      (lab-to-lchab lstar astar bstar))))))))))
+			   (munsell-hvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
+		  (declare (double-float lstar lstar1 astar1 bstar1 lstar2 astar2 bstar2))
+		  (let* ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
+				   (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
+			 (bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
+				   (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
+		    (lab-to-lchab lstar astar bstar)))))))))
 
 ; Error:
 ; (dufy::munsell-hvc-to2-xyy 0.9999999999999999d0 2.84d0 3d0)
