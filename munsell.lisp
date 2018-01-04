@@ -50,21 +50,24 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 (defun munsell-value-to-achromatic-rgb255 (v)
   (let ((x (round (* (delinearize (munsell-value-to-y v)) 255))))
     (list x x x)))
--
+
+;; (defun munsell-value-to-achromatic-xyy (v)
+;;   (let* ((y (munsell-value-to-y v))
+;; 	 (largex (+ (* 0.4124564d0 y) (* 0.3575761d0 y) (* 0.1804375d0 y)))
+;; 	 (largey (+ (* 0.2126729d0 y) (* 0.7151522d0 y) (* 0.0721750d0 y)))
+;; 	 (largez (+ (* 0.0193339d0 y) (* 0.1191920d0 y) (* 0.9503041d0 y))))
+;;     (apply #'(lambda (x y largey) (list x y (clamp largey 0d0 1d0)))
+;; 	   (apply #'xyz-to-xyy
+;; 		  (funcall d65-to-c largex largey largez)))))
+
 (defun munsell-value-to-achromatic-xyy (v)
-  (let* ((y (munsell-value-to-y v))
-	 (largex (+ (* 0.4124564d0 y) (* 0.3575761d0 y) (* 0.1804375d0 y)))
-	 (largey (+ (* 0.2126729d0 y) (* 0.7151522d0 y) (* 0.0721750d0 y)))
-	 (largez (+ (* 0.0193339d0 y) (* 0.1191920d0 y) (* 0.9503041d0 y))))
-    (apply #'(lambda (x y largey) (list x y (clamp largey 0d0 1d0)))
-	   (apply #'xyz-to-xyy
-		  (funcall d65-to-c largex largey largez)))))
+  (list 0.31006d0 0.31616d0 (munsell-value-to-y v)))
 
 (defun munsell-value-to-achromatic-lchab (v)
   (apply #'lab-to-lchab
 	 (apply (rcurry #'xyz-to-lab illum-c)
-		(xyy-to-xyz (illuminant-x illum-c)
-			    (illuminant-y illum-c)
+		(xyy-to-xyz 0.31006d0
+			    0.31616d0
 			    (munsell-value-to-y v)))))
 
 ;; the version corresponding with Y of the munsell renotation data
