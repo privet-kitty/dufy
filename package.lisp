@@ -12,7 +12,6 @@
 	   :illuminant-largey
 	   :illuminant-largez
 	   :new-illuminant
-	   :defilluminant
 	   :illum-a :illum-e
 	   :illum-c :illum-d50 :illum-d65
 	   :calc-ca-matrix

@@ -77,8 +77,7 @@
   (y 0.0 :type double-float)
   (largex 0.0 :type double-float)
   (largey 0.0 :type double-float)
-  (largez 0.0 :type double-float)
-  (index 0 :type fixnum))
+  (largez 0.0 :type double-float))
 
 (defun xyy-to-xyz (x y largey)
   (if (zerop y)
@@ -86,19 +85,6 @@
       (list (/ (* x largey) y) 
 	    largey
 	    (/ (* (- 1 x y) largey) y))))
-
-;; number of registered standard illuminats
-(defparameter *number-of-illuminants* 0)
-
-(defun get-new-illuminant-index ()
-  (prog1 *number-of-illuminants*
-    (incf *number-of-illuminants*)))
-
-(defparameter illuminant-array
-  (make-array 10 :fill-pointer 0 :adjustable t))
-
-(defun get-illuminant-by-index (index)
-  (aref illuminant-array index))
 
 ;; a function to define user own standard illuminant
 (defmacro new-illuminant (x y)
@@ -109,29 +95,13 @@
        (make-illuminant :x (float ,x 1d0) :y (float ,y 1d0)
 			:largex (float ,largex 1d0)
 			:largey (float ,largey 1d0)
-			:largez (float ,largez 1d0)
-			:index -1))))
+			:largez (float ,largez 1d0)))))
 
-;; a function to define default standard illuminant
-(defmacro defilluminant (name x y)
-  (let ((largex (gensym))
-	(largey (gensym))
-	(largez (gensym)))
-    `(progn
-       (defparameter ,name
-	 (destructuring-bind (,largex ,largey ,largez) (xyy-to-xyz ,x ,y 1.0d0)
-	   (make-illuminant :x ,x :y ,y
-			  :largex ,largex
-			  :largey ,largey
-			  :largez ,largez
-			  :index (get-new-illuminant-index))))
-       (vector-push-extend ,name illuminant-array))))
-
-(defilluminant illum-a 0.44757d0 0.40745d0)
-(defilluminant illum-c 0.31006d0 0.31616d0)
-(defilluminant illum-d50 0.34567d0 0.35850d0)
-(defilluminant illum-d65 0.31271d0 0.32902d0)
-(defilluminant illum-e #.(float 1/3 1d0) #.(float 1/3 1d0))
+(defparameter illum-a (new-illuminant 0.44757d0 0.40745d0))
+(defparameter illum-c (new-illuminant 0.31006d0 0.31616d0))
+(defparameter illum-d50 (new-illuminant 0.34567d0 0.35850d0))
+(defparameter illum-d65 (new-illuminant 0.31271d0 0.32902d0))
+(defparameter illum-e (new-illuminant #.(float 1/3 1d0) #.(float 1/3 1d0)))
 
 (defparameter bradford
   (make-array '(3 3)
