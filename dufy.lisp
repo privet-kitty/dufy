@@ -106,10 +106,10 @@
 	(largey (gensym))
 	(largez (gensym)))
     `(destructuring-bind (,largex ,largey ,largez) (xyy-to-xyz ,x ,y 1.0d0)
-       (make-illuminant :x ,x :y ,y
-			:largex ,largex
-			:largey ,largey
-			:largez ,largez
+       (make-illuminant :x (float ,x 1d0) :y (float ,y 1d0)
+			:largex (float ,largex 1d0)
+			:largey (float ,largey 1d0)
+			:largez (float ,largez 1d0)
 			:index -1))))
 
 ;; a function to define default standard illuminant
@@ -266,27 +266,6 @@
 		   (setf (aref matrix2 i j) sum)))))
 	  matrix2)))))
 
-;; (defun make-bradford-dictionary ()
-;;   (let ((dict (make-array (list *number-of-illuminants* *number-of-illuminants*)
-;; 			  :element-type '(simple-array double-float (3 3))
-;; 			  :initial-element (make-array '(3 3) :element-type 'double-float))))
-;;     (dotimes (from-index *number-of-illuminants*)
-;;       (dotimes (to-index *number-of-illuminants*)
-;; 	(setf (aref dict from-index to-index)
-;; 		(calc-ca-matrix
-;; 		 (aref illuminant-array from-index)
-;; 		 (aref illuminant-array to-index)))))
-;;     dict))
-
-;; (defparameter bradford-dictionary (make-bradford-dictionary))
-
-
-
-;; get a transformation matrix by the above constructed dictionary
-;; (defun get-bradford-transformation-matrix (from-illuminant to-illuminant)
-;;   (aref bradford-dictionary
-;; 	(illuminant-index from-illuminant)
-;; 	(illuminant-index to-illuminant)))
 
 ;; get a function for chromatic adaptation
 (defun gen-ca-converter (from-illuminant to-illuminant &optional (tmatrix bradford))
@@ -295,15 +274,6 @@
 	(multiply-matrix-and-vec mat x y z))))
 
 
-
-;; special function for Bradford transformation between default standard illuminants
-;; (defun bradford (x y z from-illuminant to-illuminant)
-;;   (if (or (< (illuminant-index from-illuminant) 0)
-;; 	  (< (illuminant-index to-illuminant) 0))
-;;       (error "The function BRADFORD cannot take a user-defined standard illuminant.~%Do (FUNCALL (DUFY:GEN-CA-CONVERTER FROM-ILLUMINANT TO-ILLUMINANT) X Y Z) instead.~%")
-;;       (multiply-matrix-and-vec
-;;        (get-bradford-transformation-matrix from-illuminant to-illuminant)
-;;        x y z)))
 
 (defun xyz-to-xyy (x y z &optional (illuminant illum-d65))
   (if (= x y z 0)
@@ -318,12 +288,12 @@
 	      :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 
 (defun gen-linearizer (gamma)
-  (let ((gamma$ (coerce gamma 'double-float)))
-    #'(lambda (x) (clamp (expt x gamma$) 0 1))))
+  (let ((gamma$ (float gamma 1d0)))
+    #'(lambda (x) (clamp (expt x gamma$) 0d0 1d0))))
 
 (defun gen-delinearizer (gamma)
-  (let ((gamma-recipro (/ 1d0 (coerce gamma 'double-float))))
-    #'(lambda (x) (clamp (expt x gamma-recipro) 0 1))))
+  (let ((gamma-recipro (/ 1d0 (float gamma 1d0))))
+    #'(lambda (x) (clamp (expt x gamma-recipro) 0d0 1d0))))
 
 (defstruct rgbspace
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
@@ -372,12 +342,12 @@
 				(clamp (if (<= x 0.04045d0)
 					   (/ x 12.92d0)
 					   (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0))
-				       0 1))				
+				       0d0 1d0))				
 		:delinearizer #'(lambda (x)
 				  (clamp (if (<= x 0.0031308d0)
 					     (* x 12.92d0)
 					     (- (* 1.055d0 (expt x #.(/ 1 2.4d0))) 0.055d0))
-					 0 1))))
+					 0d0 1d0))))
 
 (defparameter srgbd65 srgb)
 (defparameter adobe
@@ -386,12 +356,12 @@
 				(clamp (if (<= x 0.0556d0)
 					   (* x #.(float 1/32 1d0))
 					   (expt x 2.2d0))
-				       0 1))
+				       0d0 1d0))
 		:delinearizer #'(lambda (x)
 				  (clamp (if (<= x 0.00174d0)
 					     (* x 32d0)
 					     (expt x #.(/ 1 2.2d0)))
-					 0 1))))
+					 0d0 1d0))))
 				  
 (defparameter ntsc1953
   (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
@@ -419,14 +389,6 @@
 					     (expt x #.(/ 1 1.8d0)))
 					 0 1))))			      
  
-;; (defun delinearize (x &optional (rgbspace srgb))
-;;   (if (<= x 0.0031308d0)
-;;       (* x 12.92d0)
-;;       (- (* 1.055d0 (expt x 0.41666666666d0)) 0.055d0)))
-;; (defun linearize (x)
-;;   (if (<= x 0.04045d0)
-;;       (/ x 12.92d0)
-;;       (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0)))
 
 ;; the nominal range of x is [0, 1]
 (defun linearize (x &optional (rgbspace srgb))
@@ -434,12 +396,6 @@
 
 (defun delinearize (x &optional (rgbspace srgb))
   (funcall (rgbspace-delinearizer rgbspace) x))
-
-;; (defun xyz-to-lrgb (x y z &optional (rgbspace srgb))
-;;   (list (+ (* 3.2404542d0 x) (* -1.5371385d0 y) (* -0.4985314d0 z))
-;; 	(+ (* -0.9692660d0 x) (* 1.8760108d0 y) (* 0.0415560d0 z))
-;; 	(+ (* 0.0556434d0 x) (* -0.2040259d0 y) (* 1.0572252d0 z))))
-
 
 ;; convert XYZ to linear RGB in [0, 1]
 (defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 0))
@@ -486,9 +442,9 @@
 	(round (* b 255))))
 
 (defun rgb255-to-rgb (r255 g255 b255)
-  (list (/ r255 255d0)
-	(/ g255 255d0)
-	(/ b255 255d0)))
+  (list (* r255 #.(float 1/255 1d0))
+	(* g255 #.(float 1/255 1d0))
+	(* b255 #.(float 1/255 1d0))))
 
 (defun xyz-to-rgb255 (x y z &key (rgbspace srgb) (threshold 0))
   "return multiple values: (r255 g255 b255), out-of-gamut-p."
@@ -499,7 +455,10 @@
 
 ;; convert RGB ({0, 1, ..., 255}) to XYZ ([0, 1])
 (defun rgb255-to-xyz (r g b &optional (rgbspace srgb))
-  (rgb-to-xyz (/ r 255d0) (/ g 255d0) (/ b 255d0) rgbspace))
+  (rgb-to-xyz (* r #.(float 1/255 1d0))
+	      (* g #.(float 1/255 1d0))
+	      (* b #.(float 1/255 1d0))
+	      rgbspace))
 
 (defun rgb255-to-hex (r g b)
   (+ (ash r 16) (ash g 8) b))
@@ -550,7 +509,7 @@
     (xyz-to-lab x y z illuminant)))
 
 (defun lab-to-xyz (lstar astar bstar &optional (illuminant illum-d65))
-  (let* ((fy (* (+ lstar 16) 0.008620689655172414d0))
+  (let* ((fy (* (+ lstar 16d0) 0.008620689655172414d0))
 	 (fx (+ fy (* astar 0.002d0)))
 	 (fz (- fy (* bstar 0.005d0))))
     (list (if (> fx 0.20689655172413793d0)

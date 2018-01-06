@@ -1,6 +1,6 @@
 (in-package :dufy)
 
-;; the bradford transformation D65 <-> C is frequently used here.
+;; the bradford transformation between D65 and C is frequently used here.
 
 (declaim (type function d65-to-c c-to-d65))
 (defparameter d65-to-c
@@ -21,7 +21,7 @@ for devel.: (defparameter max-chroma-overall (apply #'max (mapcar #'third munsel
 (defun max-chroma (hue40 value &key (use-dark t))
   "returns the largest chroma which the MUNSELL-HVC-TO- functions can receive.
 The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is larger than (MAC-CHROMA HUE40 VALUE)."
-  (let* ((hue (mod hue40 40))
+  (let* ((hue (mod hue40 40d0))
 	 (hue1 (floor hue))
 	 (hue2 (mod (ceiling hue) 40)))
     (if (or (>= value 1)
@@ -32,7 +32,7 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 	       (max-chroma-integer-case hue1 val2)
 	       (max-chroma-integer-case hue2 val1)
 	       (max-chroma-integer-case hue2 val2)))
-	(let* ((dark-value (* value 5))
+	(let* ((dark-value (* value 5d0))
 	       (dark-val1 (floor dark-value))
 	       (dark-val2 (ceiling dark-value)))
 	  (min (max-chroma-integer-case-dark hue1 dark-val1)
