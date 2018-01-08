@@ -118,6 +118,7 @@
 	   :munsell-hvc-out-of-mrd-p
 	   :munsell-hvc-to-xyy
 	   :munsell-hvc-to-xyz
+	   :munsell-hvc-to-xyz-illum-c
 	   :munsell-hvc-to-lrgb
 	   :munsell-hvc-to-rgb255
 	   :munsell-hvc-to-lchab

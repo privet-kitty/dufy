@@ -1,4 +1,4 @@
-
+;; Core Routines of Dufy
 
 (in-package :dufy)
 
@@ -64,11 +64,6 @@
 	(or (<= theta1-m x-m)
 	    (<= x-m theta2)))))
 
-;; (defun rcurry (fn &rest args) 
-;;   #'(lambda  (&rest args2) 
-;;     (apply fn (append args2 args))))
-
-
 ;;; Standard Illuminant, XYZ, xyY
 ;;; The nominal range of X, Y, Z, x, y is always [0, 1].
 
@@ -86,7 +81,7 @@
 	    largey
 	    (/ (* (- 1 x y) largey) y))))
 
-;; a function to define user own standard illuminant
+
 (defmacro new-illuminant (x y)
   (let ((largex (gensym))
 	(largey (gensym))
@@ -157,24 +152,24 @@
 		(- (* (aref mat 1 0) (aref mat 0 1) (aref mat 2 2)))))
 	(invmat (make-array '(3 3) :element-type 'double-float)))
     (setf (aref invmat 0 0) (/ (- (* (aref mat 1 1) (aref mat 2 2))
-				  (* (aref mat 1 2) (aref mat 2 1))) det))
-    (setf (aref invmat 0 1) (/ (- (* (aref mat 0 2) (aref mat 2 1))
-				  (* (aref mat 0 1) (aref mat 2 2))) det))
-    (setf (aref invmat 0 2) (/ (- (* (aref mat 0 1) (aref mat 1 2))
-				  (* (aref mat 0 2) (aref mat 1 1))) det))
-    (setf (aref invmat 1 0) (/ (- (* (aref mat 1 2) (aref mat 2 0))
-				  (* (aref mat 1 0) (aref mat 2 2))) det))
-    (setf (aref invmat 1 1) (/ (- (* (aref mat 0 0) (aref mat 2 2))
-				  (* (aref mat 0 2) (aref mat 2 0))) det))
-    (setf (aref invmat 1 2) (/ (- (* (aref mat 0 2) (aref mat 1 0))
-				  (* (aref mat 0 0) (aref mat 1 2))) det))
-    (setf (aref invmat 2 0) (/ (- (* (aref mat 1 0) (aref mat 2 1))
-				  (* (aref mat 1 1) (aref mat 2 0))) det))
-    (setf (aref invmat 2 1) (/ (- (* (aref mat 0 1) (aref mat 2 0))
-				  (* (aref mat 0 0) (aref mat 2 1))) det))
-    (setf (aref invmat 2 2) (/ (- (* (aref mat 0 0) (aref mat 1 1))
+				  (* (aref mat 1 2) (aref mat 2 1))) det)
+	  (aref invmat 0 1) (/ (- (* (aref mat 0 2) (aref mat 2 1))
+				  (* (aref mat 0 1) (aref mat 2 2))) det)
+	  (aref invmat 0 2) (/ (- (* (aref mat 0 1) (aref mat 1 2))
+				  (* (aref mat 0 2) (aref mat 1 1))) det)
+	  (aref invmat 1 0) (/ (- (* (aref mat 1 2) (aref mat 2 0))
+				  (* (aref mat 1 0) (aref mat 2 2))) det)
+	  (aref invmat 1 1) (/ (- (* (aref mat 0 0) (aref mat 2 2))
+				  (* (aref mat 0 2) (aref mat 2 0))) det)
+	  (aref invmat 1 2) (/ (- (* (aref mat 0 2) (aref mat 1 0))
+				  (* (aref mat 0 0) (aref mat 1 2))) det)
+	  (aref invmat 2 0) (/ (- (* (aref mat 1 0) (aref mat 2 1))
+				  (* (aref mat 1 1) (aref mat 2 0))) det)
+	  (aref invmat 2 1) (/ (- (* (aref mat 0 1) (aref mat 2 0))
+				  (* (aref mat 0 0) (aref mat 2 1))) det)
+	  (aref invmat 2 2) (/ (- (* (aref mat 0 0) (aref mat 1 1))
 				  (* (aref mat 0 1) (aref mat 1 0))) det))
-    invmat))
+	  invmat))
 
 (defun multiply-matrix-and-vec (matrix x y z)
   (list (+ (* x (aref matrix 0 0))
@@ -238,18 +233,18 @@
 
 
 ;; get a function for chromatic adaptation
+(declaim (ftype (function * function) gen-ca-converter))
 (defun gen-ca-converter (from-illuminant to-illuminant &optional (tmatrix bradford))
   (let ((mat (calc-ca-matrix from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))
 
 
-
-(defun xyz-to-xyy (x y z &optional (illuminant illum-d65))
-  (if (= x y z 0)
-      (list (illuminant-x illuminant) (illuminant-y illuminant) y)
-      (list (/ x (+ x y z)) (/ y (+ x y z)) y)))
-
+(defun xyz-to-xyy (x y z)
+  (let ((sum (+ x y z)))
+    (if (= sum 0)
+	(list 0d0 0d0 y)
+	(list (/ x sum) (/ y sum) y))))
 
 
 ;;; RGB Color Space
@@ -500,7 +495,7 @@
  
 (defun lab-to-xyy (lstar astar bstar &optional (illuminant illum-d65))
   (destructuring-bind (x y z) (lab-to-xyz lstar astar bstar illuminant)
-    (xyz-to-xyy x y z illuminant)))
+    (xyz-to-xyy x y z)))
 
 (define-constant CONST-TWO-PI/360 (/ TWO-PI 360))
 (define-constant CONST-360/TWO-PI (/ 360 TWO-PI))
@@ -526,7 +521,7 @@
 
 (defun lchab-to-xyy (lstar cstarab hab &optional (illuminant illum-d65))
   (destructuring-bind (x y z) (lchab-to-xyz lstar cstarab hab illuminant)
-    (xyz-to-xyy x y z illuminant)))
+    (xyz-to-xyy x y z)))
 
 (defun rgb255-to-lab (r g b &optional (rgbspace srgb))
   (destructuring-bind (x y z) (rgb255-to-xyz r g b rgbspace)

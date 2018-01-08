@@ -56,28 +56,42 @@
 ;; 		    :element-type '(unsigned-byte 32)
 ;; 		    :initial-element +maxu32+)))
 
-(defun make-munsell-inversion-data (&optional (with-interpolation t))
+(defun make-dummy-data (&rest args)
+  args
+  (make-array possible-colors
+	      :element-type '(unsigned-byte 32)
+	      :initial-element +maxu32+))
+
+(defun make-munsell-inversion-data (&optional (rgbspace srgb) (with-interpolation t))
   (declare (optimize (speed 3) (safety 0)))
-  (let ((mid (make-array possible-colors :element-type '(unsigned-byte 32) :initial-element +maxu32+))
-	(deltae-arr (make-array possible-colors :element-type 'double-float :initial-element most-positive-double-float)))
+  (let ((illum-c-to-foo (gen-ca-converter illum-c (rgbspace-illuminant rgbspace)))
+	(mid (make-array possible-colors
+			 :element-type '(unsigned-byte 32)
+			 :initial-element +maxu32+))
+	(deltae-arr (make-array possible-colors
+				:element-type 'double-float
+				:initial-element most-positive-double-float)))
     (dotimes (h1000 1000)
       (let ((hue (* h1000 0.04d0)))
 	(format t "processing data at hue ~a / 1000~%" h1000)
 	(dotimes (v1000 1001)
 	  (let* ((value (* v1000 0.01d0))
-		 (maxc500 (1+ (* (the (integer 0 50) (dufy:max-chroma hue value)) 10))))
+		 (maxc500 (1+ (* (dufy:max-chroma hue value) 10))))
 	    (dotimes (c500 maxc500)
 	      (let ((chroma (* c500 0.1d0)))
 		(destructuring-bind (x y z)
-		    (dufy::munsell-hvc-to-xyz hue value chroma)
+		    (apply illum-c-to-foo
+			   (dufy::munsell-hvc-to-xyz-illum-c hue value chroma))
 		  (multiple-value-bind (rgb255 out-of-gamut)
-		      (dufy:xyz-to-rgb255 x y z :threshold 0.001d0)
+		      (dufy:xyz-to-rgb255 x y z :rgbspace rgbspace :threshold 0.001d0)
 		    (unless out-of-gamut
 		      (let ((hex (apply #'dufy:rgb255-to-hex rgb255)))
 			(destructuring-bind (true-x true-y true-z)
-			    (apply #'dufy:rgb255-to-xyz rgb255)
+			    (apply (rcurry #'dufy:rgb255-to-xyz rgbspace) rgb255)
 			  (let ((old-deltae (aref deltae-arr hex))
-				(new-deltae (dufy:xyz-deltae x y z true-x true-y true-z)))
+				(new-deltae (dufy:xyz-deltae x y z
+							     true-x true-y true-z
+							     (rgbspace-illuminant rgbspace))))
 			    (declare (double-float old-deltae new-deltae))
 			    (when (< new-deltae old-deltae)
 					;rotate if the new color is nearer to the true color than the old one.
@@ -90,49 +104,11 @@
 	      gaps (/ gaps (float possible-colors))))
     (when with-interpolation
       (format t "Now interpolating...~%")
-      (interpolate-munsell-inversion-data mid))
+      (interpolate-munsell-inversion-data mid
+					  :rgbspace rgbspace
+					  :xyz-deltae #'xyz-deltae))
     mid))
   
-
-;; return 0 if it is already fully interpolated
-;; (defun interpolate-once ()
-;;   (let ((original-mid (copy-seq munsell-inversion-data))
-;; 	(not-interpolated 0))
-;;     (dotimes (hex possible-colors not-interpolated)
-;;       (let ((u32 (aref munsell-inversion-data hex)))
-;; 	(when (= u32 +maxu32+)
-;; 	  (destructuring-bind (r g b) (dufy:hex-to-rgb255 hex)
-;; 	    (let ((u32-neighbor1 (aref original-mid
-;; 				       (dufy:rgb255-to-hex r g (dufy:rgb1+ b)))))
-;; 	      (if (not (= u32-neighbor1 +maxu32+))
-;; 		  (setf (aref munsell-inversion-data hex)
-;; 			(set-interpolated u32-neighbor1))
-;; 		  (let ((u32-neighbor2 (aref original-mid
-;; 					     (dufy:rgb255-to-hex r g (dufy:rgb1- b)))))
-;; 		    (if (not (= u32-neighbor2 +maxu32+))
-;; 			(setf (aref munsell-inversion-data hex)
-;; 			      (set-interpolated u32-neighbor2))
-;; 			(let ((u32-neighbor3 (aref original-mid
-;; 						   (dufy:rgb255-to-hex r (dufy:rgb1+ g) b))))
-;; 			  (if (not (= u32-neighbor3 +maxu32+))
-;; 			      (setf (aref munsell-inversion-data hex)
-;; 				    (set-interpolated u32-neighbor3))
-;; 			      (let ((u32-neighbor4 (aref original-mid
-;; 							 (dufy:rgb255-to-hex r (dufy:rgb1- g) b))))
-;; 				(if (not (= u32-neighbor4 +maxu32+))
-;; 				    (setf (aref munsell-inversion-data hex)
-;; 					  (set-interpolated u32-neighbor4))
-;; 				    (let ((u32-neighbor5 (aref original-mid
-;; 							       (dufy:rgb255-to-hex (dufy:rgb1+ r) g b))))
-;; 				      (if (not (= u32-neighbor5 +maxu32+))
-;; 					  (setf (aref munsell-inversion-data hex)
-;; 						(set-interpolated u32-neighbor5))
-;; 					  (let ((u32-neighbor6 (aref original-mid
-;; 								     (dufy:rgb255-to-hex (dufy:rgb1- r) g b))))
-;; 					    (if (not (= u32-neighbor6 +maxu32+))
-;; 						(setf (aref munsell-inversion-data hex)
-;; 						      (set-interpolated u32-neighbor6))
-;;						(incf not-interpolated)))))))))))))))))))
 
 (defun find-least-score-rec (testfunc lst l-score l-node)
   (if (null lst)
@@ -150,14 +126,15 @@
 			(car lst)))
 
 ; destructive
-(defun interpolate-once (munsell-inversion-data &optional (deltae #'dufy:xyz-deltae))
-  (let ((source-mid (copy-seq munsell-inversion-data))
-	(not-interpolated 0))
+(defun interpolate-once (munsell-inversion-data &key (rgbspace srgb) (xyz-deltae #'dufy:xyz-deltae))
+  (let* ((source-mid (copy-seq munsell-inversion-data))
+	 (not-interpolated 0)
+	 (illum-c-to-foo (gen-ca-converter illum-c (rgbspace-illuminant rgbspace))))
     (dotimes (hex possible-colors not-interpolated)
       (let ((u32 (aref source-mid hex)))
 	(when (= u32 +maxu32+)
 	  (destructuring-bind (r g b) (dufy:hex-to-rgb255 hex)
-	    (destructuring-bind (x y z) (dufy:rgb255-to-xyz r g b)
+	    (destructuring-bind (x y z) (dufy:rgb255-to-xyz r g b rgbspace)
 	      (let ((neighbors
 		     (list (list r g (dufy:rgb1+ b))
 			   (list r g (dufy:rgb1- b))
@@ -174,8 +151,12 @@
 			       (if (= n-u32 +maxu32+)
 				   most-positive-double-float
 				   (destructuring-bind (n-x n-y n-z)
-				       (apply #'dufy::munsell-hvc-to-xyz (decode-munsell-hvc n-u32))
-				     (funcall deltae x y z n-x n-y n-z)))))
+				       (apply illum-c-to-foo
+					      (apply #'dufy::munsell-hvc-to-xyz-illum-c
+						     (decode-munsell-hvc n-u32)))
+				     (funcall xyz-deltae x y z
+					      n-x n-y n-z
+					      (rgbspace-illuminant rgbspace))))))
 			 neighbors))))
 		  (if (= (aref source-mid nearest-hex) +maxu32+)
 		      (incf not-interpolated)
@@ -185,20 +166,21 @@
 
 
 ; destructive
-(defun interpolate-munsell-inversion-data (munsell-inversion-data &optional (xyz-deltae #'dufy:xyz-deltae))
+(defun interpolate-munsell-inversion-data (munsell-inversion-data &key (rgbspace srgb) (xyz-deltae #'dufy:xyz-deltae))
   (let ((i 0))
     (loop
-       (let ((remaining (interpolate-once munsell-inversion-data xyz-deltae)))
+       (let ((remaining (interpolate-once munsell-inversion-data
+					  :rgbspace rgbspace
+					  :xyz-deltae xyz-deltae)))
 	 (if (zerop remaining)
 	     (progn
 	       (format t "Loop: ~a: Perfectly interpolated.~%" (incf i))
 	       (return))
 	     (format t "Loop: ~a: Remaining nodes = ~A~%" (incf i) remaining))))))
 
-; set value by y-to-munsell-value in MID. Thereby chroma is properly corrected.
-					; destrtuctive
+;; set value by y-to-munsell-value in MID. Thereby chroma is properly corrected.
+;; destrtuctive
 (defparameter d65-to-c (gen-ca-converter illum-d65 illum-c))
-
 (defun set-atsm-value (munsell-inversion-data)
   (dotimes (hex possible-colors)
     (destructuring-bind (h1000 nil c500)
@@ -215,8 +197,14 @@
 
 ;; save/load Munsell inversion data to/from a binary file with big endian
 
-(defun save-munsell-inversion-data (munsell-inversion-data &optional (filename "srgbd65-to-munsell-be.dat"))
-  (let ((path (merge-pathnames (asdf:system-source-directory :dufy) filename)))
+(defun absolute-p (path)
+  (eql (car (pathname-directory (parse-namestring path)))
+       :absolute))
+
+(defun save-munsell-inversion-data (munsell-inversion-data &optional (filename-str "srgbd65-to-munsell-be.dat"))
+  (let ((path (if (absolute-p filename-str)
+		  filename-str
+		  (merge-pathnames (asdf:system-source-directory :dufy) filename-str))))
     (with-open-file (out path
 			 :direction :output
 			 :element-type '(unsigned-byte 8)

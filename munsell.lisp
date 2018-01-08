@@ -18,6 +18,7 @@ for devel.: (defparameter max-chroma-overall (apply #'max (mapcar #'third munsel
 (defmacro max-chroma-integer-case-dark (hue40 dark-value)
   `(aref max-chroma-arr-dark ,hue40 ,dark-value))
 
+(declaim (ftype (function * (integer 0 50)) max-chroma))
 (defun max-chroma (hue40 value &key (use-dark t))
   "returns the largest chroma which the MUNSELL-HVC-TO- functions can receive.
 The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is larger than (MAC-CHROMA HUE40 VALUE)."
@@ -164,14 +165,15 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 	    (munsell-hvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
 	  (destructuring-bind (nil cstarab2 hab2)
 	      (munsell-hvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
-	    (declare (double-float lstar cstarab1 hab1 cstarab2 hab2))
+	    (declare (double-float lstar cstarab1 hab1 cstarab2 hab2)
+		     (ftype (function (* * &optional *) double-float) subtract-with-mod))
 	    (if (= hab1 hab2)
 		(list lstar cstarab1 hab1)
 		(let* ((hab (circular-lerp hab1 hab2 (- hue40 hue1) 360d0))
-		       (cstarab (+ (* cstarab1 (/ (the double-float (subtract-with-mod hab2 hab 360d0))
-						  (the double-float (subtract-with-mod hab2 hab1 360d0))))
-				   (* cstarab2 (/ (the double-float (subtract-with-mod hab hab1 360d0))
-						  (the double-float (subtract-with-mod hab2 hab1 360d0)))))))
+		       (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
+						  (subtract-with-mod hab2 hab1 360d0)))
+				   (* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
+						  (subtract-with-mod hab2 hab1 360d0))))))
 		  (list lstar cstarab hab))))))))
 
 
@@ -318,12 +320,20 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 ;; (defun munsell-hvc-to-lab (hue40 value chroma)
 ;;   (apply #'lchab-to-lab (munsell-hvc-to-lchab hue40 value chroma)))
 
+(defun munsell-hvc-to-xyz-illum-c (hue40 value chroma)
+  "Illuminant C. It doesn't produce errors by a chromatic adaptation,
+since the Munsell Renotation Data is measured under the Illuminant C."
+  (declare (optimize (speed 3) (safety 1)))
+  (apply (the function (rcurry #'lchab-to-xyz illum-c))
+	 (munsell-hvc-to-lchab hue40 value chroma)))
+  
+				   
 (defun munsell-hvc-to-xyz (hue40 value chroma)
-  "Illuminant D65"
+  "Illuminant D65. It produces errors by a chromatic adaptation,
+since the Munsell Renotation Data is measured under the Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (apply c-to-d65
-	 (apply (the function (rcurry #'lchab-to-xyz illum-c))
-		(munsell-hvc-to-lchab hue40 value chroma))))
+	 (munsell-hvc-to-xyz-illum-c hue40 value chroma)))
 
 (defun munsell-hvc-to-xyy (hue40 value chroma)
   "Illuminant D65"
