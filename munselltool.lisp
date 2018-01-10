@@ -214,17 +214,10 @@
 	  (fast-io:writeu32-be (aref munsell-inversion-data x) buf)))
       (format t "Munsell inversion data is saved in ~A.~%" path))))
 
-;; (defun load-munsell-inversion-data (&optional (filename "srgbd65-to-munsell-be.dat"))
-;;   (let ((path (merge-pathnames (asdf:system-source-directory :dufy) filename)))
-;;     (with-open-file (in path
-;; 			:direction :input
-;; 			:element-type '(unsigned-byte 8))
-;;       (let ((munsell-inversion-data (make-array possible-colors :element-type '(unsigned-byte 32) :initial-element +maxu32+)))
-;; 	(dotimes (x possible-colors munsell-inversion-data)
-;; 	  (setf (aref munsell-inversion-data x) (nibbles:read-ub32/be in)))))))
-
-(defun load-munsell-inversion-data (&optional (filename "srgbd65-to-munsell-be.dat"))
-  (let ((path (merge-pathnames (asdf:system-source-directory :dufy) filename)))
+(defun load-munsell-inversion-data (&optional (filename-str "srgbd65-to-munsell-be.dat"))
+  (let ((path (if (absolute-p filename-str)
+		  filename-str
+		  (merge-pathnames (asdf:system-source-directory :dufy) filename-str))))
     (with-open-file (in path
 			:direction :input
 			:element-type '(unsigned-byte 8))
@@ -412,6 +405,26 @@
 ;; Mean Error of Munsell Values: 0.029526621135807438d0
 ;; Maximum Error of Munsell Values: 0.36599623828091055d0 at hex 585474
 
+(defun compare-two-mids (mid1 mid2)
+  (let ((maximum-delta 0d0)
+	(sum 0d0)
+	(most-inferior-idx 0))
+  (dotimes (idx possible-colors)
+    (let* ((node1 (apply #'munsell-hvc-to-xyz
+			 (decode-munsell-hvc (aref mid1 idx))))
+	   (node2 (apply #'munsell-hvc-to-xyz
+			 (decode-munsell-hvc (aref mid2 idx))))
+	   (delta (apply #'xyz-deltae
+			 (append node1 node2))))
+      (setf sum (+ sum delta))
+      (when (> delta maximum-delta)
+	(setf maximum-delta delta)
+	(setf most-inferior-idx idx))))
+  (format t "Maximum Delta E = ~A at index ~X~%" maximum-delta most-inferior-idx)
+  (format t "Mean Delta E = ~A~%" (float (/ sum possible-colors) 1d0))))
+
+
+  
 (defun delete-interpolated-nodes (mid)
   (dotimes (hex possible-colors)
     (let ((node (aref mid hex)))

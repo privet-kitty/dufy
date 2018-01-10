@@ -86,7 +86,7 @@
   (let ((largex (gensym))
 	(largey (gensym))
 	(largez (gensym)))
-    `(destructuring-bind (,largex ,largey ,largez) (xyy-to-xyz ,x ,y 1.0d0)
+    `(destructuring-bind (,largex ,largey ,largez) (xyy-to-xyz ,x ,y 1d0)
        (make-illuminant :x (float ,x 1d0) :y (float ,y 1d0)
 			:largex (float ,largex 1d0)
 			:largey (float ,largey 1d0)

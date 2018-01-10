@@ -14,4 +14,5 @@
 	       (:file "dufy" :depends-on ("package" "fundamental-data"))
 	       (:file "deltae" :depends-on ("package" "dufy"))
 	       (:file "munsell-renotation-data")
-	       (:file "munsell" :depends-on ("package" "dufy" "munsell-renotation-data" "deltae"))))
+	       (:file "munsell" :depends-on ("package" "dufy" "munsell-renotation-data" "deltae")))
+  :in-order-to ((test-op (test-op dufy-test))))
