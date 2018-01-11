@@ -239,6 +239,13 @@
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))
 
+(defun gen-ca-converter-xyy (from-illuminant to-illuminant &optional (tmatrix bradford))
+  (let ((mat (calc-ca-matrix from-illuminant to-illuminant tmatrix)))
+    #'(lambda (x y largey)
+	(apply #'xyz-to-xyy
+	       (apply (curry #'multiply-matrix-and-vec mat)
+		      (xyy-to-xyz x y largey))))))
+
 
 (defun xyz-to-xyy (x y z)
   (let ((sum (+ x y z)))
@@ -301,33 +308,67 @@
 		       :to-xyz-matrix m
 		       :from-xyz-matrix (invert-matrix33 m))))))
 
+(defun srgb-linearizer (x)
+  (clamp (if (<= x 0.04045d0)
+	     (/ x 12.92d0)
+	     (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0))
+	 0d0 1d0))
+
+(defun srgb-delinearizer (x)
+  (clamp (if (<= x 0.0031308d0)
+	     (* x 12.92d0)
+	     (- (* 1.055d0 (expt x #.(/ 1 2.4d0))) 0.055d0))
+	 0d0 1d0))
+
 (defparameter srgb
   (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		:linearizer #'(lambda (x)
-				(clamp (if (<= x 0.04045d0)
-					   (/ x 12.92d0)
-					   (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0))
-				       0d0 1d0))				
-		:delinearizer #'(lambda (x)
-				  (clamp (if (<= x 0.0031308d0)
-					     (* x 12.92d0)
-					     (- (* 1.055d0 (expt x #.(/ 1 2.4d0))) 0.055d0))
-					 0d0 1d0))))
+		:linearizer #'srgb-linearizer				
+		:delinearizer #'srgb-delinearizer))
 
 (defparameter srgbd65 srgb)
+
+
+(defparameter srgbd50
+  (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
+		:linearizer #'srgb-linearizer				
+		:delinearizer #'srgb-delinearizer
+		:illuminant dufy:illum-d50))
+
+(defparameter srgbd50
+  (dufy:new-rgbspace 0.6484318256422797d0 0.3308548910484657d0
+		     0.32116034975649527d0 0.5978620931221631d0
+		     0.15588602412126393d0 0.06604312820634879d0
+		     :linearizer #'srgb-linearizer
+		     :delinearizer #'srgb-delinearizer
+		     :illuminant dufy:illum-d50))
+
+(defun adobe-linearizer (x)
+  (clamp (if (<= x 0.0556d0)
+	     (* x #.(float 1/32 1d0))
+	     (expt x 2.2d0))
+	 0d0 1d0))
+
+(defun adobe-delinearizer (x)
+  (clamp (if (<= x 0.00174d0)
+	     (* x 32d0)
+	     (expt x #.(/ 1 2.2d0)))
+	 0d0 1d0))
+
 (defparameter adobe
   (new-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
-		:linearizer #'(lambda (x)
-				(clamp (if (<= x 0.0556d0)
-					   (* x #.(float 1/32 1d0))
-					   (expt x 2.2d0))
-				       0d0 1d0))
-		:delinearizer #'(lambda (x)
-				  (clamp (if (<= x 0.00174d0)
-					     (* x 32d0)
-					     (expt x #.(/ 1 2.2d0)))
-					 0d0 1d0))))
-				  
+		:linearizer #'adobe-linearizer
+		:delinearizer #'adobe-delinearizer))
+
+(defparameter adobed65 adobe)
+
+(defparameter adobed50
+  (dufy:new-rgbspace 0.6484318256422797d0 0.3308548910484657d0
+		     0.23016411634130152d0 0.7015617915499972d0
+		     0.15588602412126396d0 0.06604312820634878d0
+		     :linearizer #'adobe-linearizer
+		     :delinearizer #'adobe-delinearizer
+		     :illuminant dufy:illum-d50))
+
 (defparameter ntsc1953
   (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
 		:illuminant illum-c

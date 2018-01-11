@@ -2,7 +2,6 @@
 
 (defpackage :dufy
   (:use :common-lisp :alexandria)
-  ;(:shadowing-import-from :alexandria :rcurry :clamp)
   (:export :xyy-to-xyz
 	   :xyz-to-xyy
 	   :illuminant
@@ -16,6 +15,7 @@
 	   :illum-c :illum-d50 :illum-d65
 	   :calc-ca-matrix
 	   :gen-ca-converter
+	   :gen-ca-converter-xyy
 	   
 	   :bradford
 	   :xyz-scaling
@@ -25,7 +25,9 @@
 	   :cat02
 
 	   :rgbspace
-	   :srgb :srgbd65 :adobe :ntsc1953 :pal/secam :prophoto
+	   :srgb :srgbd65 :srgbd50
+	   :adobe :adobed65 :adobed50
+	   :ntsc1953 :pal/secam :prophoto
 	   :new-rgbspace
 	   :rgbspace-linearizer
 	   :rgbspace-delinearizer
@@ -61,16 +63,6 @@
 	   :xyz-to-lchuv
 	   :lchuv-to-xyz
 
-	   :deltae
-	   :xyz-deltae
-	   :rgb255-deltae
-	   :deltae94
-	   :xyz-deltae94
-	   :rgb255-deltae94
-	   :deltae00
-	   :xyz-deltae00
-	   :rgb255-deltae00
-
 	   :delinearize
 	   :linearize
 	   :nearly=
@@ -92,9 +84,6 @@
 	   :two-pi
 	   :subtract-with-mod
 	   :circular-lerp
-	   ;:polar-mean-of-xy
-	   ;:xy-to-polar
-	   ;:polar-to-xy
 	   :rgb1+
 	   :rgb1-
 
@@ -112,6 +101,26 @@
 	   :hsl-to-xyz
 	   :xyz-to-hsl
 
+	   :color-matching-x
+	   :color-matching-y
+	   :color-matching-z
+	   :color-matching
+	   :spectrum-to-xyz
+	   :bb-spectrum
+	   :optimal-spectrum
+	   
+	   ;; deltae.lisp
+	   :deltae
+	   :xyz-deltae
+	   :rgb255-deltae
+	   :deltae94
+	   :xyz-deltae94
+	   :rgb255-deltae94
+	   :deltae00
+	   :xyz-deltae00
+	   :rgb255-deltae00
+
+	   ;; munsell.lisp
 	   :munsell-value-to-y
 	   :y-to-munsell-value
 	   :rgb255-to-munsell-value
@@ -131,11 +140,4 @@
 	   :munsell-spec-to-rgb255
 	   :max-chroma
 
-	   :color-matching-x
-	   :color-matching-y
-	   :color-matching-z
-	   :color-matching
-	   :spectrum-to-xyz
-	   :bb-spectrum
-	   :optimal-spectrum
 ))

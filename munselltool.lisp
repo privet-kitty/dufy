@@ -91,7 +91,7 @@
 			  (let ((old-deltae (aref deltae-arr hex))
 				(new-deltae (dufy:xyz-deltae x y z
 							     true-x true-y true-z
-							     (rgbspace-illuminant rgbspace))))
+							     :illuminant (rgbspace-illuminant rgbspace))))
 			    (declare (double-float old-deltae new-deltae))
 			    (when (< new-deltae old-deltae)
 					;rotate if the new color is nearer to the true color than the old one.
@@ -156,7 +156,7 @@
 						     (decode-munsell-hvc n-u32)))
 				     (funcall xyz-deltae x y z
 					      n-x n-y n-z
-					      (rgbspace-illuminant rgbspace))))))
+					      :illuminant (rgbspace-illuminant rgbspace))))))
 			 neighbors))))
 		  (if (= (aref source-mid nearest-hex) +maxu32+)
 		      (incf not-interpolated)
@@ -324,8 +324,9 @@
     
 
 ;; examine the total error of interpolated data in MID	
-(defun examine-interpolation-error (munsell-inversion-data &key (start 0) (end possible-colors) (deltae #'dufy:rgb255-deltae))
-  (let ((maximum 0)
+(defun examine-interpolation-error (munsell-inversion-data &key (start 0) (end possible-colors) (rgbspace srgb) (deltae #'dufy:rgb255-deltae))
+  (let ((illum-c-to-foo (gen-ca-converter illum-c (rgbspace-illuminant rgbspace)))
+	(maximum 0)
 	(worst-hex nil)
 	(sum 0)
 	(nodes 0))
@@ -333,8 +334,11 @@
       (let ((u32 (aref munsell-inversion-data hex)))
 	(if (interpolatedp u32)
 	    (destructuring-bind  (r1 g1 b1) (dufy:hex-to-rgb255 hex)
-	      (destructuring-bind (r2 g2 b2) (apply #'dufy:munsell-hvc-to-rgb255 (decode-munsell-hvc u32))
-		(let ((delta (funcall deltae r1 g1 b1 r2 g2 b2)))
+	      (destructuring-bind (r2 g2 b2)
+		  (apply (rcurry #'dufy:xyz-to-rgb255 :rgbspace rgbspace)
+			 (apply illum-c-to-foo
+				(apply #'dufy:munsell-hvc-to-xyz-illum-c (decode-munsell-hvc u32))))
+		(let ((delta (funcall deltae r1 g1 b1 r2 g2 b2 :rgbspace rgbspace)))
 		  (setf sum (+ sum delta))
 		  (when (> delta maximum)
 		    (setf maximum delta)
@@ -342,7 +346,7 @@
 		  (incf nodes)))))))
     (format t "Number of Interpolated Nodes = ~A (~,3F%)~%" nodes (* 100d0 (/ nodes (- end start))))
     (format t "Mean Color Difference: ~a~%" (/ sum nodes))
-    (format t "Maximum Color Difference: ~a at hex ~a~%" maximum worst-hex)))
+    (format t "Maximum Color Difference: ~a at hex #x~x~%" maximum worst-hex)))
 
 ;;; xyY interpolation version
 ;; Number of Interpolated Nodes = 3729095 (22.227%)

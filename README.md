@@ -43,7 +43,7 @@ If you want to use ASDF without quicklisp, you should put the directory of Dufy 
 
 The fundamental color space of Dufy is CIE XYZ (Illuminant D65): There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
 
-    * (dufy:lab-to-xyz 48.26 -28.84 -8.475)
+    * (dufy:lab-to-xyz 48.26 -28.84 -8.475)  ;; L*=48.26, a*=-28.84, b*=-8.475
     => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
 
     * (apply #'dufy:xyz-to-rgb255 *)
