@@ -100,8 +100,8 @@
 			      (setf (aref deltae-arr hex)
 				    new-deltae))))))))))))))
     (let ((gaps (count-gaps mid)))
-      (format t "Primary data are set. Number of gaps is ~A (~A).~%"
-	      gaps (/ gaps (float possible-colors))))
+      (format t "Primary data are set. The number of gaps is ~A (~A %).~%"
+	      gaps (* 100 (/ gaps (float possible-colors)))))
     (when with-interpolation
       (format t "Now interpolating...~%")
       (interpolate-munsell-inversion-data mid
@@ -323,8 +323,12 @@
     (format t "total gap rate = ~a~%" (/ gaps-sum (float possible-colors)))))
     
 
+(defun interiorp (hex)
+  (destructuring-bind (r g b) (hex-to-rgb255 hex)
+    (and (/= r 0) (/= g 0) (/= b 0) (/= r 255) (/= g 255) (/= b 255))))
+
 ;; examine the total error of interpolated data in MID	
-(defun examine-interpolation-error (munsell-inversion-data &key (start 0) (end possible-colors) (rgbspace srgb) (deltae #'dufy:rgb255-deltae))
+(defun examine-interpolation-error (munsell-inversion-data &key (start 0) (end possible-colors) (rgbspace srgb) (deltae #'dufy:rgb255-deltae) (without-boundary nil))
   (let ((illum-c-to-foo (gen-ca-converter illum-c (rgbspace-illuminant rgbspace)))
 	(maximum 0)
 	(worst-hex nil)
@@ -332,18 +336,20 @@
 	(nodes 0))
     (loop for hex from start below end do
       (let ((u32 (aref munsell-inversion-data hex)))
-	(if (interpolatedp u32)
-	    (destructuring-bind  (r1 g1 b1) (dufy:hex-to-rgb255 hex)
-	      (destructuring-bind (r2 g2 b2)
-		  (apply (rcurry #'dufy:xyz-to-rgb255 :rgbspace rgbspace)
-			 (apply illum-c-to-foo
-				(apply #'dufy:munsell-hvc-to-xyz-illum-c (decode-munsell-hvc u32))))
-		(let ((delta (funcall deltae r1 g1 b1 r2 g2 b2 :rgbspace rgbspace)))
-		  (setf sum (+ sum delta))
-		  (when (> delta maximum)
-		    (setf maximum delta)
-		    (setf worst-hex hex))
-		  (incf nodes)))))))
+	(when (and (interpolatedp u32)
+		   (or (not without-boundary)
+		       (interiorp hex)))
+	  (destructuring-bind  (r1 g1 b1) (dufy:hex-to-rgb255 hex)
+	    (destructuring-bind (r2 g2 b2)
+		(apply (rcurry #'dufy:xyz-to-rgb255 :rgbspace rgbspace)
+		       (apply illum-c-to-foo
+			      (apply #'dufy:munsell-hvc-to-xyz-illum-c (decode-munsell-hvc u32))))
+	      (let ((delta (funcall deltae r1 g1 b1 r2 g2 b2 :rgbspace rgbspace)))
+		(setf sum (+ sum delta))
+		(when (> delta maximum)
+		  (setf maximum delta)
+		  (setf worst-hex hex))
+		(incf nodes)))))))
     (format t "Number of Interpolated Nodes = ~A (~,3F%)~%" nodes (* 100d0 (/ nodes (- end start))))
     (format t "Mean Color Difference: ~a~%" (/ sum nodes))
     (format t "Maximum Color Difference: ~a at hex #x~x~%" maximum worst-hex)))

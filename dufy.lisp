@@ -327,20 +327,13 @@
 
 (defparameter srgbd65 srgb)
 
-
 (defparameter srgbd50
-  (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		:linearizer #'srgb-linearizer				
+  (new-rgbspace 0.6484318256422797d0 0.3308548910484657d0
+		0.32116034975649527d0 0.5978620931221631d0
+		0.15588602412126393d0 0.06604312820634879d0
+		:linearizer #'srgb-linearizer
 		:delinearizer #'srgb-delinearizer
 		:illuminant dufy:illum-d50))
-
-(defparameter srgbd50
-  (dufy:new-rgbspace 0.6484318256422797d0 0.3308548910484657d0
-		     0.32116034975649527d0 0.5978620931221631d0
-		     0.15588602412126393d0 0.06604312820634879d0
-		     :linearizer #'srgb-linearizer
-		     :delinearizer #'srgb-delinearizer
-		     :illuminant dufy:illum-d50))
 
 (defun adobe-linearizer (x)
   (clamp (if (<= x 0.0556d0)
@@ -362,12 +355,12 @@
 (defparameter adobed65 adobe)
 
 (defparameter adobed50
-  (dufy:new-rgbspace 0.6484318256422797d0 0.3308548910484657d0
-		     0.23016411634130152d0 0.7015617915499972d0
-		     0.15588602412126396d0 0.06604312820634878d0
-		     :linearizer #'adobe-linearizer
-		     :delinearizer #'adobe-delinearizer
-		     :illuminant dufy:illum-d50))
+  (new-rgbspace 0.6484318256422797d0 0.3308548910484657d0
+		0.23016411634130152d0 0.7015617915499972d0
+		0.15588602412126396d0 0.06604312820634878d0
+		:linearizer #'adobe-linearizer
+		:delinearizer #'adobe-delinearizer
+		:illuminant dufy:illum-d50))
 
 (defparameter ntsc1953
   (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
