@@ -17,14 +17,20 @@
 	   (apply #'nearly<= threshold more-numbers))))
 
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
+  "(x mod divisor) - (y mod divisor) = (x - y) mod divisor."
   (mod (- x y) divisor))
 
 (defun circular-nearer (theta1 x theta2 &optional (perimeter TWO-PI))
+  "Compares counterclockwise distances between THETA1 and X and
+between X and THETA2; returns THETA1 or THETA2, whichever is nearer."
   (if (<= (subtract-with-mod x theta1 perimeter) (subtract-with-mod theta2 x perimeter))
       theta1
       theta2))
 
 (defun circular-clamp (number min max &optional (perimeter TWO-PI))
+  "A clamp function in a circle group. If NUMBER is not in
+the (counterclockwise) closed interval [min, max], CIRCULAR-CLAMP
+returns MIN or MAX, whichever is nearer to NUMBER."
   (let ((number$ (mod number perimeter))
 	(min$ (mod min perimeter))
 	(max$ (mod max perimeter)))
@@ -36,25 +42,28 @@
 	    number$ ;[number, max, min] or [max, min, number]
 	    (circular-nearer max$ number$ min$))))) ; [max, number, min]
 
-;; counterclockwise linear interpolation from theta1 to theta2 in a circle group
-;; (defun circular-lerp (theta1 theta2 coef &optional (perimeter TWO-PI))
-;;   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
-;;     (mod (+ theta1 (* dtheta coef)) perimeter)))
+(defun circular-lerp-loose (theta1 theta2 coef &optional (perimeter TWO-PI))
+  "Counterclockwise linear interpolation from THETA1 to THETA2 in a
+circle group. There is a possibility that the return value slightly
+exceeds the interval [THETA1, THETA2], due to floating-point error. If
+that is incovenient, use CIRCULAR-LERP instead."
+  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+    (mod (+ theta1 (* dtheta coef)) perimeter)))
 
-;; a version preventing the floating-point error, 
-;; It doesn't exceed the given interval from theta1 to theta2.
 (defun circular-lerp (theta1 theta2 coef &optional (perimeter TWO-PI))
+  "Counterclockwise linear interpolation from THETA1 to THETA2 in a
+circle group. It doesn't exceed the given interval from THETA1 to
+THETA2, if COEF is in [0, 1]. It is, however, slower than
+CIRCULAR-LERP-LOOSE."
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (circular-clamp (+ theta1 (* dtheta coef))
 		    theta1
 		    theta2
 		    perimeter)))
 
-(defun circular-lerp-loose (theta1 theta2 coef &optional (perimeter TWO-PI))
-  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
-    (mod (+ theta1 (* dtheta coef)) perimeter)))
-
 (defun circular-member (x theta1 theta2 &optional (perimeter TWO-PI))
+  "Returns true, if X is in the counterclockwise closed interval [THETA1,
+THETA2] in a circle group."
   (let ((x-m (mod x perimeter))
 	(theta1-m (mod theta1 perimeter))
 	(theta2-m (mod theta2 perimeter)))
@@ -64,9 +73,9 @@
 	(or (<= theta1-m x-m)
 	    (<= x-m theta2)))))
 
+
 ;;; Standard Illuminant, XYZ, xyY
 ;;; The nominal range of X, Y, Z, x, y is always [0, 1].
-
 (defstruct illuminant
   (x 0.0 :type double-float)
   (y 0.0 :type double-float)
@@ -80,6 +89,13 @@
       (list (/ (* x largey) y) 
 	    largey
 	    (/ (* (- 1 x y) largey) y))))
+
+
+(defun xyz-to-xyy (x y z)
+  (let ((sum (+ x y z)))
+    (if (= sum 0)
+	(list 0d0 0d0 y)
+	(list (/ x sum) (/ y sum) y))))
 
 
 (defmacro new-illuminant (x y)
@@ -247,13 +263,6 @@
 		      (xyy-to-xyz x y largey))))))
 
 
-(defun xyz-to-xyy (x y z)
-  (let ((sum (+ x y z)))
-    (if (= sum 0)
-	(list 0d0 0d0 y)
-	(list (/ x sum) (/ y sum) y))))
-
-
 ;;; RGB Color Space
 (defparameter identity-matrix
   (make-array '(3 3) :element-type 'double-float
@@ -261,11 +270,11 @@
 
 (defun gen-linearizer (gamma)
   (let ((gamma$ (float gamma 1d0)))
-    #'(lambda (x) (clamp (expt x gamma$) 0d0 1d0))))
+    #'(lambda (x) (expt (clamp x 0d0 1d0) gamma$))))
 
 (defun gen-delinearizer (gamma)
   (let ((gamma-recipro (/ 1d0 (float gamma 1d0))))
-    #'(lambda (x) (clamp (expt x gamma-recipro) 0d0 1d0))))
+    #'(lambda (x) (expt (clamp x 0d0 1d0) gamma-recipro))))
 
 (defstruct rgbspace
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
@@ -398,7 +407,9 @@
 
 ;; convert XYZ to linear RGB in [0, 1]
 (defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 0))
-  "return multiple values: (lr lg lb), out-of-gamut-p."
+  "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
+OUT-OF-GAMUT-P is true, if at least one of LR , LG and LB are outside
+the interval [-THRESHOLD, 1+THRESHOLD]."
   (destructuring-bind (lr lg lb)
       (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
 				x y z)
@@ -424,7 +435,9 @@
 	  (funcall lin b))))
 
 (defun xyz-to-rgb (x y z &key (rgbspace srgb) (threshold 0))
-  "return multiple values: (r g b), out-of-gamut-p."
+  "Returns multiple values: (R G B), OUT-OF-GAMUT-P.
+OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
+are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (multiple-value-bind (lrgb out-of-gamut)
       (xyz-to-lrgb x y z :rgbspace rgbspace :threshold threshold)
     (values (mapcar (rgbspace-delinearizer rgbspace) lrgb)
@@ -436,6 +449,8 @@
 
 
 (defun rgb-to-rgb255 (r g b)
+  "Quantizes RGB values from [0, 1] to {0, 1, ..., 255}. It accepts
+all the real values."
   (list (round (* r 255))
 	(round (* g 255))
 	(round (* b 255))))
@@ -446,21 +461,23 @@
 	(* b255 #.(float 1/255 1d0))))
 
 (defun xyz-to-rgb255 (x y z &key (rgbspace srgb) (threshold 0))
-  "return multiple values: (r255 g255 b255), out-of-gamut-p."
+  "Returns multiple values: (R255 G255 B255), OUT-OF-GAMUT-P.
+OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
+are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
     (values (mapcar #'(lambda (x) (round (* (clamp x 0 1) 255d0))) rgb)
 	    out-of-gamut)))
 
 ;; convert RGB ({0, 1, ..., 255}) to XYZ ([0, 1])
-(defun rgb255-to-xyz (r g b &optional (rgbspace srgb))
-  (rgb-to-xyz (* r #.(float 1/255 1d0))
-	      (* g #.(float 1/255 1d0))
-	      (* b #.(float 1/255 1d0))
+(defun rgb255-to-xyz (r255 g255 b255 &optional (rgbspace srgb))
+  (rgb-to-xyz (* r255 #.(float 1/255 1d0))
+	      (* g255 #.(float 1/255 1d0))
+	      (* b255 #.(float 1/255 1d0))
 	      rgbspace))
 
-(defun rgb255-to-hex (r g b)
-  (+ (ash r 16) (ash g 8) b))
+(defun rgb255-to-hex (r255 g255 b255)
+  (+ (ash r255 16) (ash g255 8) b255))
 
 (defun hex-to-rgb255 (hex)
   (list (logand (ash hex -16) #xff)
@@ -472,7 +489,9 @@
 	 (hex-to-rgb255 hex)))
 
 (defun xyz-to-hex (x y z &key (rgbspace srgb) (threshold 0))
-  "return multiple values: hex, out-of-gamut-p."
+  "Returns multiple values: HEX, OUT-OF-GAMUT-P.
+OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
+are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (multiple-value-bind (rgb255 out-of-gamut)
       (xyz-to-rgb255 x y z :rgbspace rgbspace :threshold threshold)
     (values (apply #'rgb255-to-hex rgb255)
@@ -557,9 +576,10 @@
   (destructuring-bind (x y z) (lchab-to-xyz lstar cstarab hab illuminant)
     (xyz-to-xyy x y z)))
 
-(defun rgb255-to-lab (r g b &optional (rgbspace srgb))
-  (destructuring-bind (x y z) (rgb255-to-xyz r g b rgbspace)
-    (xyz-to-lab x y z)))
+(defun rgb255-to-lab (r255 g255 b255 &optional (rgbspace srgb))
+  (apply (rcurry #'xyz-to-lab (rgbspace-illuminant rgbspace))
+	 (rgb255-to-xyz r255 g255 b255 rgbspace)))
+
 
 (defun calc-uvprime (x y)
   (let ((denom (+ (* -2d0 x) (* 12d0 y) 3d0)))
@@ -614,19 +634,8 @@
     (luv-to-xyz l u v illuminant)))
 
 
-;; obsolete
-;; (defun xyzc-to-xyzd65 (x y z)
-;;   (list (+ (* 0.9904476095076271d0 x) (* -0.007168269199019821d0 y) (* -0.011615568838811846d0 z))
-;; 	(+ (* -0.012371160443260617d0 x) (* 1.0155949953067143d0 y) (* -0.002928228748209215d0 z))
-;; 	(+ (* -0.0035635466770583962d0 x) (* 0.006769691557536081d0 y) (* 0.9181568621105303d0 z))))
 
 ;; obsolete
-;; (defun xyzd65-to-xyzc (x y z)
-;;   (list (+ (* 1.009778518523861d0 x) (* 0.007041913032199525d0 y) (* 0.012797129456767808d0 z))
-;; 	(+ (* 0.012311347023773754d0 x) (* 0.9847093981360044d0 y) (* 0.0032962316048580284d0 z))
-;; 	(+ (* 0.003828375092859271d0 x) (* -0.0072330611330787d0 y) (* 1.0891638781614845d0 z))))
-
-
 (defun polar-mean-of-xy (x1 y1 x2 y2)
   (destructuring-bind (r1 theta1) (xy-to-polar x1 y1)
     (destructuring-bind (r2 theta2) (xy-to-polar x2 y2)
@@ -682,12 +691,15 @@
 		  ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
     (list h s maxrgb)))
 	 
-(defun rgb255-to-hsv (r g b)
-  (rgb-to-hsv (* r 0.00392156862745098d0)
-	      (* g 0.00392156862745098d0)
-	      (* b 0.00392156862745098d0)))
+(defun rgb255-to-hsv (r255 g255 b255)
+  (rgb-to-hsv (* r255 #.(/ 1 255d0))
+	      (* g255 #.(/ 1 255d0))
+	      (* b255 #.(/ 1 255d0))))
 
 (defun xyz-to-hsv (x y z &key (rgbspace srgb) (threshold 0))
+  "Returns multiple values: (H S V), OUT-OF-GAMUT-P.
+OUT-OF-GAMUT-P is true, if at least one of **linear** RGB values are
+outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
     (values (apply #'rgb-to-hsv
@@ -744,12 +756,15 @@
 	    (* 0.5d0 (+ max min))))))
 	  
 
-(defun rgb255-to-hsl (r g b)
-  (rgb-to-hsl (* r 0.00392156862745098d0)
-	      (* g 0.00392156862745098d0)
-	      (* b 0.00392156862745098d0)))
+(defun rgb255-to-hsl (r255 g255 b255)
+  (rgb-to-hsl (* r255 #.(/ 1 255d0))
+	      (* g255 #.(/ 1 255d0))
+	      (* b255 #.(/ 1 255d0))))
 
 (defun xyz-to-hsl (x y z &key (rgbspace srgb) (threshold 0))
+    "Returns multiple values: (H S L), OUT-OF-GAMUT-P.
+OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
+are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
     (values (apply #'rgb-to-hsl
