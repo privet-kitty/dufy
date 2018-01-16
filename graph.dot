@@ -1,18 +1,23 @@
-graph g {
-  node [shape = "box"]
-  "xyz" -- "xyy"
-  "xyz" -- "lrgb"
-  "lrgb" -- "rgb"
-  "rgb" -- "rgb255"
-  "rgb255" -- "hex"
+graph  {
+  graph [
+    labelloc = "t",
+    label = "Tree of Color Converters",
+    fontsize = 18
+  ];
+  node [shape = "box", fontname = "helvetica"]
+  "XYZ" -- "XYY"
+  "XYZ" -- "LRGB\n(linear RGB)"
+  "LRGB\n(linear RGB)" -- "RGB\n(gamma-corrected RGB)"
+  "RGB\n(gamma-corrected RGB)" -- "RGB255\n(quantized RGB)"
+  "RGB255\n(quantized RGB)" -- "HEX"
   
-  "xyz" -- "lab"
-  "lab" -- "lchab"
-  "xyz" -- "luv"
-  "luv" -- "lchuv"
-  "rgb" -- "hsv"
-  "rgb" -- "hsl"
+  "XYZ" -- "LAB"
+  "LAB" -- "LCHAB"
+  "XYZ" -- "LUV"
+  "LUV" -- "LCHUV"
+  "RGB\n(gamma-corrected RGB)" -- "HSV"
+  "RGB\n(gamma-corrected RGB)" -- "HSL"
 
-  "lchab" -- "munsell-hvc"
-  "munsell-hvc" -- "munsell-spec"
+  "LCHAB" -- "MUNSELL-HVC"
+  "MUNSELL-HVC" -- "MUNSELL-SPEC"
 }

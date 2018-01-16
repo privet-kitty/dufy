@@ -29,6 +29,7 @@
 	   :adobe :adobed65 :adobed50
 	   :ntsc1953 :pal/secam :prophoto
 	   :new-rgbspace
+	   :copy-rgbspace
 	   :rgbspace-linearizer
 	   :rgbspace-delinearizer
 	   :rgbspace-illuminant

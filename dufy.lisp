@@ -276,7 +276,7 @@ THETA2] in a circle group."
   (let ((gamma-recipro (/ 1d0 (float gamma 1d0))))
     #'(lambda (x) (expt (clamp x 0d0 1d0) gamma-recipro))))
 
-(defstruct rgbspace
+(defstruct (rgbspace (:copier nil))
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
   (xb 0d0 :type double-float) (yb 0d0 :type double-float)
@@ -316,6 +316,35 @@ THETA2] in a circle group."
 		       :delinearizer delinearizer
 		       :to-xyz-matrix m
 		       :from-xyz-matrix (invert-matrix33 m))))))
+
+(defun copy-rgbspace (rgbspace &optional (illuminant nil))
+  "This copier can copy RGBSPACE with different ILLUMINANT. If
+ILLUMINANT is nil, it is a trivial copier."
+  (if illuminant
+      (let ((ca-func (gen-ca-converter (rgbspace-illuminant rgbspace) illuminant)))
+	(destructuring-bind (new-xr new-yr nil)
+	    (apply #'xyz-to-xyy
+		   (apply ca-func
+			  (lrgb-to-xyz 1 0 0 rgbspace)))
+	  (destructuring-bind (new-xg new-yg nil)
+	      (apply #'xyz-to-xyy
+		     (apply ca-func
+			    (lrgb-to-xyz 0 1 0 rgbspace)))
+	    (destructuring-bind (new-xb new-yb nil)
+		(apply #'xyz-to-xyy
+		       (apply ca-func
+			      (lrgb-to-xyz 0 0 1 rgbspace)))
+	      (new-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
+			    :illuminant illuminant
+			    :linearizer (rgbspace-linearizer rgbspace)
+			    :delinearizer (rgbspace-delinearizer rgbspace))))))
+      (new-rgbspace (rgbspace-xr rgbspace) (rgbspace-yr rgbspace)
+		    (rgbspace-xg rgbspace) (rgbspace-yg rgbspace)
+		    (rgbspace-xb rgbspace) (rgbspace-yb rgbspace)
+		    :illuminant (rgbspace-illuminant rgbspace)
+		    :linearizer (rgbspace-linearizer rgbspace)
+		    :delinearizer (rgbspace-delinearizer rgbspace))))
+
 
 (defun srgb-linearizer (x)
   (clamp (if (<= x 0.04045d0)
@@ -449,8 +478,8 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 
 
 (defun rgb-to-rgb255 (r g b)
-  "Quantizes RGB values from [0, 1] to {0, 1, ..., 255}. It accepts
-all the real values."
+  "Quantizes RGB values from [0, 1] to {0, 1, ..., 255}, though it
+accepts all the real values."
   (list (round (* r 255))
 	(round (* g 255))
 	(round (* b 255))))

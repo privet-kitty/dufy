@@ -19,7 +19,18 @@
 
 (in-package :dufy-tools)
 
+;; Here we generate inversion data from 24-bit RGB to Munsell.
+
 (defconstant possible-colors 16777216) ;256*256*256
+
+;; Munsell inversion data (hereinafter called MID) consists of
+;; 16777216 * 32 bit data.
+;;  0  0  0000000000  0000000000  0000000000
+;; [A][ ][    B     ][    C     ][    D     ]
+;; A: flag of interpolation (if 1, the value could have more errors);
+;; B: quantized hue by 0.1; {0R (= 10RP), 0.1R, ..., 10RP} -> Z/{0, 1, ..., 1000};
+;; C: quantized value by 0.01; [0, 10] -> {0, 1, ..., 1000};
+;; D: quantized chroma by 0.1; [0, 50] -> {0, 1, ..., 500};
 
 (defun encode-munsell-hvc1000 (h1000 v1000 c500 &optional (flag-interpolated 0))
   (declare (optimize (speed 3) (safety 0))
