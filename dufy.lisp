@@ -286,6 +286,25 @@ THETA2] in a circle group."
   (to-xyz-matrix identity-matrix :type (simple-array double-float (3 3)))
   (from-xyz-matrix identity-matrix :type (simple-array double-float (3 3))))
 
+
+;; convert XYZ to linear RGB in [0, 1]
+(defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 0))
+  "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
+OUT-OF-GAMUT-P is true, if at least one of LR , LG and LB are outside
+the interval [-THRESHOLD, 1+THRESHOLD]."
+  (destructuring-bind (lr lg lb)
+      (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
+				x y z)
+    (let ((out-of-gamut (not (and  (nearly<= threshold 0 lr 1)
+				   (nearly<= threshold 0 lg 1)
+				   (nearly<= threshold 0 lb 1)))))
+      (values (list lr lg lb) out-of-gamut))))
+
+(defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgb))
+  (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
+			    lr lg lb))		       
+
+
 (defun new-rgbspace (xr yr xg yg xb yb &key (illuminant illum-d65) (linearizer #'identity) (delinearizer #'identity))
   (let ((coordinates
 	 (make-array '(3 3)
@@ -423,23 +442,6 @@ ILLUMINANT is nil, it is a trivial copier."
 
 (defun delinearize (x &optional (rgbspace srgb))
   (funcall (rgbspace-delinearizer rgbspace) x))
-
-;; convert XYZ to linear RGB in [0, 1]
-(defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 0))
-  "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of LR , LG and LB are outside
-the interval [-THRESHOLD, 1+THRESHOLD]."
-  (destructuring-bind (lr lg lb)
-      (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
-				x y z)
-    (let ((out-of-gamut (not (and  (nearly<= threshold 0 lr 1)
-				   (nearly<= threshold 0 lg 1)
-				   (nearly<= threshold 0 lb 1)))))
-      (values (list lr lg lb) out-of-gamut))))
-
-(defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgb))
-  (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
-			    lr lg lb))		       
 
 (defun lrgb-to-rgb (lr lg lb &optional (rgbspace srgb))
   (let ((delin (rgbspace-delinearizer rgbspace)))

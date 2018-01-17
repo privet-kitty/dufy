@@ -19,7 +19,9 @@
 
 (in-package :dufy-tools)
 
+;;
 ;; Here we generate inversion data from 24-bit RGB to Munsell.
+;;
 
 (defconstant possible-colors 16777216) ;256*256*256
 
@@ -40,6 +42,15 @@
      (ash h1000 20)
      (ash v1000 10)
      c500))
+
+(defun encode-munsell-hvc (hue40 value chroma &optional (flag-interpolated 0))
+  ;; (declare (optimize (speed 3) (safety 0))
+  ;; 	   ((integer 0 1000) h1000 v1000 c500)
+  ;; 	   ((integer 0 1) flag-interpolated))
+  (encode-munsell-hvc1000 (round (* hue40 25))
+			  (round (* value 100))
+			  (round (* chroma 10))
+			  flag-interpolated))
 
 (defun interpolatedp (u32)
   (not (zerop (logand u32 #b10000000000000000000000000000000))))
@@ -181,7 +192,34 @@
 			(funcall testfunc (car lst))
 			(car lst)))
 
-; destructive
+;; fill MID with invert-lchab-to-munsell-hvc
+(defun fill-mid-with-inverter (mid &key (rgbspace srgb) (flag-keep t))
+  (let ((illum-foo-to-c (gen-ca-converter (rgbspace-illuminant rgbspace) illum-c))
+	(xyz-to-lchab-illum-c (rcurry #'dufy:xyz-to-lchab dufy:illum-c))
+	(encode-hvc-with-flag (rcurry #'encode-munsell-hvc (if flag-keep 1 0)))
+	(max-iteration 500)
+	(num-failure 0))
+    (dotimes (hex possible-colors)
+      (let ((u32 (aref mid hex)))
+	(when (interpolatedp u32)
+	  (destructuring-bind (lstar cstarab hab)
+	      (apply xyz-to-lchab-illum-c
+		     (apply illum-foo-to-c 
+			    (dufy:hex-to-xyz hex rgbspace)))
+	    (multiple-value-bind (hvc iteration)
+		(dufy::invert-munsell-hvc-to-lchab lstar cstarab hab
+						   :max-iteration max-iteration
+						   :threshold 0.01d0)
+	      (if (or (= iteration max-iteration)
+		      (= iteration -1))
+		  ;;(format t "failed at hex #x~X, LCHab=(~A, ~A, ~A)~%" hex lstar cstarab hab)
+		  (incf num-failure)
+		  (setf (aref mid hex)
+			(apply encode-hvc-with-flag hvc))))))))
+    (format t "Number of failure: ~A~%" num-failure)))
+
+;;failed at e.g. LCH(ab)=34.85732307205924d0, 66.51082690223494d0, 45.608304959637366d0
+
 (defun interpolate-once (munsell-inversion-data &key (rgbspace srgb) (xyz-deltae #'dufy:xyz-deltae))
   (let* ((source-mid (copy-seq munsell-inversion-data))
 	 (not-interpolated 0)
@@ -221,7 +259,6 @@
 
 
 
-; destructive
 (defun interpolate-munsell-inversion-data (munsell-inversion-data &key (rgbspace srgb) (xyz-deltae #'dufy:xyz-deltae))
   (let ((i 0))
     (loop
@@ -330,6 +367,14 @@
       (when (= +maxu32+ (aref munsell-inversion-data hex))
 	  (incf gaps)))
     gaps))
+
+
+(defun count-interpolated (munsell-inversion-data)
+  (let ((num 0))
+    (dotimes (hex possible-colors num)
+      (when (interpolatedp (aref munsell-inversion-data hex))
+	  (incf num)))))
+
   
 (defun gap-rate-b (munsell-inversion-data)
   (let ((gaps-sum 0))

@@ -85,8 +85,8 @@ The behavior of the MUNSELL-HVC-TO- functions is undefined, when chroma is large
 		  0.975d0)
 	       0d0 1d0)))
 
-;; y should be in [0,1]
 (defun y-to-munsell-value (y)
+  "The nominal range of Y is [0, 1]."
   (let* ((y1000 (* (clamp y 0 1) 1000))
 	 (y1 (floor y1000))
 	 (y2 (ceiling y1000)))
@@ -482,6 +482,11 @@ The standard illuminant of RGBSPACE must be D65."
 (defun lstar-to-munsell-value (lstar)
   (y-to-munsell-value (lstar-to-y lstar)))
 
+(defun rough-lchab-to-munsell-hvc (lstar cstarab hab)
+  (list (* hab #.(float 40/360 1d0))
+	(lstar-to-munsell-value lstar)
+	(* cstarab 0.2d0)))
+
 ;; (defun lchab-to-hvc-in-block (lstar cstarab hab hue40-rb ch-rb hue40-lb ch-lb hue40-rt ch-rt hue40-lt ch-lt)
 ;;   (let ((munsell-v (lstar-to-munsell-value lstar)))
 ;;     (destructuring-bind (nil cstarab-rb hab-rb)
@@ -492,3 +497,68 @@ The standard illuminant of RGBSPACE must be D65."
 ;; 	    (munsell-hvc-to-lchab hue40-rt munsell-v ch-rt)
 ;; 	  (destructuring-bind (nil cstarab-lt hab-lt)
 ;; 	      (munsell-hvc-to-lchab hue40-lt munsell-v ch-lt)
+
+
+;; used in INVERT-LCHAB-TO-MUNSELL-HVC
+(declaim (ftype (function * double-float) circular-delta))
+(defun circular-delta (theta1 theta2)
+  (let ((z (mod (- theta1 theta2) 360d0)))
+    (if (<= z 180)
+	z
+	(- z 360d0))))
+
+
+;; An inverter of MUNSELL-HVC-TO-LCHAB with a simple iteration algorithm:
+;; V := LSTAR-TO-MUNSELL-VALUE(LSTAR);
+;; H_(n+1) := H_n + factor * delta(H_n);
+;; C_(n+1) :=  C_n + factor * delta(C_n),
+;; where delta(H_n) and delta(C_n) is internally calculated at every
+;; step. H and C could diverge, if FACTOR is too large; the behavior is
+;; undefined, if FACTOR >= 1. The return values are as follows:
+;; 1. If max(delta(H_n), delta(C_n)) falls below THRESHOLD:
+;; (H V C), NUMBER-OF-ITERATION.
+;; 2. If the number of iteration exceeds MAX-ITERATION:
+;; (H V C), MAX-ITERATION.
+;; 3. If (H_n, V, C_n) goes out of the Munsell renotation data:
+;; (-1.0d0 -1.0d0 -1.0d0), -1.
+;; In other words: The inversion has failed, if the second value is equal
+;; to MAX-ITERATION or -1.
+;; 
+;; BE CAREFUL: Illuminant C.
+(defun invert-munsell-hvc-to-lchab (lstar cstarab hab &key (max-iteration 500) (factor 0.5d0) (threshold 1d-6))
+  "Illuminant C."
+  (destructuring-bind (tmp-hue40 v tmp-c)
+      (rough-lchab-to-munsell-hvc lstar cstarab hab)
+    (values-list
+     (dotimes (i max-iteration (list (list (mod tmp-hue40 40) v tmp-c)
+				     max-iteration))
+       (if (> tmp-c (max-chroma tmp-hue40 v))
+	   (return (list '(-1d0 -1d0 -1d0) -1)) ; exceeds max-chroma
+	   (destructuring-bind (nil tmp-cstarab tmp-hab)
+	       (munsell-hvc-to-lchab tmp-hue40 v tmp-c)
+	     (let* ((delta-cstarab (- cstarab tmp-cstarab))
+		    (delta-hab (circular-delta hab tmp-hab))
+ 	            (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
+		    (delta-c (* delta-cstarab 0.2d0)))
+	       (if (and (<= (abs delta-hue40) threshold)
+			(<= (abs delta-c) threshold))
+		   (return (list (list (mod tmp-hue40 40d0) v tmp-c)
+				 i))
+		   (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
+			 tmp-c (+ tmp-c (* factor delta-c)))))))))))
+      
+
+(defun test-inverter ()
+  (do ((lstar 0 (+ lstar 10)))
+	     ((> lstar 100) 'done)
+	   (do ((hab 0 (+ hab 9)))
+	       ((= hab 360))
+	     (loop for cstarab = 0 then (+ cstarab 10)
+		  do (multiple-value-bind (lst number)
+			 (dufy::invert-munsell-hvc-to-lchab lstar cstarab hab :threshold 1d-8 :max-iteration 500)
+		       (declare (ignore lst))
+		       (when (= number -1)
+			 (format t "beyond MRD at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab)
+			 (return))
+		       (when (= number 500)
+			 (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab)))))))
