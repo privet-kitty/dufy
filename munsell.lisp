@@ -479,13 +479,17 @@ The standard illuminant of RGBSPACE must be D65."
 (defun rough-munsell-chroma-to-cstarab (c)
   (* c 5))
 
-(defun lstar-to-munsell-value (lstar)
-  (y-to-munsell-value (lstar-to-y lstar)))
 
+;; used in INVERT-LCHAB-TO-MUNSELL-HVC
 (defun rough-lchab-to-munsell-hvc (lstar cstarab hab)
+  (declare (optimize (speed 3) (safety 0))
+	   (double-float lstar cstarab hab))
   (list (* hab #.(float 40/360 1d0))
 	(lstar-to-munsell-value lstar)
 	(* cstarab 0.2d0)))
+
+(defun lstar-to-munsell-value (lstar)
+  (y-to-munsell-value (lstar-to-y lstar)))
 
 ;; (defun lchab-to-hvc-in-block (lstar cstarab hab hue40-rb ch-rb hue40-lb ch-lb hue40-rt ch-rt hue40-lt ch-lt)
 ;;   (let ((munsell-v (lstar-to-munsell-value lstar)))
@@ -502,6 +506,8 @@ The standard illuminant of RGBSPACE must be D65."
 ;; used in INVERT-LCHAB-TO-MUNSELL-HVC
 (declaim (ftype (function * double-float) circular-delta))
 (defun circular-delta (theta1 theta2)
+  (declare (optimize (speed 3) (safety 0))
+	   (double-float theta1 theta2))
   (let ((z (mod (- theta1 theta2) 360d0)))
     (if (<= z 180)
 	z
@@ -525,10 +531,17 @@ The standard illuminant of RGBSPACE must be D65."
 ;; to MAX-ITERATION or -1.
 ;; 
 ;; BE CAREFUL: Illuminant C.
-(defun invert-munsell-hvc-to-lchab (lstar cstarab hab &key (max-iteration 500) (factor 0.5d0) (threshold 1d-6))
+(defun invert-munsell-hvc-to-lchab-with-init (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 500) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
-  (destructuring-bind (tmp-hue40 v tmp-c)
-      (rough-lchab-to-munsell-hvc lstar cstarab hab)
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((cstarab (float cstarab 1d0))
+	(hab (float hab 1d0))
+	(factor (float factor 1d0))
+	(threshold (float threshold 1d0))
+	(tmp-hue40 (float init-hue40 1d0))
+	(v (lstar-to-munsell-value lstar))
+	(tmp-c (float init-chroma 1d0)))
+    (declare (double-float tmp-hue40))
     (values-list
      (dotimes (i max-iteration (list (list (mod tmp-hue40 40) v tmp-c)
 				     max-iteration))
@@ -536,9 +549,10 @@ The standard illuminant of RGBSPACE must be D65."
 	   (return (list '(-1d0 -1d0 -1d0) -1)) ; exceeds max-chroma
 	   (destructuring-bind (nil tmp-cstarab tmp-hab)
 	       (munsell-hvc-to-lchab tmp-hue40 v tmp-c)
+	     (declare (double-float tmp-cstarab tmp-hab))
 	     (let* ((delta-cstarab (- cstarab tmp-cstarab))
 		    (delta-hab (circular-delta hab tmp-hab))
- 	            (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
+		    (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
 		    (delta-c (* delta-cstarab 0.2d0)))
 	       (if (and (<= (abs delta-hue40) threshold)
 			(<= (abs delta-c) threshold))
@@ -546,7 +560,15 @@ The standard illuminant of RGBSPACE must be D65."
 				 i))
 		   (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
 			 tmp-c (+ tmp-c (* factor delta-c)))))))))))
-      
+
+(defun invert-munsell-hvc-to-lchab (lstar cstarab hab &key (max-iteration 500) (factor 0.5d0) (threshold 1d-6))
+  (destructuring-bind (init-h nil init-c)
+      (rough-lchab-to-munsell-hvc lstar cstarab hab)
+    (invert-munsell-hvc-to-lchab-with-init lstar cstarab hab
+					   init-h init-c
+					   :max-iteration max-iteration
+					   :factor factor
+					   :threshold threshold)))
 
 (defun test-inverter ()
   (do ((lstar 0 (+ lstar 10)))
