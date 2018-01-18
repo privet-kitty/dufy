@@ -486,7 +486,7 @@ The standard illuminant of RGBSPACE must be D65."
 	   (double-float lstar cstarab hab))
   (list (* hab #.(float 40/360 1d0))
 	(lstar-to-munsell-value lstar)
-	(* cstarab 0.2d0)))
+	(* cstarab #.(/ 5.5d0))))
 
 (defun lstar-to-munsell-value (lstar)
   (y-to-munsell-value (lstar-to-y lstar)))

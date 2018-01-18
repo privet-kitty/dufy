@@ -133,34 +133,35 @@ Dufy can handle Munsell color system in the same way as other color spaces:
     => (-1.7976931348623157d308 -1.7976931348623157d308 -1.7976931348623157d308)
     => T
 
-The converters are based on [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php). The second value is a flag, meaning out of the data; chroma is to large in the second example.
+The converters are based on [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php). The second return value is a flag that indicates out of the data; in the second example, chroma is too large.
 
     * (dufy:munsell-spec-to-hvc "3.2R 4.5/6.1")
     => (1.28 4.5 6.1)
     * (dufy:munsell-hvc-to-xyz 1.28 4.5 6.1)
     => (0.19362651667300654d0 0.1514271852669221d0 0.12281280847832986d0)
 
-`munsell-spec` is a standard string notation of Munsell color. `munsell-hvc` is three-number-specification, which is easier to handle in some cases. The hue number of `munsell-hvc` corresponds to the hue string of `munsell-spec` as follows:
+`munsell-spec` is a standard string notation of Munsell color. `munsell-hvc` is its three-number-specification, which will be easier to handle in some cases. The hue number of `munsell-hvc` corresponds to the hue string of `munsell-spec` as follows:
 
 | Hue in `munsell-hvc` | Hue in `munsell-spec` |
 | -------------------- | --------------------- | 
-| 0 - 4 | 10RP (=0R) - 10R (=0YR) |
-| 4 - 8 | 10R (=0YR) - 10YR (=0Y) |
+| 0 to 4 | 10RP (=0R) to 10R (=0YR) |
+| 4 to 8 | 10R (=0YR) to 10YR (=0Y) |
 | ... | ... |
-| 36 - 40 | 10P (=0RP) - 10RP (=0R) |
+| 36 to 40 | 10P (=0RP) to 10RP (=0R) |
 
-The hue number of `munsell-hvc` is a circle group; hues outside the interval [0, 40] are available:
+The hue number of `munsell-hvc` is a circle group: i.e. hues outside the interval [0, 40] are acceptable:
 
-    * (dufy:munsell-hvc-to-spec -400.0 4.5 6.1) ; same as (0.0 4.5 6.1)
+    * (dufy:munsell-hvc-to-spec -400.0 4.5 6.1) ; the same as (0.0 4.5 6.1)
     => "0.00R 4.50/6.10"
 
-There are some more points to remember: First, the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C. Sometimes you may want to use a direct converter with illuminant C, for e.g. efficiency or accuracy. The following converters are under illuminant C: `munsell-spec-to-lchab`, `munsell-hvc-to-lchab`, `munsell-hvc-to-xyz-illum-c`. 
+There are some more points to remember: First, the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C. Sometimes you may want to use a direct converter with illuminant C, for e.g. accuracy or efficiency. The following converters are under illuminant C: `munsell-spec-to-lchab`, `munsell-hvc-to-lchab`, `munsell-hvc-to-xyz-illum-c`. 
 
-Second, you can find the feasible chroma for a given hue number and value by `max-chroma`:
+Second, for a given hue number and value you can find the feasible chroma by `max-chroma`:
 
     * (dufy:max-chroma 1.28 6.1)
     => 24
-    * (dufy:munsell-hvc-to-xyz 1.28 4.5 24.0)
-    => (0.37763067574238846d0 0.14935160313469042d0 0.05453354054199556d0)
-    * (dufy:munsell-hvc-to-xyz 1.28 4.5 24.1)
+    * (dufy:munsell-hvc-to-xyz 1.28 6.1 24.0)
+    => (0.6152592934539706d0 0.3010482814108585d0 0.13239597563080155d0)
+    * (dufy:munsell-hvc-to-xyz 1.28 6.1 24.1)
     => ERROR: Out of Munsell renotation data.
+
