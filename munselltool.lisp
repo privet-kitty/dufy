@@ -30,12 +30,15 @@
 
 (defconstant possible-colors 16777216) ;256*256*256
 
-;; Munsell inversion data (hereinafter called MID) consists of
-;; 16777216 * 32 bit data.
+;; Munsell inversion data (hereinafter called MID) is a 
+;; 16777216 * 32 bit binary data with big-endian: 
 ;;  0  0  0000000000  0000000000  0000000000
 ;; [A][ ][    B     ][    C     ][    D     ]
-;; A: flag of interpolation (if 1, the value could have more errors);
-;; B: quantized hue by 0.1; {0R (= 10RP), 0.1R, ..., 10RP} -> Z/{0, 1, ..., 1000};
+;; A: flag of large interpolation error:
+;; let f the function from Munsell to RGB in the library Dufy;
+;; if and only if the flag of a node MID[hex] is 1, then
+;; delta-Eab(hex, f(MID[hex])) >= 1.0.
+;; B: quantized hue by 0.1; {0R (= 10RP), 0.1R, 0.2R, ..., 10RP} -> Z/{0, 1, ..., 1000};
 ;; C: quantized value by 0.01; [0, 10] -> {0, 1, ..., 1000};
 ;; D: quantized chroma by 0.1; [0, 50] -> {0, 1, ..., 500};
 
@@ -146,10 +149,33 @@
 	      num (* 100 (/ num (float possible-colors)))))
     (format t "Now filling the remaining data with a partial brute force method...~%")
     (fill-mid-brute-force mid 1d0 :rgbspace rgbspace)
-    (format t "The error of the final data is as follows:~%")
+    (format t "Settting a flag on the nodes which give large errors: i.e. delta-Eab >= ~A~%" 1d0)
+    (set-flag-on-mid mid 1d0 :rgbspace rgbspace)
+    (format t "Evaluating the errors of the final data...~%")
     (examine-interpolation-error mid :rgbspace rgbspace :all-data t)
     mid))
-  
+
+
+;; set a flag on every node which means a larger error than STD-DELTAE.
+(defun set-flag-on-mid (mid std-deltae &key (rgbspace srgb) (deltae #'dufy:xyz-deltae))
+  (let ((illum-c-to-foo (gen-ca-converter illum-c (rgbspace-illuminant rgbspace))))
+    (dotimes (hex possible-colors)
+      (let ((u32 (aref mid hex)))
+	(destructuring-bind  (r1 g1 b1) (dufy:hex-to-rgb255 hex)
+	  (destructuring-bind (x1 y1 z1) (dufy:rgb255-to-xyz r1 g1 b1 rgbspace)
+	    (destructuring-bind (x2 y2 z2)
+		(apply illum-c-to-foo
+		       (apply #'dufy:munsell-hvc-to-xyz-illum-c
+			      (decode-munsell-hvc u32)))
+	      (let ((delta (funcall deltae x1 y1 z1 x2 y2 z2
+				    :illuminant (rgbspace-illuminant rgbspace))))
+		(setf (aref mid hex)
+		      (funcall (if (> delta std-deltae)
+				   #'set-interpolated
+				   #'set-uninterpolated)
+			       u32))))))))))
+
+
 
 (defun fill-mid-brute-force (mid std-deltae &key (rgbspace srgb))
   (let ((max-error most-positive-double-float)
@@ -162,7 +188,7 @@
 					       :radius radius)
 		    (let ((new-error (examine-interpolation-error mid :rgbspace rgbspace :silent t))
 			  (new-remaining-num (count-interpolated mid)))
-		      (format t "Loop ~A: Maximum Error (Delta-E) = ~A, Remaining nodes=~A~%" i new-error new-remaining-num)
+		      (format t "Loop ~A: Maximum Error (Delta-Eab) = ~A, Remaining nodes=~A~%" i new-error new-remaining-num)
 		      (if (and (nearly<= 0.001d0 max-error new-error)
 			       (<= remaining-num new-remaining-num))
 			  (return)
@@ -174,7 +200,6 @@
       (mysearch 20))))
 
 	 
-;; inverts rgb255 to hvc1000 with partial brute force method and
 (defun fill-mid-brute-force-once (mid std-deltae &key (rgbspace srgb) (keep-flag nil) (radius 20))
   (let ((illum-c-to-foo (gen-ca-converter illum-c (rgbspace-illuminant rgbspace)))
 	(remaining-num 0))
@@ -198,11 +223,10 @@
 				 #'identity
 				 #'set-uninterpolated)
 			     u32)))))))))
-      
+
+
+;; inverts hex to hvc-u32 with partial brute force method
 (defun search-hex-to-hvc-u32 (hex init-hvc-u32 &key (rgbspace srgb) (radius 20))
-  ;; (declare (optimize (speed 3) (safety 0))
-  ;; 	   ((integer 0 1000) init-h1000 init-v1000 init-c500)
-  ;; 	   (ftype (function * double-float) xyz-deltae))
   (let ((illum-c-to-foo (gen-ca-converter illum-c (rgbspace-illuminant rgbspace))))
     (destructuring-bind (r255 g255 b255)
 	(dufy:hex-to-rgb255 hex)
@@ -261,7 +285,7 @@
 	    (find-least-score-rec testfunc (cdr lst) score (car lst))
 	    (find-least-score-rec testfunc (cdr lst) l-score l-node)))))
 
-;; return a node where the testfunc gives the minimum value.
+;; returns a node for which the TESTFUNC gives the minimum value.
 (defun find-least-score (testfunc lst)
   (find-least-score-rec testfunc
 			lst
@@ -352,8 +376,8 @@
 	       (return))
 	     (format t "Loop: ~a: Remaining nodes = ~A,~%" (incf i) remaining))))))
 
-;; set value by y-to-munsell-value in MID. Thereby chroma is properly corrected.
-;; destrtuctive
+
+;; sets value with y-to-munsell-value in MID; Thereby chroma is properly corrected.
 (defparameter d65-to-c (gen-ca-converter illum-d65 illum-c))
 (defun set-atsm-value (munsell-inversion-data)
   (dotimes (hex possible-colors)
@@ -369,8 +393,7 @@
 	(setf (aref munsell-inversion-data hex) (encode-munsell-hvc1000 h1000 v1000-new c500-new))))))
 
 
-;; save/load Munsell inversion data to/from a binary file with big endian
-
+;; saves/loads Munsell inversion data to/from a binary file with big endian
 (defun absolute-p (path)
   (eql (car (pathname-directory (parse-namestring path)))
        :absolute))
@@ -416,7 +439,7 @@
 	  (format t "inacurrate value at position: ~a" x))))))
 	  
 
-;; sRGB d65 to munsell HVC	  
+;; RGB255 to munsell HVC
 (defun rgb255-to-munsell-hvc (r g b munsell-inversion-data)
   (decode-munsell-hvc (aref munsell-inversion-data (dufy:rgb255-to-hex r g b))))
 
