@@ -52,7 +52,7 @@ converter_tree
       fontsize = 18
     ];
     node [shape = "box", fontname = "helvetica"]
-    "XYZ" -- "XYY"
+    "XYZ" -- "XYY\n(xyY)"
     "XYZ" -- "LRGB\n(linear RGB)"
     "LRGB\n(linear RGB)" -- "RGB\n(gamma-corrected RGB)"
     "RGB\n(gamma-corrected RGB)" -- "RGB255\n(quantized RGB)"
@@ -142,7 +142,8 @@ The converters are based on [Munsell renotation data](https://www.rit.edu/cos/co
 
 `munsell-spec` is a standard string notation of Munsell color. `munsell-hvc` is three-number-specification, which is easier to handle in some cases. The hue number of `munsell-hvc` corresponds to the hue string of `munsell-spec` as follows:
 
-| Hue in `munsell-hvc` | Hue in `munsell-spec` | 
+| Hue in `munsell-hvc` | Hue in `munsell-spec` |
+| -------------------- | --------------------- | 
 | 0 - 4 | 10RP (=0R) - 10R (=0YR) |
 | 4 - 8 | 10R (=0YR) - 10YR (=0Y) |
 | ... | ... |
