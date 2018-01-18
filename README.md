@@ -9,8 +9,8 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 * xyY
 * HSV
 * HSL
-* CIELAB and LCH(ab)
-* CIELUV and LCH(uv)
+* CIELAB and LCH<sub>ab</sub>
+* CIELUV and LCH<sub>uv</sub>
 
 Dufy has following features:
 
