@@ -45,7 +45,7 @@ If you want to use ASDF without quicklisp, you should put the directory of dufy 
 <details> 
 <summary></summary>
 converter_tree
-  graph  {
+  graph G {
     graph [
       labelloc = "t",
       label = "Tree of Direct Converters",
