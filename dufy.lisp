@@ -17,7 +17,7 @@
 	   (apply #'nearly<= threshold more-numbers))))
 
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
-  "(x mod divisor) - (y mod divisor) = (x - y) mod divisor."
+  "(X - Y) mod DIVISOR."
   (mod (- x y) divisor))
 
 (defun circular-nearer (theta1 x theta2 &optional (perimeter TWO-PI))
@@ -29,7 +29,7 @@ between X and THETA2; returns THETA1 or THETA2, whichever is nearer."
 
 (defun circular-clamp (number min max &optional (perimeter TWO-PI))
   "A clamp function in a circle group. If NUMBER is not in
-the (counterclockwise) closed interval [min, max], CIRCULAR-CLAMP
+the (counterclockwise) closed interval [MIN, MAX], CIRCULAR-CLAMP
 returns MIN or MAX, whichever is nearer to NUMBER."
   (let ((number$ (mod number perimeter))
 	(min$ (mod min perimeter))
@@ -199,6 +199,7 @@ THETA2] in a circle group."
 	   (* z (aref matrix 2 2)))))
 
 (defun calc-ca-matrix  (from-illuminant to-illuminant &optional (tmatrix bradford))
+  "Returns a 3*3 chromatic adaptation matrix."
   (let ((from-white-x (illuminant-largex from-illuminant))
 	(from-white-y (illuminant-largey from-illuminant))
 	(from-white-z (illuminant-largez from-illuminant))
@@ -248,18 +249,19 @@ THETA2] in a circle group."
 	  matrix2)))))
 
 
-;; get a function for chromatic adaptation
 (declaim (ftype (function * function) gen-ca-converter))
 (defun gen-ca-converter (from-illuminant to-illuminant &optional (tmatrix bradford))
+  "Returns a chromatic adaptation function of XYZ color: #'(lambda (X Y Z) ...)"
   (let ((mat (calc-ca-matrix from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))
 
 (defun gen-ca-converter-xyy (from-illuminant to-illuminant &optional (tmatrix bradford))
-  (let ((mat (calc-ca-matrix from-illuminant to-illuminant tmatrix)))
+  "Returns a chromatic adaptation function of xyY color: #'(lambda (X Y LARGEY) ...)"
+  (let ((ca-func (gen-ca-converter from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y largey)
 	(apply #'xyz-to-xyy
-	       (apply (curry #'multiply-matrix-and-vec mat)
+	       (apply ca-func
 		      (xyy-to-xyz x y largey))))))
 
 

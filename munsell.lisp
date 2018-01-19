@@ -531,7 +531,7 @@ The standard illuminant of RGBSPACE must be D65."
 ;; to MAX-ITERATION or -1.
 ;; 
 ;; BE CAREFUL: Illuminant C.
-(defun invert-munsell-hvc-to-lchab-with-init (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 500) (factor 0.5d0) (threshold 1d-6))
+(defun invert-munsell-hvc-to-lchab-with-init (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (let ((cstarab (float cstarab 1d0))
@@ -553,7 +553,8 @@ The standard illuminant of RGBSPACE must be D65."
 	     (let* ((delta-cstarab (- cstarab tmp-cstarab))
 		    (delta-hab (circular-delta hab tmp-hab))
 		    (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
-		    (delta-c (* delta-cstarab 0.2d0)))
+		    (delta-c (* delta-cstarab #.(/ 5.5d0))))
+	       ;; (format t "hue40=~A chroma~A~%" tmp-hue40 tmp-c)
 	       (if (and (<= (abs delta-hue40) threshold)
 			(<= (abs delta-c) threshold))
 		   (return (list (list (mod tmp-hue40 40d0) v tmp-c)
@@ -561,14 +562,16 @@ The standard illuminant of RGBSPACE must be D65."
 		   (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
 			 tmp-c (+ tmp-c (* factor delta-c)))))))))))
 
-(defun invert-munsell-hvc-to-lchab (lstar cstarab hab &key (max-iteration 500) (factor 0.5d0) (threshold 1d-6))
-  (destructuring-bind (init-h nil init-c)
-      (rough-lchab-to-munsell-hvc lstar cstarab hab)
-    (invert-munsell-hvc-to-lchab-with-init lstar cstarab hab
-					   init-h init-c
-					   :max-iteration max-iteration
-					   :factor factor
-					   :threshold threshold)))
+(defun invert-munsell-hvc-to-lchab (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+  (let ((cstarab (float cstarab 1d0))
+	(hab (float hab 1d0)))
+    (destructuring-bind (init-h nil init-c)
+	(rough-lchab-to-munsell-hvc lstar cstarab hab)
+      (invert-munsell-hvc-to-lchab-with-init lstar cstarab hab
+					     init-h init-c
+					     :max-iteration max-iteration
+					     :factor factor
+					     :threshold threshold))))
 
 (defun test-inverter ()
   (do ((lstar 0 (+ lstar 10)))

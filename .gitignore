@@ -1,6 +1,5 @@
 *~
 *.dat
+*.bak
 \#*#
-# !srgbd65-to-munsell-be-interpolated.dat
-!cie1931-color-matching.dat
 doc/

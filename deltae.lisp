@@ -26,6 +26,8 @@
     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
       (xyz-deltae x1 y1 z1 x2 y2 z2 :illuminant (rgbspace-illuminant rgbspace)))))
 
+
+;; CIE94
 (defun deltae94 (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
   (declare (optimize (speed 3) (safety 1)))
   (let ((l1 (float l1 1d0))
@@ -72,6 +74,8 @@
 		    :illuminant (rgbspace-illuminant rgbspace)
 		    :application application))))
 
+
+;; CIEDE2000
 (defun deltae00 (l1 a1 b1 l2 a2 b2)
   (declare (optimize (speed 3) (safety 1)))
   (let ((l1 (float l1 1d0))
