@@ -27,15 +27,15 @@
     (let ((mchroma (max-chroma hue40 value)))
       (do ((chroma chroma-start (+ chroma 1d0)))
 	  ((>= chroma mchroma))
-	(unless (nth-value 1 (dufy:munsell-hvc-to-lrgb hue40 value chroma :threshold 0))
-	  (destructuring-bind (x y nil) (dufy::munsell-hvc-to-xyy hue40 value chroma)
+	(unless (nth-value 1 (dufy:mhvc-to-lrgb hue40 value chroma :threshold 0))
+	  (destructuring-bind (x y nil) (dufy::mhvc-to-xyy hue40 value chroma)
 	    (dotter x y col))
 	)
 	))))
 
 (defun hvc-dotter (hue40 value chroma &optional (col +blue+))
   (destructuring-bind (x y nil)
-      (dufy::munsell-hvc-to-xyy hue40 value chroma)
+      (dufy::mhvc-to-xyy hue40 value chroma)
     (dotter x y col 3)))
 
 ; y 3.853322597739668d0 = munsell-value 3.853322597739668d0

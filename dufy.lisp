@@ -289,23 +289,6 @@ THETA2] in a circle group."
   (from-xyz-matrix identity-matrix :type (simple-array double-float (3 3))))
 
 
-;; convert XYZ to linear RGB in [0, 1]
-(defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 0))
-  "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of LR , LG and LB are outside
-the interval [-THRESHOLD, 1+THRESHOLD]."
-  (destructuring-bind (lr lg lb)
-      (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
-				x y z)
-    (let ((out-of-gamut (not (and  (nearly<= threshold 0 lr 1)
-				   (nearly<= threshold 0 lg 1)
-				   (nearly<= threshold 0 lb 1)))))
-      (values (list lr lg lb) out-of-gamut))))
-
-(defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgb))
-  (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
-			    lr lg lb))		       
-
 
 (defun new-rgbspace (xr yr xg yg xb yb &key (illuminant illum-d65) (linearizer #'identity) (delinearizer #'identity))
   (let ((coordinates
@@ -338,6 +321,90 @@ the interval [-THRESHOLD, 1+THRESHOLD]."
 		       :to-xyz-matrix m
 		       :from-xyz-matrix (invert-matrix33 m))))))
 
+
+(defun srgb-linearizer (x)
+  (clamp (if (<= x 0.04045d0)
+	     (/ x 12.92d0)
+	     (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0))
+	 0d0 1d0))
+
+(defun srgb-delinearizer (x)
+  (clamp (if (<= x 0.0031308d0)
+	     (* x 12.92d0)
+	     (- (* 1.055d0 (expt x #.(/ 1 2.4d0))) 0.055d0))
+	 0d0 1d0))
+
+(defparameter srgb
+  (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
+		:linearizer #'srgb-linearizer				
+		:delinearizer #'srgb-delinearizer))
+
+(defparameter srgbd65 srgb)
+
+(defun adobe-linearizer (x)
+  (clamp (if (<= x 0.0556d0)
+	     (* x #.(float 1/32 1d0))
+	     (expt x 2.2d0))
+	 0d0 1d0))
+
+(defun adobe-delinearizer (x)
+  (clamp (if (<= x 0.00174d0)
+	     (* x 32d0)
+	     (expt x #.(/ 1 2.2d0)))
+	 0d0 1d0))
+
+(defparameter adobe
+  (new-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
+		:linearizer #'adobe-linearizer
+		:delinearizer #'adobe-delinearizer))
+
+(defparameter adobed65 adobe)
+
+
+(defparameter ntsc1953
+  (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
+		:illuminant illum-c
+		:linearizer (gen-linearizer 2.2d0)
+		:delinearizer (gen-delinearizer 2.2d0)))
+
+(defparameter pal/secam
+  (new-rgbspace 0.64d0 0.33d0 0.29d0 0.60d0 0.15d0 0.06d0
+		:linearizer (gen-linearizer 2.8d0)
+		:delinearizer (gen-delinearizer 2.8d0)))
+
+
+(defparameter prophoto
+  (new-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
+		:illuminant illum-d50
+		:linearizer #'(lambda (x)
+				(clamp (if (<= x #.(* 1/512 16d0))
+					   (* x #.(float 1/16 1d0))
+					   (expt x 1.8d0))
+				       0 1))
+		:delinearizer #'(lambda (x)
+				  (clamp (if (<= x (float 1/512 1d0))
+					     (* x 16d0)
+					     (expt x #.(/ 1 1.8d0)))
+					 0 1))))			      
+ 
+
+;; convert XYZ to linear RGB in [0, 1]
+(defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 0))
+  "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
+OUT-OF-GAMUT-P is true, if at least one of LR , LG and LB are outside
+the interval [-THRESHOLD, 1+THRESHOLD]."
+  (destructuring-bind (lr lg lb)
+      (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
+				x y z)
+    (let ((out-of-gamut (not (and  (nearly<= threshold 0 lr 1)
+				   (nearly<= threshold 0 lg 1)
+				   (nearly<= threshold 0 lb 1)))))
+      (values (list lr lg lb) out-of-gamut))))
+
+(defun lrgb-to-xyz (lr lg lb &optional (rgbspace srgb))
+  (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
+			    lr lg lb))		       
+
 (defun copy-rgbspace (rgbspace &optional (illuminant nil))
   "This copier can copy RGBSPACE with different ILLUMINANT. If
 ILLUMINANT is nil, it is a trivial copier."
@@ -367,76 +434,12 @@ ILLUMINANT is nil, it is a trivial copier."
 		    :delinearizer (rgbspace-delinearizer rgbspace))))
 
 
-(defun srgb-linearizer (x)
-  (clamp (if (<= x 0.04045d0)
-	     (/ x 12.92d0)
-	     (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0))
-	 0d0 1d0))
-
-(defun srgb-delinearizer (x)
-  (clamp (if (<= x 0.0031308d0)
-	     (* x 12.92d0)
-	     (- (* 1.055d0 (expt x #.(/ 1 2.4d0))) 0.055d0))
-	 0d0 1d0))
-
-(defparameter srgb
-  (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		:linearizer #'srgb-linearizer				
-		:delinearizer #'srgb-delinearizer))
-
-(defparameter srgbd65 srgb)
-
 (defparameter srgbd50
   (copy-rgbspace srgbd65 illum-d50))
-
-(defun adobe-linearizer (x)
-  (clamp (if (<= x 0.0556d0)
-	     (* x #.(float 1/32 1d0))
-	     (expt x 2.2d0))
-	 0d0 1d0))
-
-(defun adobe-delinearizer (x)
-  (clamp (if (<= x 0.00174d0)
-	     (* x 32d0)
-	     (expt x #.(/ 1 2.2d0)))
-	 0d0 1d0))
-
-(defparameter adobe
-  (new-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
-		:linearizer #'adobe-linearizer
-		:delinearizer #'adobe-delinearizer))
-
-(defparameter adobed65 adobe)
 
 (defparameter adobed50
   (copy-rgbspace adobed65 illum-d50))
 
-(defparameter ntsc1953
-  (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
-		:illuminant illum-c
-		:linearizer (gen-linearizer 2.2d0)
-		:delinearizer (gen-delinearizer 2.2d0)))
-
-(defparameter pal/secam
-  (new-rgbspace 0.64d0 0.33d0 0.29d0 0.60d0 0.15d0 0.06d0
-		:linearizer (gen-linearizer 2.8d0)
-		:delinearizer (gen-delinearizer 2.8d0)))
-
-
-(defparameter prophoto
-  (new-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
-		:illuminant illum-d50
-		:linearizer #'(lambda (x)
-				(clamp (if (<= x #.(* 1/512 16d0))
-					   (* x #.(float 1/16 1d0))
-					   (expt x 1.8d0))
-				       0 1))
-		:delinearizer #'(lambda (x)
-				  (clamp (if (<= x (float 1/512 1d0))
-					     (* x 16d0)
-					     (expt x #.(/ 1 1.8d0)))
-					 0 1))))			      
- 
 
 ;; the nominal range of x is [0, 1]
 (defun linearize (x &optional (rgbspace srgb))

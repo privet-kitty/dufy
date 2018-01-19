@@ -125,20 +125,20 @@
 	   :munsell-value-to-y
 	   :y-to-munsell-value
 	   :rgb255-to-munsell-value
-	   :munsell-hvc-out-of-mrd-p
-	   :munsell-hvc-to-xyy
-	   :munsell-hvc-to-xyz
-	   :munsell-hvc-to-xyz-illum-c
-	   :munsell-hvc-to-lrgb
-	   :munsell-hvc-to-rgb255
-	   :munsell-hvc-to-lchab
-	   :munsell-hvc-to-spec
-	   :munsell-spec-to-hvc
-	   :munsell-spec-out-of-mrd-p
-	   :munsell-spec-to-lchab
-	   :munsell-spec-to-xyz
-	   :munsell-spec-to-xyy
-	   :munsell-spec-to-rgb255
+	   :mhvc-out-of-mrd-p
+	   :mhvc-to-xyy
+	   :mhvc-to-xyz
+	   :mhvc-to-xyz-illum-c
+	   :mhvc-to-lrgb
+	   :mhvc-to-rgb255
+	   :mhvc-to-lchab
+	   :mhvc-to-spec
+	   :munsell-to-mhvc
+	   :munsell-out-of-mrd-p
+	   :munsell-to-lchab
+	   :munsell-to-xyz
+	   :munsell-to-xyy
+	   :munsell-to-rgb255
 	   :max-chroma
 
 ))
