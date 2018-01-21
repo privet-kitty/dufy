@@ -10,6 +10,7 @@
 	   :illuminant-largex
 	   :illuminant-largey
 	   :illuminant-largez
+	   :illuminant-spd
 	   :new-illuminant
 	   :illum-a :illum-e
 	   :illum-c :illum-d50 :illum-d65
@@ -102,6 +103,9 @@
 	   :hsl-to-xyz
 	   :xyz-to-hsl
 
+	   ;; spectrum.lisp
+	   :gen-spectrum
+	   :gen-illum-d-spectrum
 	   :color-matching-x
 	   :color-matching-y
 	   :color-matching-z
@@ -109,6 +113,8 @@
 	   :spectrum-to-xyz
 	   :bb-spectrum
 	   :optimal-spectrum
+	   :flat-spectrum
+	   :spectrum-sum
 	   
 	   ;; deltae.lisp
 	   :deltae

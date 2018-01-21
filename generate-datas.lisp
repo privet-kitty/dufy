@@ -14,7 +14,7 @@
 (defun fill-color-matching-arr (arr csv-path)
   (with-open-file (in
 		   csv-path
-					;(merge-pathnames #P"cie1931-color-matching.csv" *load-pathname*)
+		   ;(merge-pathnames #P"cie1931-color-matching.csv" *load-pathname*)
 		   :direction :input)
     (let ((*read-default-float-format* 'double-float)
 	  (tmp-arr
