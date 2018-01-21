@@ -88,8 +88,8 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 		      (aref spectrum-array idx)
 		      (aref spectrum-array (min (+ idx 1) size)))))))))
 
-; s0, s1, s2
-; http://www.rit.edu/cos/colorscience/rc_useful_data.php
+;; s0, s1, s2
+;; http://www.rit.edu/cos/colorscience/rc_useful_data.php
 (defparameter s0-arr
   #.(make-array 54 :element-type 'double-float
 	      :initial-contents '(0.04d0 6d0 29.6d0 55.3d0 57.3d0 61.8d0 61.5d0 68.8d0 63.4d0 65.8d0 94.8d0 104.8d0 105.9d0 96.8d0 113.9d0 125.6d0 125.5d0 121.3d0 121.3d0 113.5d0 113.1d0 110.8d0 106.5d0 108.8d0 105.3d0 104.4d0 100d0 96d0 95.1d0 89.1d0 90.5d0 90.3d0 88.4d0 84d0 85.1d0 81.9d0 82.6d0 84.9d0 81.3d0 71.9d0 74.3d0 76.4d0 63.3d0 71.7d0 77d0 65.2d0 47.7d0 68.6d0 65d0 66d0 61d0 53.3d0 58.9d0 61.9d0)))

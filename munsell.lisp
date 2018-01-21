@@ -1,7 +1,6 @@
 (in-package :dufy)
 
 ;; the bradford transformation between D65 and C is frequently used here.
-
 (declaim (type function d65-to-c c-to-d65))
 (defparameter d65-to-c
   (gen-ca-converter illum-d65 illum-c))
@@ -20,7 +19,7 @@ for devel.: (defparameter max-chroma-overall (apply #'max (mapcar #'third munsel
 
 (declaim (ftype (function * (integer 0 50)) max-chroma))
 (defun max-chroma (hue40 value &key (use-dark t))
-  "returns the largest chroma which the MHVC-TO- functions can receive.
+  "Returns the largest chroma which MHVC-TO- functions can receive.
 The behavior of the MHVC-TO- functions is undefined, when chroma is larger than (MAC-CHROMA HUE40 VALUE)."
   (let* ((hue (mod hue40 40d0))
 	 (hue1 (floor hue))
@@ -86,7 +85,8 @@ The behavior of the MHVC-TO- functions is undefined, when chroma is larger than 
 	       0d0 1d0)))
 
 (defun y-to-munsell-value (y)
-  "The nominal range of Y is [0, 1]."
+  "Interpolates the inversion table of MUNSELL-VALUE-TO-Y linearly,
+whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
   (let* ((y1000 (* (clamp y 0 1) 1000))
 	 (y1 (floor y1000))
 	 (y2 (ceiling y1000)))
@@ -372,10 +372,10 @@ Note that boundary colors, e.g. pure white (N 10.0), could be judged as out-of-g
 	(values rgb255 out-of-gamut))))
 
 
-(defun munsell-to-mhvc (spec)
+(defun munsell-to-mhvc (munsellspec)
   (let ((lst (mapcar #'read-from-string
-		     (remove "" (cl-ppcre:split "[^0-9.a-z#\-]+" spec) :test #'string=))))
-    (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" spec))
+		     (remove "" (cl-ppcre:split "[^0-9.a-z#\-]+" munsellspec) :test #'string=))))
+    (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" munsellspec))
 	   (hue-number
 	    (switch (hue-name :test #'string=)
 	      ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
@@ -387,7 +387,7 @@ Note that boundary colors, e.g. pure white (N 10.0), could be judged as out-of-g
 	    (setf (car lst) (+ (* hue-number 4) (/ (* (car lst) 2) 5)))
 	    lst)))))
 
-(defun mhvc-to-spec (hue40 value chroma &optional (digits 2))
+(defun mhvc-to-munsell (hue40 value chroma &optional (digits 2))
   (let ((unit (concatenate 'string "~," (write-to-string digits) "F")))
     (if (< chroma (expt 0.09999999999999999d0 digits)) ; achromatic color
 	(format nil (concatenate 'string "N " unit) value)
@@ -403,23 +403,23 @@ Note that boundary colors, e.g. pure white (N 10.0), could be judged as out-of-g
 ;; (dufy:munsell-to-mhvc "2.13D-2R .8999/   #x0F")
 ;; => ERROR
 
-(defun munsell-out-of-mrd-p (spec)
-  (apply #'mhvc-out-of-mrd-p (munsell-to-mhvc spec)))
+(defun munsell-out-of-mrd-p (munsellspec)
+  (apply #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
 
-(defun munsell-to-lchab (spec)
+(defun munsell-to-lchab (munsellspec)
   "return multiple values: (L* C*ab Hab), out-of-munsell-renotation-data-p.
 Illuminant C."
-  (destructuring-bind (hue40 value chroma) (munsell-to-mhvc spec)
+  (destructuring-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
     (if (mhvc-out-of-mrd-p hue40 value chroma)
 	(values (list most-negative-double-float most-negative-double-float most-negative-double-float)
 		t)
 	(values (funcall #'mhvc-to-lchab hue40 value chroma)
 		nil))))
 
-(defun munsell-to-xyz (spec)
+(defun munsell-to-xyz (munsellspec)
     "return multiple values: (X Y Z), out-of-munsell-renotation-data-p.
 Illuminant D65."
-  (destructuring-bind (hue40 value chroma) (munsell-to-mhvc spec)
+  (destructuring-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
     (if (mhvc-out-of-mrd-p hue40 value chroma)
 	(values (list most-negative-double-float most-negative-double-float most-negative-double-float)
 		t)
@@ -427,19 +427,19 @@ Illuminant D65."
 		nil))))
 
 
-(defun munsell-to-xyy (spec)
+(defun munsell-to-xyy (munsellspec)
   "return multiple values: (x y Y), out-of-munsell-renotation-data-p.
 Illuminant D65."
   (multiple-value-bind (xyz out-of-mrd)
-      (munsell-to-xyz spec)
+      (munsell-to-xyz munsellspec)
     (values (apply #'xyz-to-xyy xyz)
 	    out-of-mrd)))
 
 
-(defun munsell-to-rgb255 (spec &key (rgbspace dufy:srgb) (threshold 0.001d0))
+(defun munsell-to-rgb255 (munsellspec &key (rgbspace dufy:srgb) (threshold 0.001d0))
   "return multiple values: (R G B), out-of-gamut-p.
 The standard illuminant of RGBSPACE must be D65."
-  (multiple-value-bind (xyz out-of-mrd) (munsell-to-xyz spec)
+  (multiple-value-bind (xyz out-of-mrd) (munsell-to-xyz munsellspec)
     (if out-of-mrd
 	(values (list -1 -1 -1) t)
 	(multiple-value-bind (rgb255 out-of-gamut) 
@@ -563,6 +563,7 @@ The standard illuminant of RGBSPACE must be D65."
 			 tmp-c (+ tmp-c (* factor delta-c)))))))))))
 
 (defun invert-mhvc-to-lchab (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+  "Illuminant C."
   (let ((cstarab (float cstarab 1d0))
 	(hab (float hab 1d0)))
     (destructuring-bind (init-h nil init-c)

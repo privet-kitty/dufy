@@ -138,7 +138,7 @@
 	   :mhvc-to-lrgb
 	   :mhvc-to-rgb255
 	   :mhvc-to-lchab
-	   :mhvc-to-spec
+	   :mhvc-to-munsell
 	   :munsell-to-mhvc
 	   :munsell-out-of-mrd-p
 	   :munsell-to-lchab
