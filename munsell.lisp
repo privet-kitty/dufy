@@ -139,8 +139,9 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
 ;; 	  (t 
 ;; 	   (destructuring-bind (x1 y1 largey)
 ;; 	       (mhvc-to-xyy-simplest-case hue1 tmp-value half-chroma dark)
-;; 	     (destructuring-bind (x2 y2 nil)
+;; 	     (destructuring-bind (x2 y2 disused)
 ;; 		 (mhvc-to-xyy-simplest-case hue2 tmp-value half-chroma dark)
+;;             (declare (ignore disused))
 ;; 	       (destructuring-bind (r1 theta1)
 ;; 		   (xy-to-polar x1 y1)
 ;; 		 (destructuring-bind (r2 theta2)
@@ -163,9 +164,10 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
 	(mhvc-to-lchab-simplest-case (round hue40) tmp-value half-chroma dark)
 	(destructuring-bind (lstar cstarab1 hab1)
 	    (mhvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
-	  (destructuring-bind (nil cstarab2 hab2)
+	  (destructuring-bind (disused cstarab2 hab2)
 	      (mhvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
-	    (declare (double-float lstar cstarab1 hab1 cstarab2 hab2)
+	    (declare (ignore disused)
+		     (double-float lstar cstarab1 hab1 cstarab2 hab2)
 		     (ftype (function (* * &optional *) double-float) subtract-with-mod))
 	    (if (= hab1 hab2)
 		(list lstar cstarab1 hab1)
@@ -184,8 +186,9 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
 ;; 	(mhvc-to-xyy-value-chroma-integer-case hue40 tmp-value (round half-chroma) dark)
 ;; 	(destructuring-bind (x1 y1 largey)
 ;; 	    (mhvc-to-xyy-value-chroma-integer-case hue40 tmp-value hchroma1 dark)
-;; 	  (destructuring-bind (x2 y2 nil)
+;; 	  (destructuring-bind (x2 y2 disused)
 ;; 	      (mhvc-to-xyy-value-chroma-integer-case hue40 tmp-value hchroma2 dark)
+;;          (declare (ignore disused))
 ;; 	    (let* ((x (+ (* x1 (- hchroma2 half-chroma))
 ;; 			 (* x2 (- half-chroma hchroma1))))
 ;; 		   (y (+ (* y1 (- hchroma2 half-chroma))
@@ -204,10 +207,11 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
 	(destructuring-bind (lstar astar1 bstar1)
 	    (apply #'lchab-to-lab
 		   (mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma1 dark))
-	  (destructuring-bind (nil astar2 bstar2)
+	  (destructuring-bind (disused astar2 bstar2)
 	      (apply #'lchab-to-lab
 		     (mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma2 dark))
-	    (declare (double-float lstar astar1 bstar1 astar2 bstar2))
+	    (declare (ignore disused)
+		     (double-float lstar astar1 bstar1 astar2 bstar2))
 	    (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
 			     (* astar2 (- half-chroma hchroma1))))
 		   (bstar (+ (* bstar1 (- hchroma2 half-chroma))
@@ -244,8 +248,9 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
 	  ;; we use the fact that the chroma of LCH(ab) corresponds roughly
 	  ;; to that of Munsell.
 	  (if (= tmp-val1 0)
-	      (destructuring-bind (nil cstarab hab)
+	      (destructuring-bind (disused cstarab hab)
 		  (mhvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
+		(declare (ignore disused))
 		(list lstar cstarab hab))
 	      (destructuring-bind (lstar1 astar1 bstar1)
 		  (apply #'lchab-to-lab
@@ -491,17 +496,6 @@ The standard illuminant of RGBSPACE must be D65."
 (defun lstar-to-munsell-value (lstar)
   (y-to-munsell-value (lstar-to-y lstar)))
 
-;; (defun lchab-to-mhvc-in-block (lstar cstarab hab hue40-rb ch-rb hue40-lb ch-lb hue40-rt ch-rt hue40-lt ch-lt)
-;;   (let ((munsell-v (lstar-to-munsell-value lstar)))
-;;     (destructuring-bind (nil cstarab-rb hab-rb)
-;; 	(mhvc-to-lchab hue40-rb munsell-v ch-rb)
-;;       (destructuring-bind (nil cstarab-lb hab-lb)
-;; 	  (mhvc-to-lchab hue40-lb munsell-v ch-lb)
-;; 	(destructuring-bind (nil cstarab-rt hab-rt)
-;; 	    (mhvc-to-lchab hue40-rt munsell-v ch-rt)
-;; 	  (destructuring-bind (nil cstarab-lt hab-lt)
-;; 	      (mhvc-to-lchab hue40-lt munsell-v ch-lt)
-
 
 ;; used in INVERT-LCHAB-TO-MHVC
 (declaim (ftype (function * double-float) circular-delta))
@@ -547,9 +541,10 @@ The standard illuminant of RGBSPACE must be D65."
 				     max-iteration))
        (if (> tmp-c (max-chroma tmp-hue40 v))
 	   (return (list '(-1d0 -1d0 -1d0) -1)) ; exceeds max-chroma
-	   (destructuring-bind (nil tmp-cstarab tmp-hab)
+	   (destructuring-bind (disused tmp-cstarab tmp-hab)
 	       (mhvc-to-lchab tmp-hue40 v tmp-c)
-	     (declare (double-float tmp-cstarab tmp-hab))
+	     (declare (ignore disused)
+		      (double-float tmp-cstarab tmp-hab))
 	     (let* ((delta-cstarab (- cstarab tmp-cstarab))
 		    (delta-hab (circular-delta hab tmp-hab))
 		    (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
@@ -566,8 +561,9 @@ The standard illuminant of RGBSPACE must be D65."
   "Illuminant C."
   (let ((cstarab (float cstarab 1d0))
 	(hab (float hab 1d0)))
-    (destructuring-bind (init-h nil init-c)
+    (destructuring-bind (init-h disused init-c)
 	(rough-lchab-to-mhvc lstar cstarab hab)
+      (declare (ignore disused))
       (invert-mhvc-to-lchab-with-init lstar cstarab hab
 					     init-h init-c
 					     :max-iteration max-iteration

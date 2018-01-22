@@ -153,18 +153,21 @@ the interval [-THRESHOLD, 1+THRESHOLD]."
 ILLUMINANT is nil, it is a trivial copier."
   (if illuminant
       (let ((ca-func (gen-ca-converter (rgbspace-illuminant rgbspace) illuminant)))
-	(destructuring-bind (new-xr new-yr nil)
-	    (apply #'xyz-to-xyy
+	(destructuring-bind (new-xr new-yr zr)
+	    (print (apply #'xyz-to-xyy
 		   (apply ca-func
-			  (lrgb-to-xyz 1 0 0 rgbspace)))
-	  (destructuring-bind (new-xg new-yg nil)
+			  (lrgb-to-xyz 1 0 0 rgbspace))))
+	  (declare (ignore zr))
+	  (destructuring-bind (new-xg new-yg zg)
 	      (apply #'xyz-to-xyy
 		     (apply ca-func
 			    (lrgb-to-xyz 0 1 0 rgbspace)))
-	    (destructuring-bind (new-xb new-yb nil)
+	    (declare (ignore zg))
+	    (destructuring-bind (new-xb new-yb zb)
 		(apply #'xyz-to-xyy
 		       (apply ca-func
 			      (lrgb-to-xyz 0 0 1 rgbspace)))
+	      (declare (ignore zb))
 	      (make-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
 			    :illuminant illuminant
 			    :linearizer (rgbspace-linearizer rgbspace)
