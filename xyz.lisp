@@ -205,10 +205,15 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 The return values are not normalized."
   (unless (illuminant-spectrum illuminant)
     (error "The given Illuminant doesn't have a spectrum function"))
-  (let (;; (const 0.009358316379939337d0) ; (/ (dufy::spectrum-sum #'dufy:color-matching-y))
-	(x 0) (y 0) (z 0) (max-y 0))
+  (spectrum-to-xyz-by-illum-spd spectrum
+				(illuminant-spectrum illuminant)
+				:observer observer))
+
+(defun spectrum-to-xyz-by-illum-spd (spectrum illum-spd &key (observer :cie1931))
+  "Actually (illuminant-spectrum illuminant) is only needed in spectrum-to-xyz."
+  (let ((x 0) (y 0) (z 0) (max-y 0))
     (loop for wl from 360 to 780 do
-	 (let ((p (funcall (illuminant-spectrum illuminant) wl))
+	 (let ((p (funcall illum-spd wl))
 	       (reflec (funcall spectrum wl))
 	       (idx (- wl 360)))
 	   (if (eq observer :cie1931)
@@ -248,6 +253,19 @@ The return values are not normalized."
 		      :largey (float largey 1d0)
 		      :largez (float largez 1d0)
 		      :spectrum spectrum)))
+
+(defun make-illuminant-by-spd (spd &optional (observer :cie1931))
+  (destructuring-bind (largex largey largez)
+      (spectrum-to-xyz-by-illum-spd #'flat-spectrum spd :observer observer)
+    (destructuring-bind (x y disused)
+	(xyz-to-xyy largex largey largez)
+      (declare (ignore disused))
+      ($make-illuminant :x (float x 1d0)
+			:y (float y 1d0)
+			:largex (float largex 1d0)
+			:largey (float largey 1d0)
+			:largez (float largez 1d0)
+			:spectrum spd))))
 
 (defparameter illum-a (make-illuminant 0.44757d0 0.40745d0))
 (defparameter illum-c (make-illuminant 0.31006d0 0.31616d0))

@@ -167,15 +167,14 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
 	  (destructuring-bind (disused cstarab2 hab2)
 	      (mhvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
 	    (declare (ignore disused)
-		     (double-float lstar cstarab1 hab1 cstarab2 hab2)
-		     (ftype (function (* * &optional *) double-float) subtract-with-mod))
+		     (double-float lstar cstarab1 hab1 cstarab2 hab2))
 	    (if (= hab1 hab2)
 		(list lstar cstarab1 hab1)
 		(let* ((hab (circular-lerp hab1 hab2 (- hue40 hue1) 360d0))
-		       (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
-						  (subtract-with-mod hab2 hab1 360d0)))
-				   (* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
-						  (subtract-with-mod hab2 hab1 360d0))))))
+		       (cstarab (+ (* cstarab1 (/ (the double-float (subtract-with-mod hab2 hab 360d0))
+						  (the double-float (subtract-with-mod hab2 hab1 360d0))))
+				   (* cstarab2 (/ (the double-float (subtract-with-mod hab hab1 360d0))
+						  (the double-float (subtract-with-mod hab2 hab1 360d0)))))))
 		  (list lstar cstarab hab))))))))
 
 
@@ -508,23 +507,6 @@ The standard illuminant of RGBSPACE must be D65."
 	(- z 360d0))))
 
 
-;; An inverter of MHVC-TO-LCHAB with a simple iteration algorithm:
-;; V := LSTAR-TO-MUNSELL-VALUE(LSTAR);
-;; H_(n+1) := H_n + factor * delta(H_n);
-;; C_(n+1) :=  C_n + factor * delta(C_n),
-;; where delta(H_n) and delta(C_n) is internally calculated at every
-;; step. H and C could diverge, if FACTOR is too large; the behavior is
-;; undefined, if FACTOR >= 1. The return values are as follows:
-;; 1. If max(delta(H_n), delta(C_n)) falls below THRESHOLD:
-;; (H V C), NUMBER-OF-ITERATION.
-;; 2. If the number of iteration exceeds MAX-ITERATION:
-;; (H V C), MAX-ITERATION.
-;; 3. If (H_n, V, C_n) goes out of the Munsell renotation data:
-;; (-1.0d0 -1.0d0 -1.0d0), -1.
-;; In other words: The inversion has failed, if the second value is equal
-;; to MAX-ITERATION or -1.
-;; 
-;; BE CAREFUL: Illuminant C.
 (defun invert-mhvc-to-lchab-with-init (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
@@ -557,9 +539,28 @@ The standard illuminant of RGBSPACE must be D65."
 		   (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
 			 tmp-c (+ tmp-c (* factor delta-c)))))))))))
 
-(defun invert-mhvc-to-lchab (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+
+;; An inverter of MHVC-TO-LCHAB with a simple iteration algorithm:
+;; V := LSTAR-TO-MUNSELL-VALUE(LSTAR);
+;; H_(n+1) := H_n + factor * delta(H_n);
+;; C_(n+1) :=  C_n + factor * delta(C_n),
+;; where delta(H_n) and delta(C_n) is internally calculated at every
+;; step. H and C could diverge, if FACTOR is too large; the behavior is
+;; undefined, if FACTOR >= 1. The return values are as follows:
+;; 1. If max(delta(H_n), delta(C_n)) falls below THRESHOLD:
+;; (H V C), NUMBER-OF-ITERATION.
+;; 2. If the number of iteration exceeds MAX-ITERATION:
+;; (H V C), MAX-ITERATION.
+;; 3. If (H_n, V, C_n) goes out of the Munsell renotation data:
+;; (-1.0d0 -1.0d0 -1.0d0), -1.
+;; In other words: The inversion has failed, if the second value is equal
+;; to MAX-ITERATION or -1.
+;; 
+;; BE CAREFUL: Illuminant C.
+(defun lchab-to-mhvc (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
-  (let ((cstarab (float cstarab 1d0))
+  (let ((lstar (float lstar 1d0))
+	(cstarab (float cstarab 1d0))
 	(hab (float hab 1d0)))
     (destructuring-bind (init-h disused init-c)
 	(rough-lchab-to-mhvc lstar cstarab hab)
@@ -570,6 +571,7 @@ The standard illuminant of RGBSPACE must be D65."
 					     :factor factor
 					     :threshold threshold))))
 
+
 (defun test-inverter ()
   (do ((lstar 0 (+ lstar 10)))
 	     ((> lstar 100) 'done)
@@ -577,7 +579,7 @@ The standard illuminant of RGBSPACE must be D65."
 	       ((= hab 360))
 	     (loop for cstarab = 0 then (+ cstarab 10)
 		  do (multiple-value-bind (lst number)
-			 (dufy::invert-mhvc-to-lchab lstar cstarab hab :threshold 1d-8 :max-iteration 500)
+			 (dufy::lchab-to-mhvc lstar cstarab hab :threshold 1d-8 :max-iteration 500)
 		       (declare (ignore lst))
 		       (when (= number -1)
 			 (format t "beyond MRD at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab)

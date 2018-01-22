@@ -24,6 +24,7 @@
 	   :illuminant-largez
 	   :illuminant-spd
 	   :make-illuminant
+	   :make-illuminant-by-spd
 	   :illum-a :illum-e
 	   :illum-c :illum-d50 :illum-d65
 	   :calc-ca-matrix
@@ -145,5 +146,6 @@
 	   :munsell-to-xyy
 	   :munsell-to-rgb255
 	   :max-chroma
+	   :lchab-to-mhvc
 
 ))

@@ -89,7 +89,7 @@
       (let* ((deltaLprime (- l2 l1))
 	     (Lavg (* 0.5d0 (+ l1 l2)))
 	     (Cavg (* 0.5d0 (+ c1 c2)))
-	     (Cavg7 (expt Cavg 7))
+	     (Cavg7 (the (double-float 0d0) (expt Cavg 7)))
 	     (const1 (* 0.5d0 (- 1d0 (sqrt (/ Cavg7 (+ Cavg7 #.(expt 25 7)))))))
 	     (aprime1 (+ a1 (* a1 const1)))
 	     (aprime2 (+ a2 (* a2 const1)))
@@ -133,7 +133,7 @@
 			      (sqrt (+ 20d0 tmp)))))
 	     (varSC (+ 1d0 (* 0.045d0 Cavgprime)))
 	     (varSH (+ 1d0 (* 0.015d0 Cavgprime varT)))
-	     (Cavgprime7 (expt Cavgprime 7))
+	     (Cavgprime7 (the (double-float 0d0) (expt Cavgprime 7)))
 	     (varRT  (* -2d0
 			(sqrt (/ Cavgprime7 (+ Cavgprime7 #.(expt 25 7))))
 			(sin (* 60d0
