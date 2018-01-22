@@ -152,7 +152,7 @@ the interval [-THRESHOLD, 1+THRESHOLD]."
   "This copier can copy RGBSPACE with different ILLUMINANT. If
 ILLUMINANT is nil, it is a trivial copier."
   (if illuminant
-      (let ((ca-func (gen-ca-converter (rgbspace-illuminant rgbspace) illuminant)))
+      (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace) illuminant)))
 	(destructuring-bind (new-xr new-yr zr)
 	    (apply #'xyz-to-xyy
 		   (apply ca-func

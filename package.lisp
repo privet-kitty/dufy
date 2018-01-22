@@ -28,8 +28,8 @@
 	   :illum-a :illum-e
 	   :illum-c :illum-d50 :illum-d65
 	   :calc-ca-matrix
-	   :gen-ca-converter
-	   :gen-ca-converter-xyy
+	   :gen-cat-function
+	   :gen-cat-function-xyy
 	   
 	   :bradford
 	   :xyz-scaling

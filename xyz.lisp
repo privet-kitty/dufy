@@ -3,10 +3,10 @@
 (in-package :dufy)
 
 ;; CIE 1931/1964 Color Matching Functions
-(defun color-matching-x (wavelength &optional (observer :cie1931))
-  (if (or (< wavelength 360) (< 830 wavelength))
+(defun color-matching-x (wavelength-nm &optional (observer :cie1931))
+  (if (or (< wavelength-nm 360) (< 830 wavelength-nm))
       0
-      (multiple-value-bind (quot rem) (floor wavelength)
+      (multiple-value-bind (quot rem) (floor wavelength-nm)
 	(if (eq observer :cie1931)
 	    (lerp rem
 		  (aref cmf-arr-cie1931 (- quot 360) 0)
@@ -15,10 +15,10 @@
 		  (aref cmf-arr-cie1964 (- quot 360) 0)
 		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 0))))))
 
-(defun color-matching-y (wavelength &optional (observer :cie1931))
-  (if (or (< wavelength 360) (< 830 wavelength))
+(defun color-matching-y (wavelength-nm &optional (observer :cie1931))
+  (if (or (< wavelength-nm 360) (< 830 wavelength-nm))
       0
-      (multiple-value-bind (quot rem) (floor wavelength)
+      (multiple-value-bind (quot rem) (floor wavelength-nm)
 	(if (eq observer :cie1931)
 	    (lerp rem
 		  (aref cmf-arr-cie1931 (- quot 360) 1)
@@ -27,10 +27,10 @@
 		  (aref cmf-arr-cie1964 (- quot 360) 1)
 		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 1))))))
 	
-(defun color-matching-z (wavelength &optional (observer :cie1931))
-  (if (or (< wavelength 360) (< 830 wavelength))
+(defun color-matching-z (wavelength-nm &optional (observer :cie1931))
+  (if (or (< wavelength-nm 360) (< 830 wavelength-nm))
       0
-      (multiple-value-bind (quot rem) (floor wavelength)
+      (multiple-value-bind (quot rem) (floor wavelength-nm)
 	(if (eq observer :cie1931)
 	    (lerp rem
 		  (aref cmf-arr-cie1931 (- quot 360) 2)
@@ -39,10 +39,10 @@
 		  (aref cmf-arr-cie1964 (- quot 360) 2)
 		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 2))))))
 
-(defun color-matching (wavelength &optional (observer :cie1931))
-  (if (or (< wavelength 360) (< 830 wavelength))
+(defun color-matching (wavelength-nm &optional (observer :cie1931))
+  (if (or (< wavelength-nm 360) (< 830 wavelength-nm))
       0
-      (multiple-value-bind (quot rem) (floor wavelength)
+      (multiple-value-bind (quot rem) (floor wavelength-nm)
 	(if (eq observer :cie1931)
 	    (list (lerp rem
 			(aref cmf-arr-cie1931 (- quot 360) 0)
@@ -66,21 +66,21 @@
 
 (defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
   "Returns a spectral power distribution function,
-#'(lambda (wavelength) ...) : [WL-BEGIN, WL-END] -> R,
+#'(lambda (wavelength-nm) ...) : [WL-BEGIN, WL-END] -> R,
 by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
   (let* ((size (- (length spectrum-array) 1)))
     (if (= size (- wl-end wl-begin))
 	;; if SPECTRUM-ARRAY is defined for each integer, the SPECTRUM function is simple:
-	#'(lambda (wavelength)
+	#'(lambda (wavelength-nm)
 	    (multiple-value-bind (quot rem)
-		(floor (- (clamp wavelength wl-begin wl-end) wl-begin))
+		(floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
 	      (lerp rem
 		    (aref spectrum-array quot)
 		    (aref spectrum-array (min (1+ quot) size)))))
 	(let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
 	       (/band (/ band)))
-	  #'(lambda (wavelength)
-	      (let* ((wl$ (- (clamp wavelength wl-begin wl-end) wl-begin))
+	  #'(lambda (wavelength-nm)
+	      (let* ((wl$ (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
 		     (frac (mod wl$ band))
 		     (coef (* frac /band))
 		     (idx (round (* (- wl$ frac) /band))))
@@ -136,24 +136,24 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 	   
 
 				 
-(defun spectrum-sum (spectrum &key (wl-begin 360) (wl-end 780) (band 1))
+(defun spectrum-sum (spectrum &key (wl-begin 300) (wl-end 830) (band 1))
   (loop for wl from wl-begin to wl-end by band
      sum (funcall spectrum wl)))
 
 
-;; the spectrum of a black body
-(defun bb-spectrum (wavelength &optional (temperature 5000))
-  (let ((wlm (* wavelength 1d-9)))
+(defun bb-spectrum (wavelength-nm &optional (temperature 5000))
+  "Spectrum function of a blackbody. It is not normalized."
+  (let ((wlm (* wavelength-nm 1d-9)))
     (/ (* 3.74183d-16 (expt wlm -5d0))
        (- (exp (/ 1.4388d-2 (* wlm temperature))) 1d0))))
 
-(defun optimal-spectrum (wavelength &optional (wl1 300) (wl2 830))
+(defun optimal-spectrum (wavelength-nm &optional (wl1 300) (wl2 830))
   (if (<= wl1 wl2)
-      (if (<= wl1 wavelength wl2) 1 0)
-      (if (or (<= wavelength wl2) (<= wl1 wavelength)) 1 0)))
+      (if (<= wl1 wavelength-nm wl2) 1 0)
+      (if (or (<= wavelength-nm wl2) (<= wl1 wavelength-nm)) 1 0)))
 
-(defun flat-spectrum (wavelength)
-  (declare (ignore wavelength))
+(defun flat-spectrum (wavelength-nm)
+  (declare (ignore wavelength-nm))
   1d0)
 
 (defun scale-xyz (x y z &optional (scale-to 1))
@@ -174,7 +174,7 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 ;; 		(* lb factor))))))
 
 
-;; (let ((e-to-d65 (gen-ca-converter illum-e illum-d65)))
+;; (let ((e-to-d65 (gen-cat-function illum-e illum-d65)))
 ;;   (defun temperature-test (temp)
 ;;     (apply #'rgb-to-rgb255
 ;; 	   (apply #'lrgb-to-rgb
@@ -254,9 +254,9 @@ The return values are not normalized."
 		      :largez (float largez 1d0)
 		      :spectrum spectrum)))
 
-(defun make-illuminant-by-spd (spd &optional (observer :cie1931))
+(defun make-illuminant-by-spd (spectrum &optional (observer :cie1931))
   (destructuring-bind (largex largey largez)
-      (spectrum-to-xyz-by-illum-spd #'flat-spectrum spd :observer observer)
+      (spectrum-to-xyz-by-illum-spd #'flat-spectrum spectrum :observer observer)
     (destructuring-bind (x y disused)
 	(xyz-to-xyy largex largey largez)
       (declare (ignore disused))
@@ -265,7 +265,7 @@ The return values are not normalized."
 			:largex (float largex 1d0)
 			:largey (float largey 1d0)
 			:largez (float largez 1d0)
-			:spectrum spd))))
+			:spectrum spectrum))))
 
 (defparameter illum-a (make-illuminant 0.44757d0 0.40745d0))
 (defparameter illum-c (make-illuminant 0.31006d0 0.31616d0))
@@ -373,17 +373,17 @@ The return values are not normalized."
 	  matrix2)))))
 
 
-(declaim (ftype (function * function) gen-ca-converter))
-(defun gen-ca-converter (from-illuminant to-illuminant &optional (tmatrix bradford))
-  "Returns a chromatic adaptation function of XYZ color: #'(lambda (X Y Z) ...)"
+(declaim (ftype (function * function) gen-cat-function))
+(defun gen-cat-function (from-illuminant to-illuminant &optional (tmatrix bradford))
+  "Returns a chromatic adaptation function of XYZ values: #'(lambda (X Y Z) ...)"
   (let ((mat (calc-ca-matrix from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))
 
-(declaim (ftype (function * function) gen-ca-converter-xyy))
-(defun gen-ca-converter-xyy (from-illuminant to-illuminant &optional (tmatrix bradford))
-  "Returns a chromatic adaptation function of xyY color: #'(lambda (X Y LARGEY) ...)"
-  (let ((ca-func (gen-ca-converter from-illuminant to-illuminant tmatrix)))
+(declaim (ftype (function * function) gen-cat-function-xyy))
+(defun gen-cat-function-xyy (from-illuminant to-illuminant &optional (tmatrix bradford))
+  "Returns a chromatic adaptation function of xyY values: #'(lambda (X Y LARGEY) ...)"
+  (let ((ca-func (gen-cat-function from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y largey)
 	(apply #'xyz-to-xyy
 	       (apply ca-func

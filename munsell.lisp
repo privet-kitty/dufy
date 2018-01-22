@@ -3,9 +3,9 @@
 ;; the bradford transformation between D65 and C is frequently used here.
 (declaim (type function d65-to-c c-to-d65))
 (defparameter d65-to-c
-  (gen-ca-converter illum-d65 illum-c))
+  (gen-cat-function illum-d65 illum-c))
 (defparameter c-to-d65
-  (gen-ca-converter illum-c illum-d65))
+  (gen-cat-function illum-c illum-d65))
 
 (defparameter *max-chroma-overall* 50
   "The largest chroma in the Munsell renotation data.
