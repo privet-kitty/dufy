@@ -190,7 +190,7 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 ;;; Standard Illuminant, XYZ, xyY
 ;;; The nominal range of X, Y, Z, x, y is always [0, 1].
 
-(defstruct illuminant
+(defstruct (illuminant (:constructor $make-illuminant))
   "The support of SPECTRUM is not completed."
   (x 0.0 :type double-float)
   (y 0.0 :type double-float)
@@ -240,24 +240,24 @@ The return values are not normalized."
 	(list (/ x sum) (/ y sum) y))))
 
 
-(defun new-illuminant (x y &optional (spectrum nil))
+(defun make-illuminant (x y &optional (spectrum nil))
   (destructuring-bind (largex largey largez) (xyy-to-xyz x y 1d0)
-    (make-illuminant :x (float x 1d0)
-		     :y (float y 1d0)
-		     :largex (float largex 1d0)
-		     :largey (float largey 1d0)
-		     :largez (float largez 1d0)
-		     :spectrum spectrum)))
+    ($make-illuminant :x (float x 1d0)
+		      :y (float y 1d0)
+		      :largex (float largex 1d0)
+		      :largey (float largey 1d0)
+		      :largez (float largez 1d0)
+		      :spectrum spectrum)))
 
-(defparameter illum-a (new-illuminant 0.44757d0 0.40745d0))
-(defparameter illum-c (new-illuminant 0.31006d0 0.31616d0))
-(defparameter illum-d50 (new-illuminant 0.34567d0 0.35850d0
-					(gen-illum-d-spectrum #.(* 5000 (/ 1.4388d0 1.438)))))
-(defparameter illum-d65 (new-illuminant 0.31271d0 0.32902d0
-					(gen-illum-d-spectrum #.(* 6500 (/ 1.43880d0 1.438)))))
-(defparameter illum-e (new-illuminant #.(float 1/3 1d0)
-				      #.(float 1/3 1d0)
-				      #'flat-spectrum))
+(defparameter illum-a (make-illuminant 0.44757d0 0.40745d0))
+(defparameter illum-c (make-illuminant 0.31006d0 0.31616d0))
+(defparameter illum-d50 (make-illuminant 0.34567d0 0.35850d0
+					 (gen-illum-d-spectrum #.(* 5000 (/ 1.4388d0 1.438)))))
+(defparameter illum-d65 (make-illuminant 0.31271d0 0.32902d0
+					 (gen-illum-d-spectrum #.(* 6500 (/ 1.43880d0 1.438)))))
+(defparameter illum-e (make-illuminant #.(float 1/3 1d0)
+				       #.(float 1/3 1d0)
+				       #'flat-spectrum))
 
 (defparameter bradford
   (make-array '(3 3)

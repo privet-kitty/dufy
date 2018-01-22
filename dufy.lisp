@@ -10,13 +10,18 @@
 
 (defun gen-linearizer (gamma)
   (let ((gamma$ (float gamma 1d0)))
-    #'(lambda (x) (expt (clamp x 0d0 1d0) gamma$))))
+    #'(lambda (x) (if (>= x 0)
+		      (expt x gamma$)
+		      (- (expt (- x) gamma$))))))
 
 (defun gen-delinearizer (gamma)
   (let ((gamma-recipro (/ 1d0 (float gamma 1d0))))
-    #'(lambda (x) (expt (clamp x 0d0 1d0) gamma-recipro))))
+    #'(lambda (x) (if (>= x 0)
+		      (expt x gamma-recipro)
+		      (- (expt (- x) gamma-recipro))))))
 
-(defstruct (rgbspace (:copier nil))
+(defstruct (rgbspace (:constructor $make-rgbspace)
+		     (:copier nil))
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
   (xb 0d0 :type double-float) (yb 0d0 :type double-float)
@@ -28,7 +33,7 @@
 
 
 
-(defun new-rgbspace (xr yr xg yg xb yb &key (illuminant illum-d65) (linearizer #'identity) (delinearizer #'identity))
+(defun make-rgbspace (xr yr xg yg xb yb &key (illuminant illum-d65) (linearizer #'identity) (delinearizer #'identity))
   (let ((coordinates
 	 (make-array '(3 3)
 		     :element-type 'double-float
@@ -52,12 +57,12 @@
 						 (list (* sr (aref coordinates 2 0))
 						       (* sg (aref coordinates 2 1))
 						       (* sb (aref coordinates 2 2)))))))
-	(make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
-		       :illuminant illuminant
-		       :linearizer linearizer
-		       :delinearizer delinearizer
-		       :to-xyz-matrix m
-		       :from-xyz-matrix (invert-matrix33 m))))))
+	($make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
+			:illuminant illuminant
+			:linearizer linearizer
+			:delinearizer delinearizer
+			:to-xyz-matrix m
+			:from-xyz-matrix (invert-matrix33 m))))))
 
 
 (defun srgb-linearizer (x)
@@ -73,7 +78,7 @@
 	 0d0 1d0))
 
 (defparameter srgb
-  (new-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
+  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
 		:linearizer #'srgb-linearizer				
 		:delinearizer #'srgb-delinearizer))
 
@@ -92,7 +97,7 @@
 ;; 	 0d0 1d0))
 
 (defparameter adobe
-  (new-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
+  (make-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
 		:linearizer (gen-linearizer #.(float 563/256 1d0))
 		:delinearizer (gen-delinearizer #.(float 563/256 1d0))))
 
@@ -100,19 +105,19 @@
 
 
 (defparameter ntsc1953
-  (new-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
+  (make-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
 		:illuminant illum-c
 		:linearizer (gen-linearizer 2.2d0)
 		:delinearizer (gen-delinearizer 2.2d0)))
 
 (defparameter pal/secam
-  (new-rgbspace 0.64d0 0.33d0 0.29d0 0.60d0 0.15d0 0.06d0
+  (make-rgbspace 0.64d0 0.33d0 0.29d0 0.60d0 0.15d0 0.06d0
 		:linearizer (gen-linearizer 2.8d0)
 		:delinearizer (gen-delinearizer 2.8d0)))
 
 
 (defparameter prophoto
-  (new-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
+  (make-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
 		:illuminant illum-d50
 		:linearizer #'(lambda (x)
 				(clamp (if (<= x #.(* 1/512 16d0))
@@ -160,11 +165,11 @@ ILLUMINANT is nil, it is a trivial copier."
 		(apply #'xyz-to-xyy
 		       (apply ca-func
 			      (lrgb-to-xyz 0 0 1 rgbspace)))
-	      (new-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
+	      (make-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
 			    :illuminant illuminant
 			    :linearizer (rgbspace-linearizer rgbspace)
 			    :delinearizer (rgbspace-delinearizer rgbspace))))))
-      (new-rgbspace (rgbspace-xr rgbspace) (rgbspace-yr rgbspace)
+      (make-rgbspace (rgbspace-xr rgbspace) (rgbspace-yr rgbspace)
 		    (rgbspace-xg rgbspace) (rgbspace-yg rgbspace)
 		    (rgbspace-xb rgbspace) (rgbspace-yb rgbspace)
 		    :illuminant (rgbspace-illuminant rgbspace)

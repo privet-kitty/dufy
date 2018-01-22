@@ -2,7 +2,19 @@
 
 (defpackage :dufy
   (:use :common-lisp :alexandria)
-  (:export :xyy-to-xyz
+  (:export :gen-spectrum ;; xyz.lisp
+	   :gen-illum-d-spectrum
+	   :color-matching-x
+	   :color-matching-y
+	   :color-matching-z
+	   :color-matching
+	   :spectrum-to-xyz
+	   :bb-spectrum
+	   :optimal-spectrum
+	   :flat-spectrum
+	   :spectrum-sum
+	   
+	   :xyy-to-xyz
 	   :xyz-to-xyy
 	   :illuminant
 	   :illuminant-x
@@ -11,7 +23,7 @@
 	   :illuminant-largey
 	   :illuminant-largez
 	   :illuminant-spd
-	   :new-illuminant
+	   :make-illuminant
 	   :illum-a :illum-e
 	   :illum-c :illum-d50 :illum-d65
 	   :calc-ca-matrix
@@ -29,7 +41,7 @@
 	   :srgb :srgbd65 :srgbd50
 	   :adobe :adobed65 :adobed50
 	   :ntsc1953 :pal/secam :prophoto
-	   :new-rgbspace
+	   :make-rgbspace
 	   :copy-rgbspace
 	   :rgbspace-linearizer
 	   :rgbspace-delinearizer
@@ -102,19 +114,6 @@
 	   :rgb255-to-hsl
 	   :hsl-to-xyz
 	   :xyz-to-hsl
-
-	   ;; spectrum.lisp
-	   :gen-spectrum
-	   :gen-illum-d-spectrum
-	   :color-matching-x
-	   :color-matching-y
-	   :color-matching-z
-	   :color-matching
-	   :spectrum-to-xyz
-	   :bb-spectrum
-	   :optimal-spectrum
-	   :flat-spectrum
-	   :spectrum-sum
 	   
 	   ;; deltae.lisp
 	   :deltae
