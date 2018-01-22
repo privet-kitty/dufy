@@ -3,65 +3,65 @@
 (in-package :dufy)
 
 ;; CIE 1931/1964 Color Matching Functions
-(defun color-matching-x (wavelength &optional (observer :1931))
+(defun color-matching-x (wavelength &optional (observer :cie1931))
   (if (or (< wavelength 360) (< 830 wavelength))
       0
       (multiple-value-bind (quot rem) (floor wavelength)
-	(if (eq observer :1931)
+	(if (eq observer :cie1931)
 	    (lerp rem
-		  (aref color-matching-arr-1931 (- quot 360) 0)
-		  (aref color-matching-arr-1931 (1+ (- quot 360)) 0))
+		  (aref cmf-arr-cie1931 (- quot 360) 0)
+		  (aref cmf-arr-cie1931 (1+ (- quot 360)) 0))
 	    (lerp rem
-		  (aref color-matching-arr-1964 (- quot 360) 0)
-		  (aref color-matching-arr-1964 (1+ (- quot 360)) 0))))))
+		  (aref cmf-arr-cie1964 (- quot 360) 0)
+		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 0))))))
 
-(defun color-matching-y (wavelength &optional (observer :1931))
+(defun color-matching-y (wavelength &optional (observer :cie1931))
   (if (or (< wavelength 360) (< 830 wavelength))
       0
       (multiple-value-bind (quot rem) (floor wavelength)
-	(if (eq observer :1931)
+	(if (eq observer :cie1931)
 	    (lerp rem
-		  (aref color-matching-arr-1931 (- quot 360) 1)
-		  (aref color-matching-arr-1931 (1+ (- quot 360)) 1))
+		  (aref cmf-arr-cie1931 (- quot 360) 1)
+		  (aref cmf-arr-cie1931 (1+ (- quot 360)) 1))
 	    (lerp rem
-		  (aref color-matching-arr-1964 (- quot 360) 1)
-		  (aref color-matching-arr-1964 (1+ (- quot 360)) 1))))))
+		  (aref cmf-arr-cie1964 (- quot 360) 1)
+		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 1))))))
 	
-(defun color-matching-z (wavelength &optional (observer :1931))
+(defun color-matching-z (wavelength &optional (observer :cie1931))
   (if (or (< wavelength 360) (< 830 wavelength))
       0
       (multiple-value-bind (quot rem) (floor wavelength)
-	(if (eq observer :1931)
+	(if (eq observer :cie1931)
 	    (lerp rem
-		  (aref color-matching-arr-1931 (- quot 360) 2)
-		  (aref color-matching-arr-1931 (1+ (- quot 360)) 2))
+		  (aref cmf-arr-cie1931 (- quot 360) 2)
+		  (aref cmf-arr-cie1931 (1+ (- quot 360)) 2))
 	    (lerp rem
-		  (aref color-matching-arr-1964 (- quot 360) 2)
-		  (aref color-matching-arr-1964 (1+ (- quot 360)) 2))))))
+		  (aref cmf-arr-cie1964 (- quot 360) 2)
+		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 2))))))
 
-(defun color-matching (wavelength &optional (observer :1931))
+(defun color-matching (wavelength &optional (observer :cie1931))
   (if (or (< wavelength 360) (< 830 wavelength))
       0
       (multiple-value-bind (quot rem) (floor wavelength)
-	(if (eq observer :1931)
+	(if (eq observer :cie1931)
 	    (list (lerp rem
-			(aref color-matching-arr-1931 (- quot 360) 0)
-			(aref color-matching-arr-1931 (1+ (- quot 360)) 0))
+			(aref cmf-arr-cie1931 (- quot 360) 0)
+			(aref cmf-arr-cie1931 (1+ (- quot 360)) 0))
 		  (lerp rem
-			(aref color-matching-arr-1931 (- quot 360) 1)
-			(aref color-matching-arr-1931 (1+ (- quot 360)) 1))
+			(aref cmf-arr-cie1931 (- quot 360) 1)
+			(aref cmf-arr-cie1931 (1+ (- quot 360)) 1))
 		  (lerp rem
-			(aref color-matching-arr-1931 (- quot 360) 2)
-			(aref color-matching-arr-1931 (1+ (- quot 360)) 2)))
+			(aref cmf-arr-cie1931 (- quot 360) 2)
+			(aref cmf-arr-cie1931 (1+ (- quot 360)) 2)))
 	    (list (lerp rem
-			(aref color-matching-arr-1964 (- quot 360) 0)
-			(aref color-matching-arr-1964 (1+ (- quot 360)) 0))
+			(aref cmf-arr-cie1964 (- quot 360) 0)
+			(aref cmf-arr-cie1964 (1+ (- quot 360)) 0))
 		  (lerp rem
-			(aref color-matching-arr-1964 (- quot 360) 1)
-			(aref color-matching-arr-1964 (1+ (- quot 360)) 1))
+			(aref cmf-arr-cie1964 (- quot 360) 1)
+			(aref cmf-arr-cie1964 (1+ (- quot 360)) 1))
 		  (lerp rem
-			(aref color-matching-arr-1964 (- quot 360) 2)
-			(aref color-matching-arr-1964 (1+ (- quot 360)) 2)))))))
+			(aref cmf-arr-cie1964 (- quot 360) 2)
+			(aref cmf-arr-cie1964 (1+ (- quot 360)) 2)))))))
 
 
 (defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
@@ -197,28 +197,33 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
   (largex 0.0 :type double-float)
   (largey 0.0 :type double-float)
   (largez 0.0 :type double-float)
-  (spectrum #'flat-spectrum :type function))
+  (spectrum nil))
 
 (defvar illum-e) ;; avoid a WARNING
-(defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer :1931))
+(defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer :cie1931))
   "The function SPECTRUM must be defined at least in [360, 780].
 The return values are not normalized."
-  (let ((const 0.009358316379939337d0) ; (/ (dufy::spectrum-sum #'dufy:color-matching-y))
-	(x 0) (y 0) (z 0))
+  (unless (illuminant-spectrum illuminant)
+    (error "The given Illuminant doesn't have a spectrum function"))
+  (let (;; (const 0.009358316379939337d0) ; (/ (dufy::spectrum-sum #'dufy:color-matching-y))
+	(x 0) (y 0) (z 0) (max-y 0))
     (loop for wl from 360 to 780 do
 	 (let ((p (funcall (illuminant-spectrum illuminant) wl))
 	       (reflec (funcall spectrum wl))
 	       (idx (- wl 360)))
-	   (if (eq observer :1931)
+	   (if (eq observer :cie1931)
 	       (progn
-		 (incf x (* (aref color-matching-arr-1931 idx 0) p reflec))
-		 (incf y (* (aref color-matching-arr-1931 idx 1) p reflec))
-		 (incf z (* (aref color-matching-arr-1931 idx 2) p reflec)))
+		 (incf x (* (aref cmf-arr-cie1931 idx 0) p reflec))
+		 (incf y (* (aref cmf-arr-cie1931 idx 1) p reflec))
+		 (incf z (* (aref cmf-arr-cie1931 idx 2) p reflec))
+		 (incf max-y (* (aref cmf-arr-cie1931 idx 1) p)))
 	       (progn
-		 (incf x (* (aref color-matching-arr-1964 idx 0) p reflec))
-		 (incf y (* (aref color-matching-arr-1964 idx 1) p reflec))
-		 (incf z (* (aref color-matching-arr-1964 idx 2) p reflec))))))
-    (list (* x const) (* y const) (* z const))))
+		 (incf x (* (aref cmf-arr-cie1964 idx 0) p reflec))
+		 (incf y (* (aref cmf-arr-cie1964 idx 1) p reflec))
+		 (incf z (* (aref cmf-arr-cie1964 idx 2) p reflec))
+		 (incf max-y (* (aref cmf-arr-cie1931 idx 1) p))))))
+    (let ((factor (/ max-y)))
+      (list (* x factor) (* y factor) (* z factor)))))
 
 (defun xyy-to-xyz (x y largey)
   (if (zerop y)
@@ -235,7 +240,7 @@ The return values are not normalized."
 	(list (/ x sum) (/ y sum) y))))
 
 
-(defun new-illuminant (x y &optional (spectrum #'flat-spectrum))
+(defun new-illuminant (x y &optional (spectrum nil))
   (destructuring-bind (largex largey largez) (xyy-to-xyz x y 1d0)
     (make-illuminant :x (float x 1d0)
 		     :y (float y 1d0)
@@ -246,9 +251,13 @@ The return values are not normalized."
 
 (defparameter illum-a (new-illuminant 0.44757d0 0.40745d0))
 (defparameter illum-c (new-illuminant 0.31006d0 0.31616d0))
-(defparameter illum-d50 (new-illuminant 0.34567d0 0.35850d0 (gen-illum-d-spectrum 5003)))
-(defparameter illum-d65 (new-illuminant 0.31271d0 0.32902d0 (gen-illum-d-spectrum 6504)))
-(defparameter illum-e (new-illuminant #.(float 1/3 1d0) #.(float 1/3 1d0)))
+(defparameter illum-d50 (new-illuminant 0.34567d0 0.35850d0
+					(gen-illum-d-spectrum #.(* 5000 (/ 1.4388d0 1.438)))))
+(defparameter illum-d65 (new-illuminant 0.31271d0 0.32902d0
+					(gen-illum-d-spectrum #.(* 6500 (/ 1.43880d0 1.438)))))
+(defparameter illum-e (new-illuminant #.(float 1/3 1d0)
+				      #.(float 1/3 1d0)
+				      #'flat-spectrum))
 
 (defparameter bradford
   (make-array '(3 3)
@@ -361,3 +370,10 @@ The return values are not normalized."
 	(apply #'xyz-to-xyy
 	       (apply ca-func
 		      (xyy-to-xyz x y largey))))))
+
+(defun xyz-normalize (x y z)
+  "Normalizes Y to 1."
+  (let ((/y (/ y)))
+    (list (* /y x)
+	  1d0
+	  (* /y z))))
