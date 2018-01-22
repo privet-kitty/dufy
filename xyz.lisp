@@ -322,7 +322,7 @@ The return values are not normalized."
 ;;       (0.4323052697234d0 0.51836027153678d0 0.049291228212856d0)
 ;;       (-0.0085286645751773d0 0.040042821654085d0 0.96848669578755d0)))
 
-(defun calc-ca-matrix  (from-illuminant to-illuminant &optional (tmatrix bradford))
+(defun calc-cat-matrix  (from-illuminant to-illuminant &optional (tmatrix bradford))
   "Returns a 3*3 chromatic adaptation matrix."
   (let ((from-white-x (illuminant-largex from-illuminant))
 	(from-white-y (illuminant-largey from-illuminant))
@@ -376,7 +376,7 @@ The return values are not normalized."
 (declaim (ftype (function * function) gen-cat-function))
 (defun gen-cat-function (from-illuminant to-illuminant &optional (tmatrix bradford))
   "Returns a chromatic adaptation function of XYZ values: #'(lambda (X Y Z) ...)"
-  (let ((mat (calc-ca-matrix from-illuminant to-illuminant tmatrix)))
+  (let ((mat (calc-cat-matrix from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))
 

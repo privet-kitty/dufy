@@ -27,7 +27,7 @@
 	   :make-illuminant-by-spd
 	   :illum-a :illum-e
 	   :illum-c :illum-d50 :illum-d65
-	   :calc-ca-matrix
+	   :calc-cat-matrix
 	   :gen-cat-function
 	   :gen-cat-function-xyy
 	   
