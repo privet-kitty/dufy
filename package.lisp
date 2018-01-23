@@ -30,12 +30,20 @@
 	   :calc-cat-matrix
 	   :gen-cat-function
 	   :gen-cat-function-xyy
-	   
+
+	   :cat
+	   :make-cat
+	   :cat-matrix
+	   :cat-inv-matrix
+	   :xyz-to-lms
+	   :lms-to-xyz
 	   :bradford
 	   :xyz-scaling
 	   :von-kries
 	   :cmccat97
 	   :cmccat2000
+	   :cat97s
+	   :cat97s-revised
 	   :cat02
 
 	   :rgbspace

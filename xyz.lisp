@@ -201,8 +201,9 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 
 (defvar illum-e) ;; avoid a WARNING
 (defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer :cie1931))
-  "The function SPECTRUM must be defined at least in [360, 780].
-The return values are not normalized."
+  "Compute XYZ values from SPECTRUM in reflective and transmissive case.
+The function SPECTRUM must be defined at least in [360, 830].  The
+return values are not normalized."
   (unless (illuminant-spectrum illuminant)
     (error "The given Illuminant doesn't have a spectrum function"))
   (spectrum-to-xyz-by-illum-spd spectrum
@@ -212,7 +213,7 @@ The return values are not normalized."
 (defun spectrum-to-xyz-by-illum-spd (spectrum illum-spd &key (observer :cie1931))
   "Actually (illuminant-spectrum illuminant) is only needed in spectrum-to-xyz."
   (let ((x 0) (y 0) (z 0) (max-y 0))
-    (loop for wl from 360 to 780 do
+    (loop for wl from 360 to 830 do
 	 (let ((p (funcall illum-spd wl))
 	       (reflec (funcall spectrum wl))
 	       (idx (- wl 360)))
@@ -277,59 +278,118 @@ The return values are not normalized."
 				       #.(float 1/3 1d0)
 				       #'flat-spectrum))
 
+;;; LMS, chromatic adaptation
+(defstruct (cat (:constructor $make-cat))
+  "chromatic adaptation transformation"
+  (matrix identity-matrix :type (simple-array double-float (3 3)))
+  (inv-matrix identity-matrix :type (simple-array double-float (3 3))))
+
+(defun make-cat (mat)
+  (let ((mat-arr (make-array '(3 3)
+			     :element-type 'double-float
+			     :initial-contents mat)))
+    ($make-cat :matrix mat-arr
+	       :inv-matrix (invert-matrix33 mat-arr))))
+
 (defparameter bradford
-  (make-array '(3 3)
-	      :element-type 'double-float
-	      :initial-contents  '((0.8951d0 0.2664d0 -0.1614d0)
-				   (-0.7502d0 1.7135d0 0.0367d0)
-				   (0.0389d0 -0.0685d0 1.0296d0))))
+  (make-cat '((0.8951d0 0.2664d0 -0.1614d0)
+	      (-0.7502d0 1.7135d0 0.0367d0)
+	      (0.0389d0 -0.0685d0 1.0296d0))))
+
 (defparameter xyz-scaling
-  (make-array '(3 3)
-	      :element-type 'double-float
-	      :initial-contents  '((1d0 0d0 0d0)
-				   (0d0 1d0 0d0)
-				   (0d0 0d0 1d0))))
+  (make-cat '((1d0 0d0 0d0)
+	      (0d0 1d0 0d0)
+	      (0d0 0d0 1d0))))
+
 (defparameter von-kries
-  (make-array '(3 3)
-	      :element-type 'double-float
-	      :initial-contents  '((0.4002d0 0.7076d0 -0.0808d0)
-				   (-0.2263d0 1.1653d0 0.0457d0)
-				   (0.0000d0 0.0000d0 0.9182d0))))
+  (make-cat '((0.4002d0 0.7076d0 -0.0808d0)
+	      (-0.2263d0 1.1653d0 0.0457d0)
+	      (0.0000d0 0.0000d0 0.9182d0))))
 
 (defparameter cmccat97
-  (make-array '(3 3)
-	      :element-type 'double-float
-	      :initial-contents  '((0.8951d0 -0.7502d0 0.0389d0)
-				   (0.2664d0 1.7135d0 0.0685d0)
-				   (-0.1614d0 0.0367d0 1.0296d0))))
+  (make-cat '((0.8951d0 -0.7502d0 0.0389d0)
+	      (0.2664d0 1.7135d0 0.0685d0)
+	      (-0.1614d0 0.0367d0 1.0296d0))))
 
 (defparameter cmccat2000
-  (make-array '(3 3)
-	      :element-type 'double-float
-	      :initial-contents  '((0.7982d0 0.3389d0 -0.1371d0)
-				   (-0.5918d0 1.5512d0 0.0406d0)
-				   (0.0008d0 0.0239d0 0.9753d0))))
+  (make-cat '((0.7982d0 0.3389d0 -0.1371d0)
+	      (-0.5918d0 1.5512d0 0.0406d0)
+	      (0.0008d0 0.0239d0 0.9753d0))))
+
+(defparameter cat97s
+  (make-cat '((0.8951d0 0.2664d0 -0.1614d0)
+	      (-0.7502d0 1.7135d0 0.0367d0)
+	      (0.0389d0 -0.0685d0 1.0296d0))))
+
+(defparameter cat97s-revised
+  (make-cat '((0.8562d0 0.3372d0 -0.1934d0)
+	      (-0.8360d0 1.8327d0 0.0033d0)
+	      (0.0357d0 -0.0469d0 1.0112d0))))
 
 (defparameter cat02
-  (make-array '(3 3)
-	      :element-type 'double-float
-	      :initial-contents '((0.7328d0 0.4296d0 -0.1624d0)
-				  (-0.7036d0 1.6975d0 0.0061d0)
-				  (0.0030d0 0.0136d0 0.9834d0))))
+  (make-cat '((0.7328d0 0.4296d0 -0.1624d0)
+	      (-0.7036d0 1.6975d0 0.0061d0)
+	      (0.0030d0 0.0136d0 0.9834d0))))
 
 ;; (defparameter inverted-bradford-matrix
 ;;   #2A((0.98699290546671d0 -0.147054256421d0 0.15996265166373d0)
 ;;       (0.4323052697234d0 0.51836027153678d0 0.049291228212856d0)
 ;;       (-0.0085286645751773d0 0.040042821654085d0 0.96848669578755d0)))
 
-(defun calc-cat-matrix  (from-illuminant to-illuminant &optional (tmatrix bradford))
-  "Returns a 3*3 chromatic adaptation matrix."
+
+(defun xyz-to-lms (x y z &key (illuminant nil) (cat bradford))
+  "Note: The default illuminant is not D65; if ILLUMINANT is NIL, the
+transform is virtually equivalent to that of illuminant E. "
+  (if illuminant
+      (let* ((mat (cat-matrix cat))
+	     (factor-l (+ (* (illuminant-largex illuminant) (aref mat 0 0))
+			  (aref mat 0 1)
+			  (* (illuminant-largez illuminant) (aref mat 0 2))))
+	     (factor-m (+ (* (illuminant-largex illuminant) (aref mat 1 0))
+			  (aref mat 1 1)
+			  (* (illuminant-largez illuminant) (aref mat 1 2))))
+	     (factor-s (+ (* (illuminant-largex illuminant) (aref mat 2 0))
+			  (aref mat 2 1)
+			  (* (illuminant-largez illuminant) (aref mat 2 2)))))
+	(destructuring-bind (l m s)
+	    (multiply-matrix-and-vec mat x y z)
+	  (list (/ l factor-l)
+		(/ m factor-m)
+		(/ s factor-s))))
+      (multiply-matrix-and-vec (cat-matrix cat) x y z)))
+	    
+
+(defun lms-to-xyz (l m s &key (illuminant nil) (cat bradford))
+   "Note: The default illuminant is not D65; if ILLUMINANT is NIL, the
+transform is virtually equivalent to that of illuminant E. "
+  (if illuminant
+      (let* ((mat (cat-matrix cat))
+	     (factor-l (+ (* (illuminant-largex illuminant) (aref mat 0 0))
+			  (aref mat 0 1)
+			  (* (illuminant-largez illuminant) (aref mat 0 2))))
+	     (factor-m (+ (* (illuminant-largex illuminant) (aref mat 1 0))
+			  (aref mat 1 1)
+			  (* (illuminant-largez illuminant) (aref mat 1 2))))
+	     (factor-s (+ (* (illuminant-largex illuminant) (aref mat 2 0))
+			  (aref mat 2 1)
+			  (* (illuminant-largez illuminant) (aref mat 2 2)))))
+	(multiply-matrix-and-vec (cat-inv-matrix cat)
+				 (* l factor-l)
+				 (* m factor-m)
+				 (* s factor-s)))
+      (multiply-matrix-and-vec (cat-inv-matrix cat) l m s)))
+  
+
+(defun calc-cat-matrix  (from-illuminant to-illuminant &optional (cat bradford))
+  "Returns a 3*3 chromatic adaptation matrix between FROM-ILLUMINANT to TO-ILLUMINANT."
   (let ((from-white-x (illuminant-largex from-illuminant))
 	(from-white-y (illuminant-largey from-illuminant))
 	(from-white-z (illuminant-largez from-illuminant))
 	(to-white-x (illuminant-largex to-illuminant))
 	(to-white-y (illuminant-largey to-illuminant))
-	(to-white-z (illuminant-largez to-illuminant)))
+	(to-white-z (illuminant-largez to-illuminant))
+	(tmatrix (cat-matrix cat))
+	(inv-tmatrix (cat-inv-matrix cat)))
     (let ((source-L (+ (* from-white-x (aref tmatrix 0 0))
 		       (* from-white-y (aref tmatrix 0 1))
 		       (* from-white-z (aref tmatrix 0 2))))
@@ -361,8 +421,7 @@ The return values are not normalized."
 	(setf (aref matrix1 2 0) (* S-ratio (aref tmatrix 2 0)))
 	(setf (aref matrix1 2 1) (* S-ratio (aref tmatrix 2 1)))
 	(setf (aref matrix1 2 2) (* S-ratio (aref tmatrix 2 2)))
-	(let ((inv-tmatrix (invert-matrix33 tmatrix))
-	      (matrix2 (make-array '(3 3) :element-type 'double-float)))
+	(let ((matrix2 (make-array '(3 3) :element-type 'double-float)))
 	  (dotimes (i 3)
 	    (dotimes (j 3)
 	      (do ((sum 0 (+ sum (* (aref inv-tmatrix i k)

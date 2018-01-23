@@ -4,10 +4,6 @@
 
 
 ;;; RGB Color Space
-(defparameter identity-matrix
-  (make-array '(3 3) :element-type 'double-float
-	      :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
-
 (defun gen-linearizer (gamma)
   (let ((gamma$ (float gamma 1d0)))
     #'(lambda (x) (if (>= x 0)
@@ -132,7 +128,7 @@
  
 
 ;; convert XYZ to linear RGB in [0, 1]
-(defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 0))
+(defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of LR , LG and LB are outside
 the interval [-THRESHOLD, 1+THRESHOLD]."
@@ -206,7 +202,7 @@ ILLUMINANT is nil, it is a trivial copier."
 	  (funcall lin g)
 	  (funcall lin b))))
 
-(defun xyz-to-rgb (x y z &key (rgbspace srgb) (threshold 0))
+(defun xyz-to-rgb (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: (R G B), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [-THRESHOLD, 1+THRESHOLD]."
@@ -232,7 +228,7 @@ accepts all the real values."
 	(* g255 #.(float 1/255 1d0))
 	(* b255 #.(float 1/255 1d0))))
 
-(defun xyz-to-rgb255 (x y z &key (rgbspace srgb) (threshold 0))
+(defun xyz-to-rgb255 (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: (R255 G255 B255), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [-THRESHOLD, 1+THRESHOLD]."
@@ -260,7 +256,7 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (apply (rcurry #'rgb255-to-xyz rgbspace)
 	 (hex-to-rgb255 hex)))
 
-(defun xyz-to-hex (x y z &key (rgbspace srgb) (threshold 0))
+(defun xyz-to-hex (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: HEX, OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [-THRESHOLD, 1+THRESHOLD]."
@@ -408,28 +404,29 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 
 
 ;; obsolete
-(defun polar-mean-of-xy (x1 y1 x2 y2)
-  (destructuring-bind (r1 theta1) (xy-to-polar x1 y1)
-    (destructuring-bind (r2 theta2) (xy-to-polar x2 y2)
-      (polar-to-xy (* 0.5d0 (+ r1 r2))
-		   (circular-lerp theta1 theta2 0.5d0)))))
+;; (defun polar-mean-of-xy (x1 y1 x2 y2)
+;;   (destructuring-bind (r1 theta1) (xy-to-polar x1 y1)
+;;     (destructuring-bind (r2 theta2) (xy-to-polar x2 y2)
+;;       (polar-to-xy (* 0.5d0 (+ r1 r2))
+;; 		   (circular-lerp theta1 theta2 0.5d0)))))
 
-(defun xy-to-polar (x y)
-  (let ((dx (- x 0.31006d0))
-	(dy (- y 0.31616d0)))
-    (list (sqrt (+ (* dx dx) (* dy dy)))
-	  (mod (atan dy dx) TWO-PI))))
+;; (defun xy-to-polar (x y)
+;;   (let ((dx (- x 0.31006d0))
+;; 	(dy (- y 0.31616d0)))
+;;     (list (sqrt (+ (* dx dx) (* dy dy)))
+;; 	  (mod (atan dy dx) TWO-PI))))
 
-(defun polar-to-xy (r theta)
-  (let ((dx (* r (cos theta)))
-	(dy (* r (sin theta))))
-    (list (+ dx 0.31006d0) (+ dy 0.31616d0))))
+;; (defun polar-to-xy (r theta)
+;;   (let ((dx (* r (cos theta)))
+;; 	(dy (* r (sin theta))))
+;;     (list (+ dx 0.31006d0) (+ dy 0.31616d0))))
+
 
 
 ;;; HSV/HSL
 
-;; H is in R/360. S and V are in [0, 1].
 (defun hsv-to-rgb (hue sat val)
+  "H is in R/360. S and V are in [0, 1]."
   (let* ((c (coerce (* val sat) 'double-float))
 	 (h-prime (/ (mod hue 360d0) 60d0))
 	 (h-prime-int (floor h-prime))
@@ -468,7 +465,7 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	      (* g255 #.(/ 1 255d0))
 	      (* b255 #.(/ 1 255d0))))
 
-(defun xyz-to-hsv (x y z &key (rgbspace srgb) (threshold 0))
+(defun xyz-to-hsv (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: (H S V), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of **linear** RGB values are
 outside the interval [-THRESHOLD, 1+THRESHOLD]."
@@ -480,6 +477,7 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
   
 
 (defun hsl-to-rgb (hue sat lum)
+  "H is in R/360. S and V are in [0, 1]."
   (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (- (* lum 2d0) 1d0)))))
 	 (max (+ lum tmp))
 	 (min (- lum tmp))
@@ -497,7 +495,7 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
 				   max
 				   (+ min (* delta (- hue 120d0) 0.016666666666666667d0))))
 	  ((= 3 h-prime-int) (list min
-				   (+ min (* delta (- 240d0 hue) 0.016666666666666667d0))
+2				   (+ min (* delta (- 240d0 hue) 0.016666666666666667d0))
 				   max))
 	  ((= 4 h-prime-int) (list (+ min (* delta (- hue 240d0) 0.016666666666666667d0))
 				   min
@@ -511,7 +509,6 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (mapcar #'(lambda (x) (round (* x 255d0)))
 	  (hsl-to-rgb hue sat lum)))
 
-;; The given HSV color is regarded as converted from a non-linear (i.e. gamma-corrected) RGB color.
 (defun hsl-to-xyz (hue sat lum &optional (rgbspace srgb))
   (destructuring-bind (r g b) (hsl-to-rgb hue sat lum)
     (rgb-to-xyz r g b rgbspace)))
@@ -533,7 +530,7 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	      (* g255 #.(/ 1 255d0))
 	      (* b255 #.(/ 1 255d0))))
 
-(defun xyz-to-hsl (x y z &key (rgbspace srgb) (threshold 0))
+(defun xyz-to-hsl (x y z &key (rgbspace srgb) (threshold 1d-4))
     "Returns multiple values: (H S L), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [-THRESHOLD, 1+THRESHOLD]."

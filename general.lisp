@@ -1,4 +1,4 @@
-;; general routines
+;;; General routines and constants
 
 
 (in-package :dufy)
@@ -16,6 +16,11 @@
       t
       (and (<= (- number (car (the cons more-numbers))) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
+
+
+;;;
+;;; Some arithmetic in a circle group
+;;;
 
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
   "(X - Y) mod DIVISOR."
@@ -74,6 +79,15 @@ THETA2] in a circle group."
 	(or (<= theta1-m x-m)
 	    (<= x-m theta2)))))
 
+
+
+;;;
+;;; Matrix operation
+;;;
+
+(defparameter identity-matrix
+  (make-array '(3 3) :element-type 'double-float
+	      :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 
 (defun invert-matrix33 (mat)
   (let ((det (+ (* (aref mat 0 0) (aref mat 1 1) (aref mat 2 2))

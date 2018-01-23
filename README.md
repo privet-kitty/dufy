@@ -11,6 +11,8 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 * HSL
 * CIELAB and LCH<sub>ab</sub>
 * CIELUV and LCH<sub>uv</sub>
+* LMS
+* spectrum (as spectral power distribution function)
 
 Dufy has following features:
 
@@ -49,7 +51,7 @@ converter_tree
     graph [
       labelloc = "t",
       label = "Tree of Primary Converters",
-      fontsize = 18
+      fontsize = 16
     ];
     node [shape = "box", fontname = "helvetica"]
     xyz [ label = "XYZ" ]
@@ -60,13 +62,17 @@ converter_tree
     hex [ label = "HEX" ]
     lab [ label = "LAB" ]
     lchab [ label = "LCHAB" ]
-    luv { label = "LUV" ]
+    luv [ label = "LUV" ]
     lchuv [ label = "LCHUV" ]
-    mhvc [ label = "MHVC" ]
-    munsell [ label = "MUNSELL" ]
+    mhvc [ label = "MHVC\n(Munsell 3-number spec.)" ]
+    munsell [ label = "MUNSELL\n(Munsell string spec.)" ]
     hsv [ label = "HSV" ]
     hsl [ label = "HSL" ]
+    spectrum [ label = "SPECTRUM" ]
+    lms [ label = "LMS" ]
     xyz -- xyy
+    xyz -- lms
+    xyz -- spectrum
     xyz -- lrgb
     lrgb -- rgb
     rgb -- rgb255
@@ -81,6 +87,7 @@ converter_tree
 
     lchab -- mhvc
     mhvc -- munsell
+
   }
 converter_tree
 </details>
