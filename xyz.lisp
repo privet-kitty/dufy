@@ -71,7 +71,7 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
   (begin-wl 360 :type (integer 0))
   (end-wl 830 :type (integer 0))
   (cmf-arr (make-array '(471 3) :element-type 'double-float)
-	     :type (simple-array double-float))
+	   :type (simple-array double-float))
   ;; Functions based on cmf-arr
   (cmf-x *empty-function* :type function)
   (cmf-y *empty-function* :type function)
@@ -255,7 +255,8 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
   (largex 0.0 :type double-float)
   (largey 0.0 :type double-float)
   (largez 0.0 :type double-float)
-  (spectrum nil))
+  (spectrum nil)
+  (observer observer-cie1931 :type observer))
 
 (defvar illum-e) ;; avoid a WARNING
 (defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer observer-cie1931))
@@ -299,14 +300,15 @@ return values are not normalized."
 	(list (/ x sum) (/ y sum) y))))
 
 
-(defun make-illuminant (x y &optional (spectrum nil))
+(defun make-illuminant (x y &optional (spectrum nil) (observer observer-cie1931))
   (destructuring-bind (largex largey largez) (xyy-to-xyz x y 1d0)
     ($make-illuminant :x (float x 1d0)
 		      :y (float y 1d0)
 		      :largex (float largex 1d0)
 		      :largey (float largey 1d0)
 		      :largez (float largez 1d0)
-		      :spectrum spectrum)))
+		      :spectrum spectrum
+		      :observer observer)))
 
 (defun make-illuminant-by-spd (spectrum &optional (observer observer-cie1931))
   (destructuring-bind (largex largey largez)
@@ -319,7 +321,8 @@ return values are not normalized."
 			:largex (float largex 1d0)
 			:largey (float largey 1d0)
 			:largez (float largez 1d0)
-			:spectrum spectrum))))
+			:spectrum spectrum
+			:observer observer))))
 
 (defparameter illum-a (make-illuminant 0.44757d0 0.40745d0))
 (defparameter illum-c (make-illuminant 0.31006d0 0.31616d0))
