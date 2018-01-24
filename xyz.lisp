@@ -2,75 +2,14 @@
 
 (in-package :dufy)
 
-;; CIE 1931/1964 Color Matching Functions
-(defun color-matching-x (wavelength-nm &optional (observer :cie1931))
-  (if (or (< wavelength-nm 360) (< 830 wavelength-nm))
-      0
-      (multiple-value-bind (quot rem) (floor wavelength-nm)
-	(if (eq observer :cie1931)
-	    (lerp rem
-		  (aref cmf-arr-cie1931 (- quot 360) 0)
-		  (aref cmf-arr-cie1931 (1+ (- quot 360)) 0))
-	    (lerp rem
-		  (aref cmf-arr-cie1964 (- quot 360) 0)
-		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 0))))))
-
-(defun color-matching-y (wavelength-nm &optional (observer :cie1931))
-  (if (or (< wavelength-nm 360) (< 830 wavelength-nm))
-      0
-      (multiple-value-bind (quot rem) (floor wavelength-nm)
-	(if (eq observer :cie1931)
-	    (lerp rem
-		  (aref cmf-arr-cie1931 (- quot 360) 1)
-		  (aref cmf-arr-cie1931 (1+ (- quot 360)) 1))
-	    (lerp rem
-		  (aref cmf-arr-cie1964 (- quot 360) 1)
-		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 1))))))
-	
-(defun color-matching-z (wavelength-nm &optional (observer :cie1931))
-  (if (or (< wavelength-nm 360) (< 830 wavelength-nm))
-      0
-      (multiple-value-bind (quot rem) (floor wavelength-nm)
-	(if (eq observer :cie1931)
-	    (lerp rem
-		  (aref cmf-arr-cie1931 (- quot 360) 2)
-		  (aref cmf-arr-cie1931 (1+ (- quot 360)) 2))
-	    (lerp rem
-		  (aref cmf-arr-cie1964 (- quot 360) 2)
-		  (aref cmf-arr-cie1964 (1+ (- quot 360)) 2))))))
-
-(defun color-matching (wavelength-nm &optional (observer :cie1931))
-  (if (or (< wavelength-nm 360) (< 830 wavelength-nm))
-      0
-      (multiple-value-bind (quot rem) (floor wavelength-nm)
-	(if (eq observer :cie1931)
-	    (list (lerp rem
-			(aref cmf-arr-cie1931 (- quot 360) 0)
-			(aref cmf-arr-cie1931 (1+ (- quot 360)) 0))
-		  (lerp rem
-			(aref cmf-arr-cie1931 (- quot 360) 1)
-			(aref cmf-arr-cie1931 (1+ (- quot 360)) 1))
-		  (lerp rem
-			(aref cmf-arr-cie1931 (- quot 360) 2)
-			(aref cmf-arr-cie1931 (1+ (- quot 360)) 2)))
-	    (list (lerp rem
-			(aref cmf-arr-cie1964 (- quot 360) 0)
-			(aref cmf-arr-cie1964 (1+ (- quot 360)) 0))
-		  (lerp rem
-			(aref cmf-arr-cie1964 (- quot 360) 1)
-			(aref cmf-arr-cie1964 (1+ (- quot 360)) 1))
-		  (lerp rem
-			(aref cmf-arr-cie1964 (- quot 360) 2)
-			(aref cmf-arr-cie1964 (1+ (- quot 360)) 2)))))))
-
-
 (defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
   "Returns a spectral power distribution function,
 #'(lambda (wavelength-nm) ...) : [WL-BEGIN, WL-END] -> R,
 by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
   (let* ((size (- (length spectrum-array) 1)))
     (if (= size (- wl-end wl-begin))
-	;; if SPECTRUM-ARRAY is defined for each integer, the SPECTRUM function is simple:
+	;; If SPECTRUM-ARRAY is defined just for each integer,
+	;; the spectrum function is simple:
 	#'(lambda (wavelength-nm)
 	    (multiple-value-bind (quot rem)
 		(floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
@@ -87,6 +26,125 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 		(lerp coef
 		      (aref spectrum-array idx)
 		      (aref spectrum-array (min (+ idx 1) size)))))))))
+
+
+;; used for color matching functions
+;; (defun gen-spectrum-triple (arr1 arr2 arr3 &optional (wl-begin 360) (wl-end 830))
+;;   (let* ((size (- (length arr1) 1)))
+;;     (if (= size (- wl-end wl-begin))
+;; 	#'(lambda (wavelength-nm)
+;; 	    (multiple-value-bind (quot rem)
+;; 		(floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+;; 	      (list (lerp rem
+;; 			  (aref arr1 quot)
+;; 			  (aref arr1 (min (1+ quot) size)))
+;; 		    (lerp rem
+;; 			  (aref arr2 quot)
+;; 			  (aref arr2 (min (1+ quot) size)))
+;; 		    (lerp rem
+;; 			  (aref arr3 quot)
+;; 			  (aref arr3 (min (1+ quot) size))))))
+;; 	(let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
+;; 	       (/band (/ band)))
+;; 	  #'(lambda (wavelength-nm)
+;; 	      (let* ((wl$ (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+;; 		     (frac (mod wl$ band))
+;; 		     (coef (* frac /band))
+;; 		     (idx (round (* (- wl$ frac) /band))))
+;; 		(list (lerp coef
+;; 			    (aref arr1 idx)
+;; 			    (aref arr1 (min (+ idx 1) size)))
+;; 		      (lerp coef
+;; 			    (aref arr2 idx)
+;; 			    (aref arr2 (min (+ idx 1) size)))
+;; 		      (lerp coef
+;; 			    (aref arr3 idx)
+;; 			    (aref arr3 (min (+ idx 1) size))))))))))
+
+
+;;;
+;;; Observer
+;;;
+
+(defstruct (observer (:constructor $make-observer))
+  "Structure of color matching functions"
+  (begin-wl 360 :type (integer 0))
+  (end-wl 830 :type (integer 0))
+  (cmf-arr (make-array '(471 3) :element-type 'double-float)
+	     :type (simple-array double-float))
+  ;; Functions based on cmf-arr
+  (cmf-x *empty-function* :type function)
+  (cmf-y *empty-function* :type function)
+  (cmf-z *empty-function* :type function)
+  (cmf *empty-function* :type function))
+
+
+(defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
+  "Defines an observer from 3 CMF arrays."
+  (labels ((gen-cmf-1 (arr num &optional (wl-begin 360) (wl-end 830))
+	     ;; Almost equivalent to GEN-SPECTRUM
+	     (let* ((size (- (array-dimension arr 0) 1)))
+	       (if (= size (- wl-end wl-begin))
+		   #'(lambda (wavelength-nm)
+		       (multiple-value-bind (quot rem)
+			   (floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+			 (lerp rem
+			       (aref arr quot num)
+			       (aref arr (min (1+ quot) size) num))))
+		   (let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
+			  (/band (/ band)))
+		     #'(lambda (wavelength-nm)
+			 (let* ((wl$ (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+				(frac (mod wl$ band))
+				(coef (* frac /band))
+				(idx (round (* (- wl$ frac) /band))))
+			   (lerp coef
+				 (aref arr idx num)
+				 (aref arr (min (+ idx 1) size) num))))))))
+	   (gen-cmf-3 (arr &optional (wl-begin 360) (wl-end 830))
+	     (let* ((size (- (array-dimension arr 0) 1)))
+	       (if (= size (- wl-end wl-begin))
+		   #'(lambda (wavelength-nm)
+		       (multiple-value-bind (quot rem)
+			   (floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+			 (list (lerp rem
+				     (aref arr quot 0)
+				     (aref arr (min (1+ quot) size) 0))
+			       (lerp rem
+				     (aref arr quot 1)
+				     (aref arr (min (1+ quot) size) 1))
+			       (lerp rem
+				     (aref arr quot 2)
+				     (aref arr (min (1+ quot) size) 2)))))
+		   (let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
+			  (/band (/ band)))
+		     #'(lambda (wavelength-nm)
+			 (let* ((wl$ (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+				(frac (mod wl$ band))
+				(coef (* frac /band))
+				(idx (round (* (- wl$ frac) /band))))
+			   (list (lerp coef
+				       (aref arr idx 0)
+				       (aref arr (min (+ idx 1) size) 0))
+				 (lerp coef
+				       (aref arr idx 1)
+				       (aref arr (min (+ idx 1) size) 1))
+				 (lerp coef
+				       (aref arr idx 2)
+				       (aref arr (min (+ idx 1) size) 2))))))))))
+    ($make-observer
+     :begin-wl begin-wl
+     :end-wl end-wl
+     :cmf-arr cmf-arr
+     :cmf-x (gen-cmf-1 cmf-arr 0 begin-wl end-wl)
+     :cmf-y (gen-cmf-1 cmf-arr 1 begin-wl end-wl)
+     :cmf-z (gen-cmf-1 cmf-arr 2 begin-wl end-wl)
+     :cmf (gen-cmf-3 cmf-arr
+		     begin-wl end-wl))))
+
+(defparameter observer-cie1931 (make-observer cmf-arr-cie1931))
+(defparameter observer-cie1964 (make-observer cmf-arr-cie1964))
+  
 
 ;; s0, s1, s2
 ;; http://www.rit.edu/cos/colorscience/rc_useful_data.php
@@ -200,7 +258,7 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
   (spectrum nil))
 
 (defvar illum-e) ;; avoid a WARNING
-(defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer :cie1931))
+(defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer observer-cie1931))
   "Compute XYZ values from SPECTRUM in reflective and transmissive case.
 The function SPECTRUM must be defined at least in [360, 830].  The
 return values are not normalized."
@@ -210,24 +268,19 @@ return values are not normalized."
 				(illuminant-spectrum illuminant)
 				:observer observer))
 
-(defun spectrum-to-xyz-by-illum-spd (spectrum illum-spd &key (observer :cie1931))
-  "Actually (illuminant-spectrum illuminant) is only needed in spectrum-to-xyz."
-  (let ((x 0) (y 0) (z 0) (max-y 0))
+(defun spectrum-to-xyz-by-illum-spd (spectrum illum-spd &key (observer observer-cie1931))
+  "Another version of spectrum-to-xyz: actually, only the return value of (illuminant-spectrum illuminant), illum-spd here, is necessary in spectrum-to-xyz."
+  (let ((x 0) (y 0) (z 0) (max-y 0)
+	(arr (observer-cmf-arr observer)))
     (loop for wl from 360 to 830 do
 	 (let ((p (funcall illum-spd wl))
 	       (reflec (funcall spectrum wl))
 	       (idx (- wl 360)))
-	   (if (eq observer :cie1931)
-	       (progn
-		 (incf x (* (aref cmf-arr-cie1931 idx 0) p reflec))
-		 (incf y (* (aref cmf-arr-cie1931 idx 1) p reflec))
-		 (incf z (* (aref cmf-arr-cie1931 idx 2) p reflec))
-		 (incf max-y (* (aref cmf-arr-cie1931 idx 1) p)))
-	       (progn
-		 (incf x (* (aref cmf-arr-cie1964 idx 0) p reflec))
-		 (incf y (* (aref cmf-arr-cie1964 idx 1) p reflec))
-		 (incf z (* (aref cmf-arr-cie1964 idx 2) p reflec))
-		 (incf max-y (* (aref cmf-arr-cie1931 idx 1) p))))))
+	   (progn
+	     (incf x (* (aref arr idx 0) p reflec))
+	     (incf y (* (aref arr idx 1) p reflec))
+	     (incf z (* (aref arr idx 2) p reflec))
+	     (incf max-y (* (aref arr idx 1) p)))))
     (let ((factor (/ max-y)))
       (list (* x factor) (* y factor) (* z factor)))))
 
@@ -255,7 +308,7 @@ return values are not normalized."
 		      :largez (float largez 1d0)
 		      :spectrum spectrum)))
 
-(defun make-illuminant-by-spd (spectrum &optional (observer :cie1931))
+(defun make-illuminant-by-spd (spectrum &optional (observer observer-cie1931))
   (destructuring-bind (largex largey largez)
       (spectrum-to-xyz-by-illum-spd #'flat-spectrum spectrum :observer observer)
     (destructuring-bind (x y disused)

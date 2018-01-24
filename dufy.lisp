@@ -1,9 +1,9 @@
-;; Core Routines of Dufy
-
 (in-package :dufy)
 
-
+;;;
 ;;; RGB Color Space
+;;;
+
 (defun gen-linearizer (gamma)
   (let ((gamma$ (float gamma 1d0)))
     #'(lambda (x) (if (>= x 0)
@@ -183,7 +183,6 @@ ILLUMINANT is nil, it is a trivial copier."
   (copy-rgbspace adobed65 illum-d50))
 
 
-;; the nominal range of x is [0, 1]
 (defun linearize (x &optional (rgbspace srgb))
   (funcall (rgbspace-linearizer rgbspace) x))
 
@@ -273,8 +272,10 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   `(clamp (1- ,x) 0 255))
 
 
+;;;
+;;; L*a*b*, L*u*v*, LCH
+;;;
 
-;;; L*a*b*, L*u*v*, LCH, Delta E
 (defun function-f (x)
   (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
@@ -423,7 +424,9 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 
 
 
+;;;
 ;;; HSV/HSL
+;;;
 
 (defun hsv-to-rgb (hue sat val)
   "H is in R/360. S and V are in [0, 1]."

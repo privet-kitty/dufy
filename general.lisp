@@ -17,6 +17,8 @@
       (and (<= (- number (car (the cons more-numbers))) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
+(defparameter *empty-function* ())
+
 
 ;;;
 ;;; Some arithmetic in a circle group

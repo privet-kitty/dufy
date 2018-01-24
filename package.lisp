@@ -4,15 +4,23 @@
   (:use :common-lisp :alexandria)
   (:export :gen-spectrum ;; xyz.lisp
 	   :gen-illum-d-spectrum
-	   :color-matching-x
-	   :color-matching-y
-	   :color-matching-z
-	   :color-matching
 	   :spectrum-to-xyz
 	   :bb-spectrum
 	   :optimal-spectrum
 	   :flat-spectrum
 	   :spectrum-sum
+
+	   :observer
+	   :make-observer
+	   :observer-cmf-x
+	   :observer-cmf-y
+	   :observer-cmf-z
+	   :observer-cmf
+	   :observer-cmf-arr
+	   :observer-begin-wl
+	   :observer-end-wl
+	   :observer-cie1931
+	   :observer-cie1964
 	   
 	   :xyy-to-xyz
 	   :xyz-to-xyy
