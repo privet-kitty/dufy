@@ -5,7 +5,7 @@
 
 ;;; This is a script file which fetches the Munsell renotation data and saves several arrays as a .lisp file.
 
-(defparameter obj-name "munsell-renotation-data.lisp")
+(defparameter obj-name "munsell-renotation-data2.lisp")
 (defparameter obj-path (merge-pathnames obj-name *load-pathname*))
 
 (defparameter dat-url "http://www.rit-mcsl.org/MunsellRenotation/all.dat")
@@ -43,24 +43,26 @@
   (read-line in) ; the first row is the label of the data
   (let ((*read-default-float-format* 'double-float))
     (loop
-       (let ((row (list  (read in nil)
-			 (read in nil)
-			 (read in nil)
-			 (read in nil)
-			 (read in nil)
-			 (funcall #'(lambda (Y)
-				      (if (null Y) nil (* Y 0.01d0)))
-				  (read in nil)))))
-	 (if (null (car row))
+       (let* ((hue (read in nil))
+	      (value (read in nil))
+	      (chroma (read in nil))
+	      (x (read in nil))
+	      (y (read in nil))
+	      (largey (read in nil)))
+	 (declare (ignore largey))
+	 (if (null hue)
 	     (return)
-	     (push row munsell-renotation-data)))))
-  (let ((quantized-data nil))
-    (dolist (x munsell-renotation-data)
-      (let* ((hue-str (string (car x)))
-	     (hue-name (subseq-if #'alpha-char-p hue-str))
-	     (hue-prefix (read-from-string (subseq-if (complement #'alpha-char-p) hue-str))))
-	(push (cons (quantize-40hue hue-name hue-prefix) (cdr x)) quantized-data)))
-    (setf munsell-renotation-data quantized-data)))
+	     (let ((row (list hue value chroma x y
+			      (dufy:munsell-value-to-y value))))
+	       (push row munsell-renotation-data)))))))
+
+(let ((quantized-data nil))
+  (dolist (x munsell-renotation-data)
+    (let* ((hue-str (string (car x)))
+	   (hue-name (subseq-if #'alpha-char-p hue-str))
+	   (hue-prefix (read-from-string (subseq-if (complement #'alpha-char-p) hue-str))))
+      (push (cons (quantize-40hue hue-name hue-prefix) (cdr x)) quantized-data)))
+  (setf munsell-renotation-data quantized-data))
 
 ;; the largest chroma in the renotation data
 (defparameter max-chroma-overall (apply #'max (mapcar #'third munsell-renotation-data)))
@@ -142,30 +144,55 @@
 
 ;; get data without correcting the luminance factor, i.e. max(Y) = 1.0257 (not 1.00)
 ;; The data with value=0 are substituted with the data with value=0.2.
-(defun get-raw-xyy-from-dat (hue-num value chroma)
+(defun get-xyy-from-dat (hue-num value chroma)
   (cond ((= chroma 0)
 	 (dufy::munsell-value-to-achromatic-xyy value))
 	((= value 0)
-	 (cdddr (find-if #'(lambda (row)
-			  (and (= (mod (first row) 40) (mod hue-num 40))
-			       (dufy:nearly= 0.001d0 (second row) 0.2d0)
-			       (= (third row) chroma)))
-		      munsell-renotation-data)))
+	 (funcall #'(lambda (lst)
+		      (if (null lst)
+			  nil
+			  (append (subseq lst 3 5) '(0d0))))
+		  (find-if #'(lambda (row)
+			       (and (= (mod (first row) 40) (mod hue-num 40))
+				    (dufy:nearly= 0.001d0 (second row) 0.2d0)
+				    (= (third row) chroma)))
+			   munsell-renotation-data)))
 	(t
-	 (cdddr (find-if #'(lambda (row)
-			     (and (= (mod (first row) 40) (mod hue-num 40))
-				  (dufy:nearly= 0.001d0 (second row) value)
-				  (= (third row) chroma)))
-			 munsell-renotation-data)))))
+	 (funcall #'(lambda (lst)
+		      (if (null lst)
+			  nil
+			  (subseq lst 3 6)))
+		  (find-if #'(lambda (row)
+			       (and (= (mod (first row) 40) (mod hue-num 40))
+				    (dufy:nearly= 0.001d0 (second row) value)
+				    (= (third row) chroma)))
+			   munsell-renotation-data)))))
+
+;; (defun get-xyy-from-dat (hue-num value chroma)
+;;   (let ((mchroma (dufy:max-chroma hue-num values)))
+;;     (if (<= chroma mchroma)
+;; 	(get-xyy-from-dat hue-num value chroma)
+;; 	(let ((factor (/ chroma mchroma))
 
 (defmacro aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
 
 (defun get-lchab-from-dat (hue-num value chroma)
-  (aif (get-raw-xyy-from-dat hue-num value chroma)
+  (aif (get-xyy-from-dat hue-num value chroma)
        (apply (alexandria:rcurry #'dufy:xyz-to-lchab dufy:illum-c)
 	      (apply #'dufy:xyy-to-xyz it))))
+
+(defun get-extrapolated-lchab-from-dat (hue-num value chroma)
+  "CHROMA must be even."
+  (aif (get-lchab-from-dat hue-num value chroma)
+       it
+       (let* ((mchroma (dufy:max-chroma hue-num value)))
+	 (destructuring-bind (lstar cstarab hab)
+	     (get-lchab-from-dat hue-num value mchroma)
+	   (list lstar
+		 (* cstarab (/ chroma mchroma))
+		 hab)))))
 
 (defparameter value-list '(0 1 2 3 4 5 6 7 8 9 10 0.2 0.4 0.6 0.8))
 (defparameter value-variety (length value-list))
@@ -201,53 +228,57 @@
 	  cstarab
 	  hab)))
 
+;; (dotimes (hue 40)
+;;   (dolist (value '(0 1 2 3 4 5 6 7 8 9 10))
+;;     (dotimes (half-chroma half-chroma-variety)
+;;       (let ((xyy (get-xyy-from-dat hue value (* half-chroma 2))))
+;; 	(if (null xyy)
+;; 	    (progn
+;; 	      (setf (aref mrd-array hue value half-chroma 0) large-negative-float)
+;; 	      (setf (aref mrd-array hue value half-chroma 1) large-negative-float)
+;; 	      (setf (aref mrd-array hue value half-chroma 2) large-negative-float))
+;; 	    (destructuring-bind (x y largey) xyy
+;; 	      (destructuring-bind (lstar cstarab hab) (xyy-to-lchab x y largey)
+;; 		(setf (aref mrd-array hue value half-chroma 0) (coerce x 'double-float))
+;; 		(setf (aref mrd-array hue value half-chroma 1) (coerce y 'double-float))
+;; 		(setf (aref mrd-array hue value half-chroma 2) largey))))))))
+
+
 (dotimes (hue 40)
   (dolist (value '(0 1 2 3 4 5 6 7 8 9 10))
     (dotimes (half-chroma half-chroma-variety)
-      (let ((xyy (get-raw-xyy-from-dat hue value (* half-chroma 2))))
-	(if (null xyy)
-	  (progn
-	    ;; (setf (aref mrd-array hue value half-chroma 0) large-negative-float)
-	    ;; (setf (aref mrd-array hue value half-chroma 1) large-negative-float)
-	    ;; (setf (aref mrd-array hue value half-chroma 2) large-negative-float)
-	    (setf (aref mrd-array-lchab hue value half-chroma 0) large-negative-float)
-	    (setf (aref mrd-array-lchab hue value half-chroma 1) large-negative-float)
-	    (setf (aref mrd-array-lchab hue value half-chroma 2) large-negative-float))
-	  (destructuring-bind (x y largey) xyy
-	    (setf largey (dufy:munsell-value-to-y value))
-	    (destructuring-bind (lstar cstarab hab) (xyy-to-lchab x y largey)
-	      ;; (setf (aref mrd-array hue value half-chroma 0) (coerce x 'double-float))
-	      ;; (setf (aref mrd-array hue value half-chroma 1) (coerce y 'double-float))
-	      ;; (setf (aref mrd-array hue value half-chroma 2) largey)
-	      (setf (aref mrd-array-lchab hue value half-chroma 0) lstar)
-	      (setf (aref mrd-array-lchab hue value half-chroma 1) cstarab)
-	      (setf (aref mrd-array-lchab hue value half-chroma 2) hab))))))))
+      (destructuring-bind (lstar cstarab hab)
+	  (get-extrapolated-lchab-from-dat hue value (* half-chroma 2))
+	(setf (aref mrd-array-lchab hue value half-chroma 0) lstar)
+	(setf (aref mrd-array-lchab hue value half-chroma 1) cstarab)
+	(setf (aref mrd-array-lchab hue value half-chroma 2) hab)))))
 
 ;; construct mrd-array-dark
+;; (dotimes (hue 40)
+;;   (dotimes (value-idx 6)
+;;     (let ((value (* 0.2d0 value-idx)))
+;;       (dotimes (half-chroma half-chroma-variety)
+;; 	(let ((xyy (get-xyy-from-dat hue value (* half-chroma 2))))
+;; 	  (if (null xyy)
+;; 	      (progn
+;; 		(setf (aref mrd-array-dark hue value-idx half-chroma 0) large-negative-float)
+;; 		(setf (aref mrd-array-dark hue value-idx half-chroma 1) large-negative-float)
+;; 		(setf (aref mrd-array-dark hue value-idx half-chroma 2) large-negative-float))     
+;; 	      (destructuring-bind (x y largey) xyy
+;; 		(destructuring-bind (lstar cstarab hab) (xyy-to-lchab x y largey)
+;; 		  (setf (aref mrd-array-dark hue value-idx half-chroma 0) (coerce x 'double-float))
+;; 		  (setf (aref mrd-array-dark hue value-idx half-chroma 1) (coerce y 'double-float))
+;; 		  (setf (aref mrd-array-dark hue value-idx half-chroma 2) largey)))))))))
+
 (dotimes (hue 40)
   (dotimes (value-idx 6)
-    (let ((value (* 0.2 value-idx)))
+    (let ((value (* 0.2d0 value-idx)))
       (dotimes (half-chroma half-chroma-variety)
-	(let ((xyy (get-raw-xyy-from-dat hue value (* half-chroma 2))))
-	  (if (null xyy)
-	      (progn
-		;; (setf (aref mrd-array-dark hue value-idx half-chroma 0) large-negative-float)
-		;; (setf (aref mrd-array-dark hue value-idx half-chroma 1) large-negative-float)
-		;; (setf (aref mrd-array-dark hue value-idx half-chroma 2) large-negative-float)
-		(setf (aref mrd-array-lchab-dark hue value-idx half-chroma 0) large-negative-float)
-		(setf (aref mrd-array-lchab-dark hue value-idx half-chroma 1) large-negative-float)
-		(setf (aref mrd-array-lchab-dark hue value-idx half-chroma 2) large-negative-float))
-	      (destructuring-bind (x y largey) xyy
-		(setf largey (dufy:munsell-value-to-y value))
-		(destructuring-bind (lstar cstarab hab) (xyy-to-lchab x y largey)
-		  ;; (setf (aref mrd-array-dark hue value-idx half-chroma 0) (coerce x 'double-float))
-		  ;; (setf (aref mrd-array-dark hue value-idx half-chroma 1) (coerce y 'double-float))
-		  ;; (setf (aref mrd-array-dark hue value-idx half-chroma 2) largey)
-		  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 0) lstar)
-		  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 1) cstarab)
-		  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 2) hab)))))))))
-
-
+	(destructuring-bind (lstar cstarab hab)
+	    (get-extrapolated-lchab-from-dat hue value (* half-chroma 2))
+	  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 0) lstar)
+	  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 1) cstarab)
+	  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 2) hab))))))
 
 (defun array-to-list (array)
   (let* ((dimensions (array-dimensions array))
@@ -278,18 +309,21 @@
     (terpri stream)))
 
 
-(with-open-file (out obj-path
-		     :direction :output
-		     :if-exists :supersede)
-  (format out ";;; This file is automatically generated by ~a.~%~%"
-	  (file-namestring *load-pathname*))
-  (format out "(in-package :dufy)~%~%")
-  ;(print-make-array "mrd-array" mrd-array out)
-  ;(print-make-array "mrd-array-dark" mrd-array-dark out)
-  (print-make-array "mrd-array-lchab" mrd-array-lchab out)
-  (print-make-array "mrd-array-lchab-dark" mrd-array-lchab-dark out)
-  (print-make-array "max-chroma-arr" max-chroma-arr out)
-  (print-make-array "max-chroma-arr-dark" max-chroma-arr-dark out))
+(defun main ()
+  (with-open-file (out obj-path
+		       :direction :output
+		       :if-exists :supersede)
+    (format out ";;; This file is automatically generated by ~a.~%~%"
+	    (file-namestring *load-pathname*))
+    (format out "(in-package :dufy)~%~%")
+    ;; (print-make-array "mrd-array" mrd-array out)
+    ;; (print-make-array "mrd-array-dark" mrd-array-dark out)
+    (print-make-array "mrd-array-lchab" mrd-array-lchab out)
+    (print-make-array "mrd-array-lchab-dark" mrd-array-lchab-dark out)
+    (print-make-array "max-chroma-arr" max-chroma-arr out)
+    (print-make-array "max-chroma-arr-dark" max-chroma-arr-dark out))
 
-(format t "Munsell Renotation Data is successfully fetched and converted.~%")
-(format t "The file is saved at ~A~%" obj-path)
+  (format t "Munsell Renotation Data is successfully fetched and converted.~%")
+  (format t "The file is saved at ~A~%" obj-path))
+
+(main)

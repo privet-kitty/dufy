@@ -334,6 +334,9 @@ return values are not normalized."
 				       #.(float 1/3 1d0)
 				       #'flat-spectrum))
 
+
+
+
 ;;; LMS, chromatic adaptation
 (defstruct (cat (:constructor $make-cat))
   "chromatic adaptation transformation"

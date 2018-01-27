@@ -314,6 +314,9 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
     (if (> fy 0.20689655172413793d0)
 	(* fy fy fy)
 	(* (- fy 0.13793103448275862d0) 0.12841854934601665d0))))
+
+(defun y-to-lstar (y)
+  (- (* 116d0 (function-f (float y 1d0))) 16d0))
  
 (defun lab-to-xyy (lstar astar bstar &optional (illuminant illum-d65))
   (destructuring-bind (x y z) (lab-to-xyz lstar astar bstar illuminant)

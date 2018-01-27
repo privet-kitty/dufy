@@ -4,7 +4,7 @@ Dufy - Color Library for Common Lisp
 Dufy is a library for an exact color manipulation and conversion in various color models. It supports following color spaces:
 
 * Munsell color system
-* all kinds of RGB spaces: sRGB, Adobe RGB, etc. (User-defined RGB working space is available.)
+* All kinds of RGB spaces: sRGB, Adobe RGB, etc. (User-defined RGB working space is available.)
 * XYZ
 * xyY
 * HSV
@@ -12,12 +12,15 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 * CIELAB and LCH<sub>ab</sub>
 * CIELUV and LCH<sub>uv</sub>
 * LMS
-* spectrum (as spectral power distribution function)
+* Spectrum (as spectral power distribution function)
 
-Dufy has following features:
+Dufy can handle the following concepts:
 
-* It can deal with a prepared or user-defined standard illuminant for each of the color spaces. It has various chromatic adapatation routines between two standard illuminants: Bradford, Von Kries, CIECAT02, etc.
-* It avoids defining special structures or classes to express a color: e.g., a converter from RGB to XYZ receives just three numbers and returns (a list of) three numbers.
+* Illuminant: C, D65, ...
+* Observer (Color Matching Functions): CIE 1931 2° Standard Observer, CIE 1964 10°, ...
+* Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIEDE2000, ...
+* Chromatic Adaptaion Transform: Bradford, Von Kries, ...
+
 
 # Dependencies
 * alexandria
@@ -177,7 +180,7 @@ The hue number of `mhvc` is a circle group: i.e. hues outside the interval [0, 4
 
 There are some more points to remember: First, the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C. Sometimes you may want to use a direct converter with illuminant C, for e.g. accuracy or efficiency. The following converters are under illuminant C: `munsell-to-lchab`, `mhvc-to-lchab`, `mhvc-to-xyz-illum-c`. 
 
-Second, for a given hue number and value you can find the feasible chroma by `max-chroma`:
+Second, for a given hue number and value you can find feasible chroma by `max-chroma`:
 
     * (dufy:max-chroma 1.28 6.1)
     => 24
