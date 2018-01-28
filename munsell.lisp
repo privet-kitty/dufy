@@ -86,7 +86,7 @@ The behavior of the MHVC-TO- functions is undefined, when chroma is larger than 
 
 (defun y-to-munsell-value (y)
   "Interpolates the inversion table of MUNSELL-VALUE-TO-Y linearly,
-whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
+whose band width is 10^-3. The nominal range of Y is [0, 1]."
   (let* ((y1000 (* (clamp y 0 1) 1000))
 	 (y1 (floor y1000))
 	 (y2 (ceiling y1000)))
@@ -118,14 +118,19 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
   (declare (optimize (speed 3) (safety 0))
 	   (fixnum hue40 tmp-value half-chroma))
-  (if dark
-      (list (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 0)
-	    (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 1)
-	    (aref mrd-array-lchab-dark hue40 tmp-value half-chroma 2))
-      (list (aref mrd-array-lchab hue40 tmp-value half-chroma 0)
-	    (aref mrd-array-lchab hue40 tmp-value half-chroma 1)
-	    (aref mrd-array-lchab hue40 tmp-value half-chroma 2))))
-
+  (let ((arr (if dark
+		 mrd-array-lchab-dark
+		 mrd-array-lchab)))
+    (if (<= half-chroma 25)
+	(list (aref arr hue40 tmp-value half-chroma 0)
+	      (aref arr hue40 tmp-value half-chroma 1)
+	      (aref arr hue40 tmp-value half-chroma 2))
+	;; the case chroma > 50
+	(let ((cstarab (aref arr hue40 tmp-value 25 1))
+	      (factor (* half-chroma #.(float 1/25 1d0))))
+	  (list (aref arr hue40 tmp-value 25 0)
+		(* cstarab factor)
+		(aref arr hue40 tmp-value 25 2))))))
 	 
 
 ;; (defun mhvc-to-xyy-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
@@ -278,7 +283,7 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
 	   :initform 0d0
 	   :accessor cond-chroma))
   (:report (lambda (condition stream)
-	     (format stream "Value and chroma must be within [0, 10] and [0, 50], respectively: (V C) = (~A ~A)"
+	     (format stream "Value and chroma must be within [0, 10] and [0, inf), respectively: (V C) = (~A ~A)"
 		     (cond-value condition)
 		     (cond-chroma condition)))))
 
@@ -293,14 +298,13 @@ whose pitch width is 10^-3. The nominal range of Y is [0, 1]."
 (defun mhvc-invalid-p (hue40 value chroma)
   "Judge if MHVC is invalid."
   (declare (ignore hue40))
-  (or (< value 0) (> value 10)
-      (< chroma 0) (> chroma 50)))
+  (or (< value 0) (> value 10) (< chroma 0)))
 
 (defun mhvc-to-lchab (hue40 value chroma)
   "CAUTION: The Standard Illuminant is C."
   (let ((d-hue (mod (float hue40 1d0) 40))
 	(d-value (float (clamp value 0d0 10d0) 1d0))
-	(d-chroma (float (clamp chroma 0d0 50d0) 1d0)))
+	(d-chroma (float (max chroma 0d0) 1d0)))
     (if (>= value 1d0)
 	(mhvc-to-lchab-general-case d-hue d-value (/ d-chroma 2) nil)
 	(mhvc-to-lchab-general-case d-hue (* d-value 5) (/ d-chroma 2) t))))
@@ -407,79 +411,79 @@ Note that boundary colors, e.g. pure white (N 10.0), could be judged as out-of-g
 
       
 (defun munsell-to-mhvc (munsellspec)
-  (let ((lst (mapcar #'read-from-string
-		     (remove "" (cl-ppcre:split "[^0-9.a-z#\-]+" munsellspec) :test #'string=))))
+  "Usage Example:
+(dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
+=> (36.00799999982119d0 0.8999999761581421d0 3.5d0)
+Many other objects will be acceptable as the number designations;
+an ugly specification as follows are also available:
+(dufy:munsell-to-mhvc \"2d-2RP .9/     #x0ffffff\")
+=> (36.008d0 0.8999999761581421d0 1.6777215d7)
+but the following example doesn't go well:
+(dufy:munsell-to-mhvc \"2D-2RP 9/10 #x0FFFFFF\")
+=> ERROR,
+since capital letters and '/' are reserved.
+"
+  (let ((lst (mapcar (compose (alexandria:rcurry #'coerce 'double-float)
+			      #'read-from-string)
+		     (remove "" (cl-ppcre:split "[^0-9.a-z#\-]+" munsellspec)
+			     :test #'string=))))
     (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" munsellspec))
 	   (hue-number
 	    (switch (hue-name :test #'string=)
 	      ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
 	      ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9) ("N" -1)
-	      (t (error (make-condition 'invalid-munsell-spec-error :spec munsellspec))))))
+	      (t (error (make-condition 'invalid-munsell-spec-error
+					:spec (format nil "Invalid hue designator: ~A" hue-name)))))))
       (if (< hue-number 0)
-	  (list 0 (car lst) 0)
+	  (list 0d0 (car lst) 0d0)
 	  (progn
 	    (setf (car lst) (+ (* hue-number 4) (/ (* (car lst) 2) 5)))
 	    lst)))))
 
 (defun mhvc-to-munsell (hue40 value chroma &optional (digits 2))
   (let ((unit (concatenate 'string "~," (write-to-string digits) "F")))
-    (if (< chroma (expt 0.09999999999999999d0 digits)) ; achromatic color
+    (if (< chroma (expt 0.09999999999999999d0 digits)) ; if achromatic
 	(format nil (concatenate 'string "N " unit) value)
 	(let* ((hue40$ (mod hue40 40d0))
 	       (hue-number (floor (/ hue40$ 4)))
 	       (hue-prefix (* (mod hue40$ 4) 2.5d0))
-	       (hue-name (aref #("R" "YR" "Y" "GY" "G" "BG" "B" "PB" "P" "RP") hue-number)))
+	       (hue-name (aref #("R" "YR" "Y" "GY" "G"
+				 "BG" "B" "PB" "P" "RP")
+			       hue-number)))
 	  (format nil (concatenate 'string unit "~A " unit "/" unit)
 		  hue-prefix hue-name value chroma)))))
 
-;; (dufy:munsell-to-mhvc "2.13d-2R .8999/      #x0f")
-;; => (0.00852d0 0.8999 15)
-;; (dufy:munsell-to-mhvc "2.13D-2R .8999/      #x0F")
-;; => ERROR
+
 
 (defun munsell-out-of-mrd-p (munsellspec)
   (apply #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
 
 (defun munsell-to-lchab (munsellspec)
-  "return multiple values: (L* C*ab Hab), out-of-munsell-renotation-data-p.
-Illuminant C."
+  "Illuminant C."
   (destructuring-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
-    (if (mhvc-out-of-mrd-p hue40 value chroma)
-	(values (list most-negative-double-float most-negative-double-float most-negative-double-float)
-		t)
-	(values (funcall #'mhvc-to-lchab hue40 value chroma)
-		nil))))
+    (if (mhvc-invalid-p hue40 value chroma)
+	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
+	(mhvc-to-lchab hue40 value chroma))))
+	      
 
 (defun munsell-to-xyz (munsellspec)
-    "return multiple values: (X Y Z), out-of-munsell-renotation-data-p.
-Illuminant D65."
+  "Illuminant D65."
   (destructuring-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
-    (if (mhvc-out-of-mrd-p hue40 value chroma)
-	(values (list most-negative-double-float most-negative-double-float most-negative-double-float)
-		t)
-	(values (funcall #'mhvc-to-xyz hue40 value chroma)
-		nil))))
+    (if (mhvc-invalid-p hue40 value chroma)
+	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
+	(mhvc-to-xyz hue40 value chroma))))
 
 
 (defun munsell-to-xyy (munsellspec)
-  "return multiple values: (x y Y), out-of-munsell-renotation-data-p.
-Illuminant D65."
-  (multiple-value-bind (xyz out-of-mrd)
-      (munsell-to-xyz munsellspec)
-    (values (apply #'xyz-to-xyy xyz)
-	    out-of-mrd)))
+  "Illuminant D65."
+  (apply #'xyz-to-xyy (munsell-to-xyz munsellspec)))
 
 
 (defun munsell-to-rgb255 (munsellspec &key (rgbspace dufy:srgb) (threshold 0.001d0))
-  "return multiple values: (R G B), out-of-gamut-p.
-The standard illuminant of RGBSPACE must be D65."
-  (multiple-value-bind (xyz out-of-mrd) (munsell-to-xyz munsellspec)
-    (if out-of-mrd
-	(values (list -1 -1 -1) t)
-	(multiple-value-bind (rgb255 out-of-gamut) 
-	    (apply (rcurry #'xyz-to-rgb255 :rgbspace rgbspace :threshold threshold)
-		   xyz)
-	  (values rgb255 out-of-gamut)))))
+  "Illuminant D65; the standard illuminant of RGBSPACE must also be D65.
+It returns multiple values: (R255 G255 B255), OUT-OF-GAMUT-P."
+  (apply (rcurry #'xyz-to-rgb255 :rgbspace rgbspace :threshold threshold)
+	 (munsell-to-xyz munsellspec)))
 
 
 ; LCH(ab) value of maximum chroma boundary in MRD.
@@ -552,27 +556,25 @@ The standard illuminant of RGBSPACE must be D65."
     (values-list
      (dotimes (i max-iteration (list (list (mod tmp-hue40 40) v tmp-c)
 				     max-iteration))
-       (if (> tmp-c 50)
-	   (return (list '(-1d0 -1d0 -1d0) -1)) ; exceeds max chroma
-	   (destructuring-bind (disused tmp-cstarab tmp-hab)
-	       (mhvc-to-lchab tmp-hue40 v tmp-c)
-	     (declare (ignore disused)
-		      (double-float tmp-cstarab tmp-hab))
-	     (let* ((delta-cstarab (- cstarab tmp-cstarab))
-		    (delta-hab (circular-delta hab tmp-hab))
-		    (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
-		    (delta-c (* delta-cstarab #.(/ 5.5d0))))
-	       ;; (destructuring-bind (x y largeY)
-	       ;; 	   (apply #'xyz-to-xyy
-	       ;; 		  (apply (gen-cat-function illum-d65 illum-c)
-	       ;; 			 (lchab-to-xyz lstar tmp-cstarab tmp-hab)))
-	       ;; 	 (format t "~A ~A ~A~%" x y largey))
-	       (if (and (<= (abs delta-hue40) threshold)
-			(<= (abs delta-c) threshold))
-		   (return (list (list (mod tmp-hue40 40d0) v tmp-c)
-				 i))
-		   (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
-			 tmp-c (max (+ tmp-c (* factor delta-c)) 0d0))))))))))
+       (destructuring-bind (disused tmp-cstarab tmp-hab)
+	   (mhvc-to-lchab tmp-hue40 v tmp-c)
+	 (declare (ignore disused)
+		  (double-float tmp-cstarab tmp-hab))
+	 (let* ((delta-cstarab (- cstarab tmp-cstarab))
+		(delta-hab (circular-delta hab tmp-hab))
+		(delta-hue40 (* delta-hab #.(float 40/360 1d0)))
+		(delta-c (* delta-cstarab #.(/ 5.5d0))))
+	   ;; (destructuring-bind (x y largeY)
+	   ;; 	   (apply #'xyz-to-xyy
+	   ;; 		  (apply (gen-cat-function illum-d65 illum-c)
+	   ;; 			 (lchab-to-xyz lstar tmp-cstarab tmp-hab)))
+	   ;; 	 (format t "~A ~A ~A~%" x y largey))
+	   (if (and (<= (abs delta-hue40) threshold)
+		    (<= (abs delta-c) threshold))
+	       (return (list (list (mod tmp-hue40 40d0) v tmp-c)
+			     i))
+	       (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
+		     tmp-c (max (+ tmp-c (* factor delta-c)) 0d0)))))))))
 
 
 ;; An inverter of MHVC-TO-LCHAB with a simple iteration algorithm:
@@ -604,6 +606,13 @@ The standard illuminant of RGBSPACE must be D65."
 					     :factor factor
 					     :threshold threshold))))
 
+(defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+  "Illuminant C."
+  (apply #'mhvc-to-munsell
+	 (lchab-to-mhvc lstar cstarab hab
+			:max-iteration max-iteration
+			:factor factor
+			:threshold threshold)))
 
 ;; doesn't converge
 ;; (dufy:lchab-to-mhvc 3.09565130553003d0 2.5275165653794356d0 117.79866815533752d0 :factor 0.5d0)
@@ -615,16 +624,17 @@ The standard illuminant of RGBSPACE must be D65."
 	((> lstar 100) 'done)
       (do ((hab 0 (+ hab 9)))
 	  ((= hab 360))
-	(loop for cstarab = 0 then (+ cstarab 10)
-	   do (multiple-value-bind (lst number)
-		  (dufy::lchab-to-mhvc lstar cstarab hab
-				       :threshold 1d-6 :max-iteration max-iteration)
-		(declare (ignore lst))
-		(when (= number -1)
-		  (format t "beyond MRD at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab)
-		  (return))
-		(when (= number max-iteration)
-		  (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
+	(do ((cstarab 0 (+ cstarab 10)))
+	    ((= cstarab 200) nil)
+	  (multiple-value-bind (lst number)
+	      (dufy::lchab-to-mhvc lstar cstarab hab
+				   :threshold 1d-6 :max-iteration max-iteration)
+	    (declare (ignore lst))
+	    (when (= number -1)
+	      (format t "beyond MRD at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab)
+	      (return))
+	    (when (= number max-iteration)
+	      (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
 
 (defun test-inverter2 (&optional (num-loop 100000))
   (let ((d65-to-c (dufy:gen-cat-function dufy:illum-d65 dufy:illum-c))

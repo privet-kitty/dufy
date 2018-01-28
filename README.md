@@ -151,20 +151,18 @@ When you nest two or more converters, you may want to use higher-order functions
 Dufy can handle Munsell color system in the same way as other color spaces:
 
     * (dufy:munsell-to-xyz "3.2R 4.5/6.1")
-    => (0.19362651667300654d0 0.1514271852669221d0 0.12281280847832986d0)
-    => NIL
-    * (dufy:munsell-to-xyz "3.2R 4.5/26.1")
-    => (-1.7976931348623157d308 -1.7976931348623157d308 -1.7976931348623157d308)
-    => T
+    => (0.19362651664295685d0 0.15142718526994225d0 0.12281280768620023d0)
+    * (dufy:munsell-to-xyz "3.2R 4.5/86.1")
+    => (1.7829826193301206d0 0.13203741599941943d0 -0.029038360620048102d0)
 
-The converters are based on [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php). The second return value is a flag that indicates out of the data; in the second example, chroma is too large.
+The converters are based on [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php). In the second example `munsell-to-xyz` extrapolate the colors far out of the data (and the MacAdam Limits, of course), which is meaningless in many cases but will be necessary to process the boundary colors.
 
     * (dufy:munsell-to-mhvc "3.2R 4.5/6.1")
     => (1.28 4.5 6.1)
     * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
-    => (0.19362651667300654d0 0.1514271852669221d0 0.12281280847832986d0)
+    => (0.19362651664295685d0 0.15142718526994225d0 0.12281280768620023d0)
 
-`munsell` is a standard string notation of Munsell color. `mhvc` is its three-number-specification, which will be easier to handle in some cases. The hue number of `mhvc` corresponds to the hue string of `munsell` as follows:
+`munsell` is a standard string notation of Munsell color. `mhvc` is its three-number specification, which will be easier to deal with in some cases. The hue number of `mhvc` corresponds to the hue string of `munsell` as follows:
 
 | Hue in `mhvc` | Hue in `munsell` |
 | -------------------- | --------------------- | 
@@ -177,15 +175,15 @@ The hue number of `mhvc` is a circle group: i.e. hues outside the interval [0, 4
 
     * (dufy:mhvc-to-spec -400.0 4.5 6.1) ; the same as (0.0 4.5 6.1)
     => "0.00R 4.50/6.10"
+    
+There are some more points to remember: First, since the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C, the converters like `mhvc-to-xyz` do the (Bradford) transformation from C to D65. If you want to use a direct converter with illuminant C, for e.g. accuracy or efficiency, the following converters are available under illuminant C: `munsell-to-lchab`, `lchab-to-munsell`, `mhvc-to-lchab`, `lchab-to-mhvc` `mhvc-to-xyz-illum-c`. 
 
-There are some more points to remember: First, the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C. Sometimes you may want to use a direct converter with illuminant C, for e.g. accuracy or efficiency. The following converters are under illuminant C: `munsell-to-lchab`, `mhvc-to-lchab`, `mhvc-to-xyz-illum-c`. 
+Second, if you want to know the gamut of the Munsell renotation data, you can find the maximum chroma for a given hue and value by `max-chroma`:
 
-Second, for a given hue number and value you can find feasible chroma by `max-chroma`:
-
-    * (dufy:max-chroma 1.28 6.1)
+    * (dufy:max-chroma 1.28 4.5)
     => 24
-    * (dufy:mhvc-to-xyz 1.28 6.1 24.0)
-    => (0.6152592934539706d0 0.3010482814108585d0 0.13239597563080155d0)
-    * (dufy:mhvc-to-xyz 1.28 6.1 24.1)
-    => ERROR: Out of Munsell renotation data.
-
+    * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
+    => (0.19362651667300654d0 0.1514271852669221d0 0.12281280847832986d0) ; interpolated, since 6.1 < 24
+    * (dufy:mhvc-to-xyz 1.28 4.5 24.1)
+    => (0.378725146277375d0 0.14933867420177885d0 0.05430213863814263d0) ; extrapolated, since 24.1 > 24
+    

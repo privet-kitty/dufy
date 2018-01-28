@@ -163,5 +163,6 @@
 	   :munsell-to-rgb255
 	   :max-chroma
 	   :lchab-to-mhvc
+	   :lchab-to-munsell
 
 ))
