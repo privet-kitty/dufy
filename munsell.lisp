@@ -7,9 +7,10 @@
 (defparameter c-to-d65
   (gen-cat-function illum-c illum-d65))
 
-(defparameter *max-chroma-overall* 50
-  "The largest chroma in the Munsell renotation data.
-for devel.: (defparameter max-chroma-overall (apply #'max (mapcar #'third munsell-renotation-data)))")
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *maximum-chroma* #.(float (expt 2 32) 1d0)
+		"The largest chroma which every converter accepts."))
+
 
 (defmacro max-chroma-integer-case (hue40 value)
   `(aref max-chroma-arr ,hue40 ,value))
@@ -19,8 +20,7 @@ for devel.: (defparameter max-chroma-overall (apply #'max (mapcar #'third munsel
 
 (declaim (ftype (function * (integer 0 50)) max-chroma))
 (defun max-chroma (hue40 value &key (use-dark t))
-  "Returns the largest chroma which MHVC-TO- functions can receive.
-The behavior of the MHVC-TO- functions is undefined, when chroma is larger than (MAC-CHROMA HUE40 VALUE)."
+  "Returns the largest chroma in the Munsell renotation data"
   (let* ((hue (mod hue40 40d0))
 	 (hue1 (floor hue))
 	 (hue2 (mod (ceiling hue) 40)))
@@ -202,7 +202,8 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 
 (defun mhvc-to-lchab-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
-	   ((double-float 0d0 40d0) hue40 half-chroma)
+	   ((double-float 0d0 40d0) hue40)
+	   ((double-float 0d0 #.*maximum-chroma*) half-chroma)
 	   (fixnum tmp-value))
   (let ((hchroma1 (floor half-chroma))
 	(hchroma2 (ceiling half-chroma)))
@@ -242,7 +243,7 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 (defun mhvc-to-lchab-general-case (hue40 tmp-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
 	   ((double-float 0d0 40d0) hue40 tmp-value)
-	   (double-float half-chroma))
+	   ((double-float 0d0 #.*maximum-chroma*) half-chroma))
   (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
     (let  ((tmp-val1 (floor tmp-value))
 	   (tmp-val2 (ceiling tmp-value))
@@ -270,10 +271,6 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 				   (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
 		    (lab-to-lchab lstar astar bstar)))))))))
 
-; Error:
-; (dufy::mhvc-to2-xyy 0.9999999999999999d0 2.84d0 3d0)
-; (dufy::mhvc-to-lchab-value-chroma-integer-case 0.9999999999999999d0 2 1)
-
 
 (define-condition invalid-mhvc-error (simple-error)
   ((value :initarg :value
@@ -283,7 +280,8 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	   :initform 0d0
 	   :accessor cond-chroma))
   (:report (lambda (condition stream)
-	     (format stream "Value and chroma must be within [0, 10] and [0, inf), respectively: (V C) = (~A ~A)"
+	     (format stream "Value and chroma must be within [0, 10] and [0, ~A), respectively: (V C) = (~A ~A)"
+		     *maximum-chroma*
 		     (cond-value condition)
 		     (cond-chroma condition)))))
 
@@ -298,13 +296,14 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 (defun mhvc-invalid-p (hue40 value chroma)
   "Judge if MHVC is invalid."
   (declare (ignore hue40))
-  (or (< value 0) (> value 10) (< chroma 0)))
+  (or (< value 0) (> value 10)
+      (< chroma 0) (> chroma *maximum-chroma*)))
 
 (defun mhvc-to-lchab (hue40 value chroma)
-  "CAUTION: The Standard Illuminant is C."
+  "Note: The Standard Illuminant is C."
   (let ((d-hue (mod (float hue40 1d0) 40))
 	(d-value (float (clamp value 0d0 10d0) 1d0))
-	(d-chroma (float (max chroma 0d0) 1d0)))
+	(d-chroma (float (clamp chroma 0d0 *maximum-chroma*) 1d0)))
     (if (>= value 1d0)
 	(mhvc-to-lchab-general-case d-hue d-value (/ d-chroma 2) nil)
 	(mhvc-to-lchab-general-case d-hue (* d-value 5) (/ d-chroma 2) t))))
@@ -350,22 +349,24 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 ;;   (apply #'lchab-to-lab (mhvc-to-lchab hue40 value chroma)))
 
 (defun mhvc-to-xyz-illum-c (hue40 value chroma)
-  "Illuminant C. It doesn't produce errors by a chromatic adaptation,
-since the Munsell Renotation Data is measured under the Illuminant C."
+  "Illuminant C. It doen't cause an approximation error by chromatic
+adaptation, since the Munsell Renotation Data is measured under the
+Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (apply (the function (rcurry #'lchab-to-xyz illum-c))
 	 (mhvc-to-lchab hue40 value chroma)))
   
 				   
 (defun mhvc-to-xyz (hue40 value chroma)
-  "Illuminant D65. It produces errors by a chromatic adaptation,
-since the Munsell Renotation Data is measured under the Illuminant C."
+  "Illuminant D65. It causes an approximation error by Bradford
+transformation, since the Munsell Renotation Data is measured under
+the Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (apply c-to-d65
 	 (mhvc-to-xyz-illum-c hue40 value chroma)))
 
 (defun mhvc-to-xyy (hue40 value chroma)
-  "Illuminant D65"
+  "Illuminant D65."
   (apply #'xyz-to-xyy
 	 (mhvc-to-xyz hue40 value chroma)))
 
@@ -375,20 +376,10 @@ since the Munsell Renotation Data is measured under the Illuminant C."
 
 (defun mhvc-to-lrgb (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
   "The standard illuminant is D65: that of RGBSPACE must also be D65.
-It returns multiple values: (LR LG LB),  out-of-gamut-p.
-Note that boundary colors, e.g. pure white (N 10.0), could be judged as out-of-gamut by numerical error, if threshold is too small."
+Note that boundary colors, e.g. pure white (N 10.0), could be judged
+as out-of-gamut by numerical error, if threshold is too small."
   (apply (rcurry #'xyz-to-lrgb :rgbspace rgbspace :threshold threshold)
 	 (mhvc-to-xyz hue40 value chroma)))
-
-;; Unlike MHVC-TO-LRGB, all of achromatic colors are judged as within gamut.
-;; return multiple values: (r g b),  out-of-gamut-p
-;; (defun mhvc-to-rgb255 (hue40 value chroma &key (threshold 0.001d0))
-;;   (multiple-value-bind (rgb255 out-of-gamut)
-;;       (apply (rcurry #'xyz-to-rgb255 :threshold threshold)
-;; 	     (mhvc-to-xyz hue40 value chroma))
-;;     (if (and (= chroma 0))
-;; 	(values rgb255 nil)
-;; 	(values rgb255 out-of-gamut))))
 
 
 (defun mhvc-to-rgb255 (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
@@ -412,14 +403,14 @@ Note that boundary colors, e.g. pure white (N 10.0), could be judged as out-of-g
       
 (defun munsell-to-mhvc (munsellspec)
   "Usage Example:
-(dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
+; (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
 => (36.00799999982119d0 0.8999999761581421d0 3.5d0)
 Many other objects will be acceptable as the number designations;
 an ugly specification as follows are also available:
-(dufy:munsell-to-mhvc \"2d-2RP .9/     #x0ffffff\")
+; (dufy:munsell-to-mhvc \"2d-2RP .9/     #x0ffffff\")
 => (36.008d0 0.8999999761581421d0 1.6777215d7)
 but the following example doesn't go well:
-(dufy:munsell-to-mhvc \"2D-2RP 9/10 #x0FFFFFF\")
+; (dufy:munsell-to-mhvc \"2D-2RP 9/10 #x0FFFFFF\")
 => ERROR,
 since capital letters and '/' are reserved.
 "
@@ -577,23 +568,22 @@ It returns multiple values: (R255 G255 B255), OUT-OF-GAMUT-P."
 		     tmp-c (max (+ tmp-c (* factor delta-c)) 0d0)))))))))
 
 
-;; An inverter of MHVC-TO-LCHAB with a simple iteration algorithm:
-;; V := LSTAR-TO-MUNSELL-VALUE(LSTAR);
-;; H_(n+1) := H_n + factor * delta(H_n);
-;; C_(n+1) :=  C_n + factor * delta(C_n),
-;; where delta(H_n) and delta(C_n) is internally calculated at every
-;; step. H and C could diverge, if FACTOR is too large; the behavior is
-;; undefined, if FACTOR >= 1. The return values are as follows:
-;; 1. If max(delta(H_n), delta(C_n)) falls below THRESHOLD:
-;; (H V C), NUMBER-OF-ITERATION.
-;; 2. If the number of iteration exceeds MAX-ITERATION:
-;; (H V C), MAX-ITERATION.
-;; 3. If (H_n, V, C_n) goes out of the Munsell renotation data:
-;; (-1.0d0 -1.0d0 -1.0d0), -1.
-;; In other words: The inversion has failed, if the second value is equal
-;; to MAX-ITERATION or -1.
 (defun lchab-to-mhvc (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
-  "Illuminant C."
+  "Illuminant C.
+An inverter of MHVC-TO-LCHAB with a simple iteration algorithm:
+V := LSTAR-TO-MUNSELL-VALUE(LSTAR);
+H_(n+1) := H_n + factor * delta(H_n);
+C_(n+1) :=  C_n + factor * delta(C_n),
+where delta(H_n) and delta(C_n) is internally calculated at every
+step. H and C could diverge, if FACTOR is too large. The return
+values are as follows:
+1. If max(delta(H_n), delta(C_n)) falls below THRESHOLD:
+=> (H V C), NUMBER-OF-ITERATION.
+2. If the number of iteration exceeds MAX-ITERATION:
+=> (H V C), MAX-ITERATION.
+In other words: The inversion has failed, if the second value is
+equal to MAX-ITERATION.
+"
   (let ((lstar (float lstar 1d0))
 	(cstarab (float cstarab 1d0))
 	(hab (float hab 1d0)))
@@ -653,3 +643,5 @@ It returns multiple values: (R255 G255 B255), OUT-OF-GAMUT-P."
 	    (when (or (= ite max-ite) (= ite -1))
 	      (incf sum)
 	      (format t "~A ~A ~A, (~a ~a ~a) ~A~%" lstar cstarab hab r g b ite))))))))
+
+
