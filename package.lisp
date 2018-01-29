@@ -5,6 +5,7 @@
   (:export :gen-spectrum ;; xyz.lisp
 	   :gen-illum-d-spectrum
 	   :spectrum-to-xyz
+	   :xyz-to-spectrum
 	   :bb-spectrum
 	   :optimal-spectrum
 	   :flat-spectrum
@@ -164,5 +165,5 @@
 	   :max-chroma
 	   :lchab-to-mhvc
 	   :lchab-to-munsell
-
+	   :*maximum-chroma*
 ))

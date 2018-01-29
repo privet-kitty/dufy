@@ -144,7 +144,8 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 
 (defparameter observer-cie1931 (make-observer cmf-arr-cie1931))
 (defparameter observer-cie1964 (make-observer cmf-arr-cie1964))
-  
+
+
 
 ;; s0, s1, s2
 ;; http://www.rit.edu/cos/colorscience/rc_useful_data.php
@@ -207,8 +208,8 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 
 (defun optimal-spectrum (wavelength-nm &optional (wl1 300) (wl2 830))
   (if (<= wl1 wl2)
-      (if (<= wl1 wavelength-nm wl2) 1 0)
-      (if (or (<= wavelength-nm wl2) (<= wl1 wavelength-nm)) 1 0)))
+      (if (<= wl1 wavelength-nm wl2) 1d0 0d0)
+      (if (or (<= wavelength-nm wl2) (<= wl1 wavelength-nm)) 1d0 0d0)))
 
 (defun flat-spectrum (wavelength-nm)
   (declare (ignore wavelength-nm))
@@ -270,7 +271,9 @@ return values are not normalized."
 				:observer observer))
 
 (defun spectrum-to-xyz-by-illum-spd (spectrum illum-spd &key (observer observer-cie1931))
-  "Another version of spectrum-to-xyz: actually, only the return value of (illuminant-spectrum illuminant), illum-spd here, is necessary in spectrum-to-xyz."
+  "Another version of spectrum-to-xyz: actually, only the return value
+of (illuminant-spectrum illuminant), illum-spd here, is necessary in
+spectrum-to-xyz."
   (let ((x 0) (y 0) (z 0) (max-y 0)
 	(arr (observer-cmf-arr observer)))
     (loop for wl from 360 to 830 do
@@ -285,6 +288,39 @@ return values are not normalized."
     (let ((factor (/ max-y)))
       (list (* x factor) (* y factor) (* z factor)))))
 
+
+(let ((mat (make-array '(3 3)
+		       :element-type 'double-float
+		       :initial-element 0d0)))
+  (defun xyz-to-spectrum (x y z &key (illuminant illum-e) (observer observer-cie1931))
+    "Converts XYZ to spectrum, which is, of course, one spectrum among
+many."
+    (destructuring-bind (a00 a10 a20)
+	(dufy:spectrum-to-xyz (dufy:observer-cmf-x dufy:observer-cie1931)
+			      :illuminant illuminant)
+      (destructuring-bind (a01 a11 a21)
+	  (dufy:spectrum-to-xyz (dufy:observer-cmf-y dufy:observer-cie1931)
+				:illuminant illuminant)
+	(destructuring-bind (a02 a12 a22)
+	    (dufy:spectrum-to-xyz (dufy:observer-cmf-z dufy:observer-cie1931)
+				  :illuminant illuminant)
+	  (setf (aref mat 0 0) a00
+		(aref mat 0 1) a01
+		(aref mat 0 2) a02
+		(aref mat 1 0) a10
+		(aref mat 1 1) a11
+		(aref mat 1 2) a12
+		(aref mat 2 0) a20
+		(aref mat 2 1) a21
+		(aref mat 2 2) a22)
+	  (destructuring-bind (fac-x fac-y fac-z)
+	      (multiply-matrix-and-vec (invert-matrix33 mat) x y z)
+	    #'(lambda (wl)
+		(+ (* fac-x (funcall (observer-cmf-x observer) wl))
+		   (* fac-y (funcall (observer-cmf-y observer) wl))
+		   (* fac-z (funcall (observer-cmf-z observer) wl))))))))))
+    
+    
 (defun xyy-to-xyz (x y largey)
   (if (zerop y)
       (list 0d0 0d0 0d0)
