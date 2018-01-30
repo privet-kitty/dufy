@@ -51,7 +51,6 @@
 	   :von-kries
 	   :cmccat97
 	   :cmccat2000
-	   :cat97s
 	   :cat97s-revised
 	   :cat02
 

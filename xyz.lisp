@@ -371,15 +371,12 @@ many."
 	      (-0.5918d0 1.5512d0 0.0406d0)
 	      (0.0008d0 0.0239d0 0.9753d0))))
 
-(defparameter cat97s
-  (make-cat '((0.8951d0 0.2664d0 -0.1614d0)
-	      (-0.7502d0 1.7135d0 0.0367d0)
-	      (0.0389d0 -0.0685d0 1.0296d0))))
-
 (defparameter cat97s-revised
   (make-cat '((0.8562d0 0.3372d0 -0.1934d0)
 	      (-0.8360d0 1.8327d0 0.0033d0)
-	      (0.0357d0 -0.0469d0 1.0112d0))))
+	      (0.0357d0 -0.0469d0 1.0112d0)))
+  "Fairchild, Mark D. (2001).\"A Revision of CIECAM97s for Practical Applications\"
+http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 
 (defparameter cat02
   (make-cat '((0.7328d0 0.4296d0 -0.1624d0)
