@@ -111,6 +111,8 @@
 	   :rgb255-to-xyz
 	   :rgb255-to-hex
 	   :hex-to-rgb255
+	   :rgb-to-hex
+	   :hex-to-rgb
 	   :xyz-to-hex
 	   :hex-to-xyz
 	   :two-pi

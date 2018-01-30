@@ -251,6 +251,14 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	(logand (ash hex -8) #xff)
 	(logand hex #xff)))
 
+(defun hex-to-rgb (hex)
+  (apply #'rgb255-to-rgb
+	 (hex-to-rgb255 hex)))
+
+(defun rgb-to-hex (r g b)
+  (apply #'rgb255-to-hex
+	 (rgb-to-rgb255 r g b)))
+
 (defun hex-to-xyz (hex &optional (rgbspace srgb))
   (apply (rcurry #'rgb255-to-xyz rgbspace)
 	 (hex-to-rgb255 hex)))
@@ -431,20 +439,25 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 ;;; HSV/HSL
 ;;;
 
+
 (defun hsv-to-rgb (hue sat val)
   "H is in R/360. S and V are in [0, 1]."
-  (let* ((c (coerce (* val sat) 'double-float))
-	 (h-prime (/ (mod hue 360d0) 60d0))
-	 (h-prime-int (floor h-prime))
-	 (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
-	 (base (- val c)))
-    (cond ((= sat 0d0) (list base base base))
-	  ((= 0 h-prime-int) (list (+ base c) (+ base x) base))
-	  ((= 1 h-prime-int) (list (+ base x) (+ base c) base))
-	  ((= 2 h-prime-int) (list base (+ base c) (+ base x)))
-	  ((= 3 h-prime-int) (list base (+ base x) (+ base c)))
-	  ((= 4 h-prime-int) (list (+ base x) base (+ base c)))
-	  ((= 5 h-prime-int) (list (+ base c) base (+ base x))))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let* ((hue (the (double-float 0d0 360d0) (mod (float hue 1d0) 360d0)))
+	 (sat (float sat 1d0))
+	 (val (float val 1d0)))
+    (let* ((c (* val sat))
+	   (h-prime (* hue #.(float 1/60 1d0)))
+	   (h-prime-int (floor h-prime))
+	   (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
+	   (base (- val c)))
+      (cond ((= sat 0d0) (list base base base))
+	    ((= 0 h-prime-int) (list (+ base c) (+ base x) base))
+	    ((= 1 h-prime-int) (list (+ base x) (+ base c) base))
+	    ((= 2 h-prime-int) (list base (+ base c) (+ base x)))
+	    ((= 3 h-prime-int) (list base (+ base x) (+ base c)))
+	    ((= 4 h-prime-int) (list (+ base x) base (+ base c)))
+	    ((= 5 h-prime-int) (list (+ base c) base (+ base x)))))))
 	 
 (defun hsv-to-rgb255 (hue sat val)
   (mapcar #'(lambda (x) (round (* x 255d0)))
@@ -467,9 +480,9 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
     (list h s maxrgb)))
 	 
 (defun rgb255-to-hsv (r255 g255 b255)
-  (rgb-to-hsv (* r255 #.(/ 1 255d0))
-	      (* g255 #.(/ 1 255d0))
-	      (* b255 #.(/ 1 255d0))))
+  (rgb-to-hsv (* r255 #.(float 1/255 1d0))
+	      (* g255 #.(float 1/255 1d0))
+	      (* b255 #.(float 1/255 1d0))))
 
 (defun xyz-to-hsv (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: (H S V), OUT-OF-GAMUT-P.
@@ -501,7 +514,7 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
 				   max
 				   (+ min (* delta (- hue 120d0) 0.016666666666666667d0))))
 	  ((= 3 h-prime-int) (list min
-2				   (+ min (* delta (- 240d0 hue) 0.016666666666666667d0))
+				   (+ min (* delta (- 240d0 hue) 0.016666666666666667d0))
 				   max))
 	  ((= 4 h-prime-int) (list (+ min (* delta (- hue 240d0) 0.016666666666666667d0))
 				   min
@@ -532,9 +545,9 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	  
 
 (defun rgb255-to-hsl (r255 g255 b255)
-  (rgb-to-hsl (* r255 #.(float 1.255 1d0))
-	      (* g255 #.(float 1.255 1d0))
-	      (* b255 #.(float 1.255 1d0))))
+  (rgb-to-hsl (* r255 #.(float 1/255 1d0))
+	      (* g255 #.(float 1/255 1d0))
+	      (* b255 #.(float 1/255 1d0))))
 
 (defun xyz-to-hsl (x y z &key (rgbspace srgb) (threshold 1d-4))
     "Returns multiple values: (H S L), OUT-OF-GAMUT-P.
