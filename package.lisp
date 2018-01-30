@@ -31,7 +31,7 @@
 	   :illuminant-largex
 	   :illuminant-largey
 	   :illuminant-largez
-	   :illuminant-spd
+	   :illuminant-spectrum
 	   :make-illuminant
 	   :make-illuminant-by-spd
 	   :illum-a :illum-e

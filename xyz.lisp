@@ -1,4 +1,6 @@
+;;;
 ;;; Spectrum, Illuminant, XYZ, xyY
+;;;
 
 (in-package :dufy)
 
@@ -26,40 +28,6 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 		(lerp coef
 		      (aref spectrum-array idx)
 		      (aref spectrum-array (min (+ idx 1) size)))))))))
-
-
-;; used for color matching functions
-;; (defun gen-spectrum-triple (arr1 arr2 arr3 &optional (wl-begin 360) (wl-end 830))
-;;   (let* ((size (- (length arr1) 1)))
-;;     (if (= size (- wl-end wl-begin))
-;; 	#'(lambda (wavelength-nm)
-;; 	    (multiple-value-bind (quot rem)
-;; 		(floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
-;; 	      (list (lerp rem
-;; 			  (aref arr1 quot)
-;; 			  (aref arr1 (min (1+ quot) size)))
-;; 		    (lerp rem
-;; 			  (aref arr2 quot)
-;; 			  (aref arr2 (min (1+ quot) size)))
-;; 		    (lerp rem
-;; 			  (aref arr3 quot)
-;; 			  (aref arr3 (min (1+ quot) size))))))
-;; 	(let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
-;; 	       (/band (/ band)))
-;; 	  #'(lambda (wavelength-nm)
-;; 	      (let* ((wl$ (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
-;; 		     (frac (mod wl$ band))
-;; 		     (coef (* frac /band))
-;; 		     (idx (round (* (- wl$ frac) /band))))
-;; 		(list (lerp coef
-;; 			    (aref arr1 idx)
-;; 			    (aref arr1 (min (+ idx 1) size)))
-;; 		      (lerp coef
-;; 			    (aref arr2 idx)
-;; 			    (aref arr2 (min (+ idx 1) size)))
-;; 		      (lerp coef
-;; 			    (aref arr3 idx)
-;; 			    (aref arr3 (min (+ idx 1) size))))))))))
 
 
 ;;;
@@ -233,19 +201,6 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 ;; 		(* lb factor))))))
 
 
-;; (let ((e-to-d65 (gen-cat-function illum-e illum-d65)))
-;;   (defun temperature-test (temp)
-;;     (apply #'rgb-to-rgb255
-;; 	   (apply #'lrgb-to-rgb
-;; 		  (apply #'scale-lrgb-until-saturated
-;; 			 (mapcar (rcurry #'clamp 0 1)
-;; 				 (apply #'xyz-to-lrgb
-;; 					(apply e-to-d65
-;; 					       (spectrum-to-xyz (compose (rcurry #'* (/ (spectrum-sum (rcurry #'bb-spectrum temp))))
-;; 									 (rcurry #'bb-spectrum temp)))))))))))
-  
-
-
 ;;; Standard Illuminant, XYZ, xyY
 ;;; The nominal range of X, Y, Z, x, y is always [0, 1].
 
@@ -288,6 +243,9 @@ spectrum-to-xyz."
     (let ((factor (/ max-y)))
       (list (* x factor) (* y factor) (* z factor)))))
 
+;; (defun spectrum-to-lchab (spectrum &key (illuminant illum-e) (observer observer-cie1931))
+;;   (apply (rcurry #'xyz-to-lchab illuminant)
+;; 	 (spectrum-to-xyz spectrum :illuminant illuminant :observer observer)))
 
 (let ((mat (make-array '(3 3)
 		       :element-type 'double-float
@@ -425,11 +383,6 @@ many."
   (make-cat '((0.7328d0 0.4296d0 -0.1624d0)
 	      (-0.7036d0 1.6975d0 0.0061d0)
 	      (0.0030d0 0.0136d0 0.9834d0))))
-
-;; (defparameter inverted-bradford-matrix
-;;   #2A((0.98699290546671d0 -0.147054256421d0 0.15996265166373d0)
-;;       (0.4323052697234d0 0.51836027153678d0 0.049291228212856d0)
-;;       (-0.0085286645751773d0 0.040042821654085d0 0.96848669578755d0)))
 
 
 (defun xyz-to-lms (x y z &key (illuminant nil) (cat bradford))
