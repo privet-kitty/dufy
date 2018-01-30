@@ -1,6 +1,6 @@
 (in-package :dufy)
 
-;; the bradford transformation between D65 and C is frequently used here.
+;; The bradford transformation between D65 and C is frequently used here.
 (declaim (type function d65-to-c c-to-d65))
 (defparameter d65-to-c
   (gen-cat-function illum-d65 illum-c))
@@ -9,7 +9,9 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *maximum-chroma* #.(float (expt 2 32) 1d0)
-		"The largest chroma which every converter accepts."))
+		"The largest chroma which the converters accepts. Is
+		it less than MOST-POSITIVE-DOUBLE-FLOAT because of
+		efficiency."))
 
 
 (defmacro max-chroma-integer-case (hue40 value)
@@ -20,7 +22,7 @@
 
 (declaim (ftype (function * (integer 0 50)) max-chroma))
 (defun max-chroma (hue40 value &key (use-dark t))
-  "Returns the largest chroma in the Munsell renotation data"
+  "Returns the largest chroma in the Munsell renotation data."
   (let* ((hue (mod hue40 40d0))
 	 (hue1 (floor hue))
 	 (hue2 (mod (ceiling hue) 40)))
@@ -41,15 +43,18 @@
 	       (max-chroma-integer-case-dark hue2 dark-val2))))))
 
     
-;; convert munsell value to Y in [0, 1]
 (defun munsell-value-to-y (v)
+  "Converts Munsell value to Y, whose nominal range is [0, 1]. The
+formula is based on ASTM D1535-08e1:"
   (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0))
 
 (defun munsell-value-to-lstar (v)
+  "Converts Munsell value to L*, whose nominal range is [0, 100]."
   (- (* 116 (function-f (munsell-value-to-y v))) 16))
 
   
 (defun munsell-value-to-achromatic-rgb255 (v)
+  "Returns the gray corresponding to given Munsell value."
   (let ((x (round (* (delinearize (munsell-value-to-y v)) 255))))
     (list x x x)))
 
@@ -63,21 +68,22 @@
 ;; 		  (funcall d65-to-c largex largey largez)))))
 
 (defun munsell-value-to-achromatic-xyy (v)
-  "Illuminant C"
+  "Illuminant C."
   (list 0.31006d0 0.31616d0 (munsell-value-to-y v)))
 
 (defun munsell-value-to-achromatic-lchab (v)
+  "Illuminant C"
   (apply #'lab-to-lchab
 	 (apply (rcurry #'xyz-to-lab illum-c)
 		(xyy-to-xyz 0.31006d0
 			    0.31616d0
 			    (munsell-value-to-y v)))))
 
-;; the version corresponding with Y of the munsell renotation data
-;; v must be integer.
-;; nearly equal to munsell-value-to-achromatic-xyy
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
+  "For devel. Another version of munsell-value-to-achromatic-xyy based
+on the Munsell renotation data. V must be integer. It is nearly equal
+to munsell-value-to-achromatic-xyy"
   (list 0.31006d0 0.31616d0
 	(clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0)
 			v)
@@ -250,9 +256,9 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	   (lstar (munsell-value-to-lstar true-value)))
       (if (= tmp-val1 tmp-val2)
 	  (mhvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark)
-	  ;; If the given color is too dark to be within MRD,
-	  ;; we use the fact that the chroma of LCH(ab) corresponds roughly
-	  ;; to that of Munsell.
+	  ;; If the given color is so dark that it is out of MRD, we use
+	  ;; the fact that the chroma of LCH(ab) corresponds roughly to
+	  ;; that of Munsell.
 	  (if (= tmp-val1 0)
 	      (destructuring-bind (disused cstarab hab)
 		  (mhvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
@@ -287,7 +293,7 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 
       
 (defun mhvc-out-of-mrd-p (hue40 value chroma)
-  "Judge if MHVC is out of Munsell renotation data."
+  "Judge if MHVC is out of the Munsell renotation data."
   (or (< value 0) (> value 10)
       (< chroma 0)
       (> chroma (max-chroma hue40 value))))
@@ -403,16 +409,15 @@ as out-of-gamut by numerical error, if threshold is too small."
       
 (defun munsell-to-mhvc (munsellspec)
   "Usage Example:
-; (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
+CL-USER> (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
 => (36.00799999982119d0 0.8999999761581421d0 3.5d0)
-Many other objects will be acceptable as the number designations;
-an ugly specification as follows are also available:
-; (dufy:munsell-to-mhvc \"2d-2RP .9/     #x0ffffff\")
+Many other notations are acceptable as number designations; an ugly
+specification as follows are also available:
+CL-USER> (dufy:munsell-to-mhvc \"2d-2RP .9/ #x0ffffff\")
 => (36.008d0 0.8999999761581421d0 1.6777215d7)
-but the following example doesn't go well:
-; (dufy:munsell-to-mhvc \"2D-2RP 9/10 #x0FFFFFF\")
+but the capital letters and  '/' are reserved:
+CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 #x0FFFFFF\")
 => ERROR,
-since capital letters and '/' are reserved.
 "
   (let ((lst (mapcar (compose (alexandria:rcurry #'coerce 'double-float)
 			      #'read-from-string)
@@ -455,7 +460,6 @@ since capital letters and '/' are reserved.
     (if (mhvc-invalid-p hue40 value chroma)
 	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
 	(mhvc-to-lchab hue40 value chroma))))
-	      
 
 (defun munsell-to-xyz (munsellspec)
   "Illuminant D65."
@@ -477,11 +481,11 @@ It returns multiple values: (R255 G255 B255), OUT-OF-GAMUT-P."
 	 (munsell-to-xyz munsellspec)))
 
 
-; LCH(ab) value of maximum chroma boundary in MRD.
 (defun max-chroma-lchab (hue40 value &key (use-dark t))
+  "Returns the LCH(ab) value of the color on the max-chroma boundary in MRD."
   (mhvc-to-lchab hue40
-			value
-			(max-chroma hue40 value :use-dark use-dark)))
+		 value
+		 (max-chroma hue40 value :use-dark use-dark)))
 
 ; avoid that x slightly exceeds an integer 
 (defun modify-float-error (x epsilon)
@@ -608,7 +612,9 @@ equal to MAX-ITERATION.
 ;; (dufy:lchab-to-mhvc 3.09565130553003d0 2.5275165653794356d0 117.79866815533752d0 :factor 0.5d0)
 ;; (dufy:lchab-to-mhvc 2.0280881393322865d0 3.1180501904964038d0 118.30287515570836d0 :factor 0.2 :max-iteration 300)
 
+
 (defun test-inverter ()
+  "For devel."
   (let ((max-iteration 300))
     (do ((lstar 0 (+ lstar 10)))
 	((> lstar 100) 'done)
@@ -627,6 +633,7 @@ equal to MAX-ITERATION.
 	      (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
 
 (defun test-inverter2 (&optional (num-loop 100000))
+  "For devel."
   (let ((d65-to-c (dufy:gen-cat-function dufy:illum-d65 dufy:illum-c))
 	(sum 0)
 	(my-xyz-to-lchab (alexandria:rcurry #'dufy:xyz-to-lchab dufy:illum-c))
@@ -643,5 +650,4 @@ equal to MAX-ITERATION.
 	    (when (or (= ite max-ite) (= ite -1))
 	      (incf sum)
 	      (format t "~A ~A ~A, (~a ~a ~a) ~A~%" lstar cstarab hab r g b ite))))))))
-
 

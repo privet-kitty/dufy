@@ -5,9 +5,10 @@
 (in-package :dufy)
 
 (defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
-  "Returns a spectral power distribution function,
-#'(lambda (wavelength-nm) ...) : [WL-BEGIN, WL-END] -> R,
-by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
+  "Returns a spectral power distribution function by interpolating
+SPECTRUM-ARRAY linearly which can have arbitrary length:
+#'(lambda (wavelength-nm) ...)
+"
   (let* ((size (- (length spectrum-array) 1)))
     (if (= size (- wl-end wl-begin))
 	;; If SPECTRUM-ARRAY is defined just for each integer,
@@ -48,7 +49,7 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
-  "Defines an observer from 3 CMF arrays."
+  "Defines an observer from CMF arrays."
   (labels ((gen-cmf-1 (arr num &optional (wl-begin 360) (wl-end 830))
 	     ;; Almost equivalent to GEN-SPECTRUM
 	     (let* ((size (- (array-dimension arr 0) 1)))
@@ -158,6 +159,7 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
       arr)))
 
 (defun gen-illum-d-spectrum (temperature &optional (wl-begin 300) (wl-end 830))
+  "Generates the spectrum of Illuminant series D for a given temeprature."
   (gen-spectrum (gen-illum-d-spectrum-array temperature wl-begin wl-end)
 	   wl-begin wl-end))
 	   
@@ -175,6 +177,7 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
        (- (exp (/ 1.4388d-2 (* wlm temperature))) 1d0))))
 
 (defun optimal-spectrum (wavelength-nm &optional (wl1 300) (wl2 830))
+  "Spectrum function of optimal colors."
   (if (<= wl1 wl2)
       (if (<= wl1 wavelength-nm wl2) 1d0 0d0)
       (if (or (<= wavelength-nm wl2) (<= wl1 wavelength-nm)) 1d0 0d0)))
@@ -202,10 +205,9 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 
 
 ;;; Standard Illuminant, XYZ, xyY
-;;; The nominal range of X, Y, Z, x, y is always [0, 1].
+;;; The nominal range of Y is always [0, 1].
 
 (defstruct (illuminant (:constructor $make-illuminant))
-  "The support of SPECTRUM is not completed."
   (x 0.0 :type double-float)
   (y 0.0 :type double-float)
   (largex 0.0 :type double-float)
@@ -216,9 +218,9 @@ by interpolating SPECTRUM-ARRAY linearly which can have arbitrary size."
 
 (defvar illum-e) ;; avoid a WARNING
 (defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer observer-cie1931))
-  "Compute XYZ values from SPECTRUM in reflective and transmissive case.
-The function SPECTRUM must be defined at least in [360, 830].  The
-return values are not normalized."
+  "Computes XYZ values from SPECTRUM in reflective and transmissive
+case. The function SPECTRUM must be defined at least in [360, 830].
+The return values are not normalized."
   (unless (illuminant-spectrum illuminant)
     (error "The given Illuminant doesn't have a spectrum function"))
   (spectrum-to-xyz-by-illum-spd spectrum
@@ -429,7 +431,8 @@ transform is virtually equivalent to that of illuminant E. "
   
 
 (defun calc-cat-matrix  (from-illuminant to-illuminant &optional (cat bradford))
-  "Returns a 3*3 chromatic adaptation matrix between FROM-ILLUMINANT to TO-ILLUMINANT."
+  "Returns a 3*3 chromatic adaptation matrix between FROM-ILLUMINANT
+to TO-ILLUMINANT."
   (let ((from-white-x (illuminant-largex from-illuminant))
 	(from-white-y (illuminant-largey from-illuminant))
 	(from-white-z (illuminant-largez from-illuminant))

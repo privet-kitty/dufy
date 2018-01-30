@@ -146,7 +146,7 @@ the interval [-THRESHOLD, 1+THRESHOLD]."
 
 (defun copy-rgbspace (rgbspace &optional (illuminant nil))
   "This copier can copy RGBSPACE with different ILLUMINANT. If
-ILLUMINANT is nil, it is a trivial copier."
+ILLUMINANT is nil, it is just a copier."
   (if illuminant
       (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace) illuminant)))
 	(destructuring-bind (new-xr new-yr zr)
@@ -532,9 +532,9 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	  
 
 (defun rgb255-to-hsl (r255 g255 b255)
-  (rgb-to-hsl (* r255 #.(/ 1 255d0))
-	      (* g255 #.(/ 1 255d0))
-	      (* b255 #.(/ 1 255d0))))
+  (rgb-to-hsl (* r255 #.(float 1.255 1d0))
+	      (* g255 #.(float 1.255 1d0))
+	      (* b255 #.(float 1.255 1d0))))
 
 (defun xyz-to-hsl (x y z &key (rgbspace srgb) (threshold 1d-4))
     "Returns multiple values: (H S L), OUT-OF-GAMUT-P.
