@@ -248,8 +248,8 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 
 (defun mhvc-to-lchab-general-case (hue40 tmp-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
-	   ((double-float 0d0 40d0) hue40 tmp-value)
-	   ((double-float 0d0 #.*maximum-chroma*) half-chroma))
+  	   ((double-float 0d0 40d0) hue40 tmp-value)
+  	   ((double-float 0d0 #.*maximum-chroma*) half-chroma))
   (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
     (let  ((tmp-val1 (floor tmp-value))
 	   (tmp-val2 (ceiling tmp-value))
@@ -314,14 +314,6 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	(mhvc-to-lchab-general-case d-hue d-value (/ d-chroma 2) nil)
 	(mhvc-to-lchab-general-case d-hue (* d-value 5) (/ d-chroma 2) t))))
 
-;; known bug:
-;; CL-USER> (dufy:mhvc-to-lchab 12 0.2d0 2)
-;; (55.78616804077997d0 425.74866048229217d0 95.05565170262646d0)
-;; CL-USER> (dufy:mhvc-to-lchab 12 0.2 2)
-;; (2.0875398820542372d0 7.4691961604717125d0 256.40633631178963d0)
-;; CL-USER> (dufy::mhvc-to-lchab-general-case 12d0 1.0000000149011612d0 1d0 t)
-;; (2.0875398820542372d0 7.4691961604717125d0 256.40633631178963d0)
-;; CL-USER> (clgplot:plot (loop for c from 0 to 10 by 0.5 collect (second (dufy:mhvc-to-lchab 12 0.2 c))))
 
 ;; (defun compare-munsell-converter (mc)
 ;;   (let ((deltaes nil)
