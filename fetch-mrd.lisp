@@ -1,9 +1,11 @@
+;;;
+;;; This script file fetches the Munsell renotation data and saves several arrays as a .lisp file.
+;;;
+
 (require :drakma)
 (require :babel)
 (require :dufy)
 (require :alexandria)
-
-;;; This is a script file which fetches the Munsell renotation data and saves several arrays as a .lisp file.
 
 (defparameter dat-url "http://www.rit-mcsl.org/MunsellRenotation/all.dat")
 (defparameter dat-txt (babel:octets-to-string (drakma:http-request dat-url) :encoding :ascii))
@@ -49,7 +51,7 @@
 	 (declare (ignore largey))
 	 (if (null hue)
 	     (return)
-	     (unless (= y 0) ; can't convert properly to xyz
+	     (unless (<= y 0) ; non-positive y gives too high chroma
 	       (let ((row (list hue value chroma x y
 				(dufy:munsell-value-to-y value))))
 		 (push row munsell-renotation-data))))))))

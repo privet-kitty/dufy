@@ -316,14 +316,7 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	(mhvc-to-lchab-general-case d-hue (* d-value 5) (/ d-chroma 2) t))))
 
 ;; known bug
-;; CL-USER> (dufy::mhvc-to-lchab-general-case 31d0 1d0 10d0 t)
-;; (0.0d0 0.0d0 0.0d0)
-;; CL-USER> (dufy::mhvc-to-lchab-general-case 31d0 1d0 9d0 t)
-;; (2.08753985167084d0 148.9404393732924d0 318.06577944843286d0)
-;; CL-USER> (dufy::mhvc-to-lchab-simplest-case 31 1 10 t)
-;; (0.0d0 0.0d0 0.0d0)
-;; CL-USER> (dufy::mhvc-to-lchab-simplest-case 31 1 9 t)
-;; (2.08753985167084d0 148.9404393732924d0 318.06577944843286d0)
+;; (clgplot:plot (loop for c from 0 to 100 by 0.5 collect (second (dufy:mhvc-to-lchab 31 0.8d0 c))))
 
 
 ;; (defun compare-munsell-converter (mc)
