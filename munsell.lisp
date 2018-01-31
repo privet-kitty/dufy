@@ -1,6 +1,6 @@
 (in-package :dufy)
 
-;; The bradford transformation between D65 and C is frequently used here.
+;; The bradford transformations between D65 and C are frequently used here.
 (declaim (type function d65-to-c c-to-d65))
 (defparameter d65-to-c
   (gen-cat-function illum-d65 illum-c))
@@ -9,8 +9,8 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *maximum-chroma* #.(float (expt 2 32) 1d0)
-		"The largest chroma which the converters accepts. Is
-		it less than MOST-POSITIVE-DOUBLE-FLOAT because of
+		"The largest chroma which the converters accepts. It
+		is less than MOST-POSITIVE-DOUBLE-FLOAT because of
 		efficiency."))
 
 
@@ -314,6 +314,15 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	(mhvc-to-lchab-general-case d-hue d-value (/ d-chroma 2) nil)
 	(mhvc-to-lchab-general-case d-hue (* d-value 5) (/ d-chroma 2) t))))
 
+;; known bug:
+;; CL-USER> (dufy:mhvc-to-lchab 12 0.2d0 2)
+;; (55.78616804077997d0 425.74866048229217d0 95.05565170262646d0)
+;; CL-USER> (dufy:mhvc-to-lchab 12 0.2 2)
+;; (2.0875398820542372d0 7.4691961604717125d0 256.40633631178963d0)
+;; CL-USER> (dufy::mhvc-to-lchab-general-case 12d0 1.0000000149011612d0 1d0 t)
+;; (2.0875398820542372d0 7.4691961604717125d0 256.40633631178963d0)
+;; CL-USER> (clgplot:plot (loop for c from 0 to 10 by 0.5 collect (second (dufy:mhvc-to-lchab 12 0.2 c))))
+
 ;; (defun compare-munsell-converter (mc)
 ;;   (let ((deltaes nil)
 ;; 	(max-deltae 0)
@@ -416,7 +425,7 @@ specification as follows are also available:
 CL-USER> (dufy:munsell-to-mhvc \"2d-2RP .9/ #x0ffffff\")
 => (36.008d0 0.8999999761581421d0 1.6777215d7)
 but the capital letters and  '/' are reserved:
-CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 #x0FFFFFF\")
+CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 => ERROR,
 "
   (let ((lst (mapcar (compose (alexandria:rcurry #'coerce 'double-float)

@@ -49,7 +49,7 @@ SPECTRUM-ARRAY linearly which can have arbitrary length:
 
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
-  "Defines an observer from CMF arrays."
+  "Defines an observer based on CMF arrays."
   (labels ((gen-cmf-1 (arr num &optional (wl-begin 360) (wl-end 830))
 	     ;; Almost equivalent to GEN-SPECTRUM
 	     (let* ((size (- (array-dimension arr 0) 1)))
@@ -297,6 +297,8 @@ many."
 
 
 (defun make-illuminant (x y &optional (spectrum nil) (observer observer-cie1931))
+  "Defines an illuminant based on a white point. No error occurs, even
+if the given (x, y) and SPD contradicts to each other."
   (destructuring-bind (largex largey largez) (xyy-to-xyz x y 1d0)
     ($make-illuminant :x (float x 1d0)
 		      :y (float y 1d0)
@@ -307,6 +309,8 @@ many."
 		      :observer observer)))
 
 (defun make-illuminant-by-spd (spectrum &optional (observer observer-cie1931))
+  "Defines an illuminant based on a spectral power distribution. The
+proper white point is automatically calculated."
   (destructuring-bind (largex largey largez)
       (spectrum-to-xyz-by-illum-spd #'flat-spectrum spectrum :observer observer)
     (destructuring-bind (x y disused)
@@ -335,7 +339,8 @@ many."
 
 ;;; LMS, chromatic adaptation
 (defstruct (cat (:constructor $make-cat))
-  "chromatic adaptation transformation"
+  "Model of chromatic adaptation transformation. Currently only linear
+models are available."
   (matrix identity-matrix :type (simple-array double-float (3 3)))
   (inv-matrix identity-matrix :type (simple-array double-float (3 3))))
 
@@ -385,8 +390,8 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 
 
 (defun xyz-to-lms (x y z &key (illuminant nil) (cat bradford))
-  "Note: The default illuminant is not D65; if ILLUMINANT is NIL, the
-transform is virtually equivalent to that of illuminant E. "
+  "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
+the transform is virtually equivalent to that of illuminant E. "
   (if illuminant
       (let* ((mat (cat-matrix cat))
 	     (factor-l (+ (* (illuminant-largex illuminant) (aref mat 0 0))
@@ -407,8 +412,8 @@ transform is virtually equivalent to that of illuminant E. "
 	    
 
 (defun lms-to-xyz (l m s &key (illuminant nil) (cat bradford))
-   "Note: The default illuminant is not D65; if ILLUMINANT is NIL, the
-transform is virtually equivalent to that of illuminant E. "
+   "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
+the transform is virtually equivalent to that of illuminant E. "
   (if illuminant
       (let* ((mat (cat-matrix cat))
 	     (factor-l (+ (* (illuminant-largex illuminant) (aref mat 0 0))
@@ -429,7 +434,7 @@ transform is virtually equivalent to that of illuminant E. "
 
 (defun calc-cat-matrix  (from-illuminant to-illuminant &optional (cat bradford))
   "Returns a 3*3 chromatic adaptation matrix between FROM-ILLUMINANT
-to TO-ILLUMINANT."
+and TO-ILLUMINANT."
   (let ((from-white-x (illuminant-largex from-illuminant))
 	(from-white-y (illuminant-largey from-illuminant))
 	(from-white-z (illuminant-largez from-illuminant))
