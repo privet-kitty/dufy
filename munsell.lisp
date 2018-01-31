@@ -310,9 +310,20 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
   (let ((d-hue (mod (float hue40 1d0) 40))
 	(d-value (float (clamp value 0d0 10d0) 1d0))
 	(d-chroma (float (clamp chroma 0d0 *maximum-chroma*) 1d0)))
+    ;; (format t "~A ~A ~A" d-hue (* d-value 5) (/ d-chroma 2))
     (if (>= value 1d0)
 	(mhvc-to-lchab-general-case d-hue d-value (/ d-chroma 2) nil)
 	(mhvc-to-lchab-general-case d-hue (* d-value 5) (/ d-chroma 2) t))))
+
+;; known bug
+;; CL-USER> (dufy::mhvc-to-lchab-general-case 31d0 1d0 10d0 t)
+;; (0.0d0 0.0d0 0.0d0)
+;; CL-USER> (dufy::mhvc-to-lchab-general-case 31d0 1d0 9d0 t)
+;; (2.08753985167084d0 148.9404393732924d0 318.06577944843286d0)
+;; CL-USER> (dufy::mhvc-to-lchab-simplest-case 31 1 10 t)
+;; (0.0d0 0.0d0 0.0d0)
+;; CL-USER> (dufy::mhvc-to-lchab-simplest-case 31 1 9 t)
+;; (2.08753985167084d0 148.9404393732924d0 318.06577944843286d0)
 
 
 ;; (defun compare-munsell-converter (mc)
