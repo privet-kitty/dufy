@@ -9,17 +9,17 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 * xyY
 * HSV
 * HSL
-* CIELAB and LCH<sub>ab</sub>
-* CIELUV and LCH<sub>uv</sub>
+* CIELAB and LCh<sub>ab</sub>
+* CIELUV and LCh<sub>uv</sub>
 * LMS
 * Spectrum (as spectral power distribution function)
 
 Dufy can handle the following concepts:
 
-* Illuminant: C, D65, ...
-* Observer (Color Matching Functions): CIE 1931 2° Standard Observer, CIE 1964 10°, ...
-* Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIEDE2000, ...
-* Chromatic Adaptaion Transform: Bradford, Von Kries, ...
+* Illuminant: C, D65, etc.
+* Observer (Color Matching Functions): CIE 1931 2° Standard Observer, CIE 1964 10°, etc.
+* Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIEDE2000, etc.
+* Chromatic Adaptaion Transform: Bradford, Von Kries, etc.
 
 
 # Dependencies

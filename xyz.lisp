@@ -283,7 +283,7 @@ many."
     
 (defun xyy-to-xyz (x y largey)
   (if (zerop y)
-      (list 0d0 0d0 0d0)
+      (list 0d0 largey 0d0)
       (list (/ (* x largey) y) 
 	    largey
 	    (/ (* (- 1 x y) largey) y))))
