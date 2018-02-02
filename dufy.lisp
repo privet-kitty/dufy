@@ -119,18 +119,18 @@
 				(clamp (if (<= x #.(* 1/512 16d0))
 					   (* x #.(float 1/16 1d0))
 					   (expt x 1.8d0))
-				       0 1))
+				       0d0 1d0))
 		:delinearizer #'(lambda (x)
 				  (clamp (if (<= x (float 1/512 1d0))
 					     (* x 16d0)
 					     (expt x #.(/ 1 1.8d0)))
-					 0 1))))			      
+					 0d0 1d0))))			      
  
 
 ;; convert XYZ to linear RGB in [0, 1]
 (defun xyz-to-lrgb (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of LR , LG and LB are outside
+OUT-OF-GAMUT-P is true, if at least one of LR, LG and LB is outside
 the interval [-THRESHOLD, 1+THRESHOLD]."
   (destructuring-bind (lr lg lb)
       (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
@@ -281,9 +281,11 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 
 
 ;;;
-;;; L*a*b*, L*u*v*, LCH
+;;; L*a*b*, L*u*v*, LCh
 ;;;
 
+(declaim (inline function-f)
+	 (ftype (function (double-float) double-float) function-f))
 (defun function-f (x)
   (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
@@ -304,26 +306,32 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
     (xyz-to-lab x y z illuminant)))
 
 (defun lab-to-xyz (lstar astar bstar &optional (illuminant illum-d65))
-  (let* ((fy (* (+ lstar 16d0) 0.008620689655172414d0))
+  (declare (optimize (speed 3) (safety 1))
+	   (real lstar astar bstar))
+  (let* ((fy (* (+ lstar 16d0) #.(float 1/116 1d0)))
 	 (fx (+ fy (* astar 0.002d0)))
 	 (fz (- fy (* bstar 0.005d0))))
-    (list (if (> fx 0.20689655172413793d0)
+    (list (if (> fx #.(float 6/29 1d0))
 	      (* (illuminant-largex illuminant) fx fx fx)
-	      (* (- fx 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largex illuminant)))
-	  (if (> fy 0.20689655172413793d0)
-	      (* (illuminant-largey illuminant) fy fy fy)
-	      (* (- fy 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largey illuminant)))
-	  (if (> fz 0.20689655172413793d0)
+	      (* (- fx #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-largex illuminant)))
+	  (if (> fy #.(float 6/29 1d0))
+	      (* fy fy fy)
+	      (* (- fy #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29)))
+	  (if (> fz #.(float 6/29 1d0))
 	      (* (illuminant-largez illuminant) fz fz fz)
-	      (* (- fz 0.13793103448275862d0) 0.12841854934601665d0 (illuminant-largez illuminant))))))
+	      (* (- fz #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-largez illuminant))))))
 
 (defun lstar-to-y (lstar)
-  (let* ((fy (* (+ lstar 16) 0.008620689655172414d0)))
-    (if (> fy 0.20689655172413793d0)
+  (declare (optimize (speed 3) (safety 1))
+	   (real lstar))
+  (let* ((fy (* (+ lstar 16d0) #.(float 1/116 1d0))))
+    (if (> fy #.(float 6/29 1d0))
 	(* fy fy fy)
-	(* (- fy 0.13793103448275862d0) 0.12841854934601665d0))))
+	(* (- fy #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29)))))
 
 (defun y-to-lstar (y)
+  (declare (optimize (speed 3) (safety 1))
+	   (real y))
   (- (* 116d0 (function-f (float y 1d0))) 16d0))
  
 (defun lab-to-xyy (lstar astar bstar &optional (illuminant illum-d65))

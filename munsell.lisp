@@ -600,10 +600,10 @@ equal to MAX-ITERATION.
 	(rough-lchab-to-mhvc lstar cstarab hab)
       (declare (ignore disused))
       (invert-mhvc-to-lchab-with-init lstar cstarab hab
-					     init-h init-c
-					     :max-iteration max-iteration
-					     :factor factor
-					     :threshold threshold))))
+				      init-h init-c
+				      :max-iteration max-iteration
+				      :factor factor
+				      :threshold threshold))))
 
 (defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."

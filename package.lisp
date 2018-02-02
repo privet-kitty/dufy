@@ -2,7 +2,11 @@
 
 (defpackage :dufy
   (:use :common-lisp :alexandria)
-  (:export :gen-spectrum ;; xyz.lisp
+  (:export :nearyly=
+	   :nearly<=
+
+	   ;; xyz.lisp
+	   :gen-spectrum
 	   :gen-illum-d-spectrum
 	   :spectrum-to-xyz
 	   :xyz-to-spectrum

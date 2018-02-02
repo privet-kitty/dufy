@@ -1,7 +1,35 @@
 (in-package :dufy)
 
+;; define a delta-E function with xyz-deltae and rgb255-deltae
+(defmacro defdeltae (name args &body body)
+  "Only &key arguments are allowed in sub-args."
+  (labels ((extract (lst) ; extract sub-args
+	     (reduce #'append
+		     (mapcar #'(lambda (pair)
+				 (list (intern (symbol-name (first pair)) :keyword)
+				       (first pair)))
+			     lst))))
+    (let* ((main-args (subseq args 0 6))
+	   (sub-args-with-key (subseq args 6))
+	   (sub-args (cdr sub-args-with-key))
+	   (name-str (symbol-name name))
+	   (rgb255-name (intern (concatenate 'string "RGB255-" name-str) "DUFY"))
+	   (xyz-name (intern (concatenate 'string "XYZ-" name-str) "DUFY")))
+      `(progn
+	 (defun ,name (,@main-args ,@sub-args-with-key)
+	   ,@body)
+	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant illum-d65))
+	   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
+	     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
+	       (,name l1 a1 b1 l2 a2 b2 ,@(extract sub-args)))))
+	 (defun ,rgb255-name (r1 g1 b1 r2 g2 b2 &key ,@sub-args (rgbspace srgbd65))
+	   (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
+	     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+	       (,xyz-name x1 y1 z1 x2 y2 z2 ,@(extract sub-args) :illuminant (rgbspace-illuminant rgbspace)))))))))
+
+
 ;; CIE76
-(defun deltae (l1 a1 b1 l2 a2 b2)
+(defdeltae deltae (l1 a1 b1 l2 a2 b2)
   (declare (optimize (speed 3) (safety 1)))
   (let ((l1 (float l1 1d0))
 	(a1 (float a1 1d0))
@@ -16,19 +44,21 @@
 	       (* deltaa deltaa)
 	       (* deltab deltab))))))
 
-(defun xyz-deltae (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65))
-  (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-    (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-      (deltae l1 a1 b1 l2 a2 b2))))
+;; (defun xyz-deltae (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65))
+;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
+;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
+;;       (deltae l1 a1 b1 l2 a2 b2))))
 
-(defun rgb255-deltae (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65))
-  (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
-    (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
-      (xyz-deltae x1 y1 z1 x2 y2 z2 :illuminant (rgbspace-illuminant rgbspace)))))
+;; (defun rgb255-deltae (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65))
+;;   (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
+;;     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+;;       (xyz-deltae x1 y1 z1 x2 y2 z2 :illuminant (rgbspace-illuminant rgbspace)))))
+
 
 
 ;; CIE94
-(defun deltae94 (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
+(defdeltae deltae94 (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
+  "APPLICATION must be :graphic-arts or :textiles"
   (declare (optimize (speed 3) (safety 1)))
   (let ((l1 (float l1 1d0))
 	(a1 (float a1 1d0))
@@ -46,13 +76,11 @@
 				 (+ (* delta-a delta-a)
 				    (* delta-b delta-b)
 				    (- (* delta-c delta-c)))))))
-	(let ((kL 1d0)
-	      (k1 0.045d0)
-	      (k2 0.015d0))
-	  (unless (eq application :graphic-arts)
-	    (setf kL 2d0
-		  k1 0.048d0
-		  k2 0.014d0))
+	(multiple-value-bind (kL k1 k2)
+	    (case application
+	      (:graphic-arts (values 1d0 0.045d0 0.015d0))
+	      (:textiles (values 2d0 0.048d0 0.014d0))
+	      (otherwise (error "Unknown APPLICATION: ~A" application)))
 	  (let ((sc (+ 1d0 (* k1 c1)))
 		(sh (+ 1d0 (* k2 c1))))
 	    (let ((term1 (/ delta-l kL))
@@ -61,22 +89,23 @@
 	      (sqrt (+ (* term1 term1)
 		       (* term2 term2)
 		       (* term3 term3))))))))))
-  
-(defun xyz-deltae94 (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65) (application :graphic-arts))
-  (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-    (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-      (deltae94 l1 a1 b1 l2 a2 b2 :application application))))
 
-(defun rgb255-deltae94 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65) (application :graphic-arts))
-  (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
-    (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
-      (xyz-deltae94 x1 y1 z1 x2 y2 z2
-		    :illuminant (rgbspace-illuminant rgbspace)
-		    :application application))))
+
+;; (defun xyz-deltae94 (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65) (application :graphic-arts))
+;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
+;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
+;;       (deltae94 l1 a1 b1 l2 a2 b2 :application application))))
+
+;; (defun rgb255-deltae94 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65) (application :graphic-arts))
+;;   (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
+;;     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+;;       (xyz-deltae94 x1 y1 z1 x2 y2 z2
+;; 		    :illuminant (rgbspace-illuminant rgbspace)
+;; 		    :application application))))
 
 
 ;; CIEDE2000
-(defun deltae00 (l1 a1 b1 l2 a2 b2)
+(defdeltae deltae00 (l1 a1 b1 l2 a2 b2)
   (declare (optimize (speed 3) (safety 1)))
   (let ((l1 (float l1 1d0))
 	(a1 (float a1 1d0))
@@ -148,13 +177,13 @@
 			 (* varSH varSH))
 		      (* varRT (/ deltaCprime varSC) (/ deltalargeHprime varSH)))))))))
 
-(defun xyz-deltae00 (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65))
-  (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-    (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-      (deltae00 l1 a1 b1 l2 a2 b2))))
+;; (defun xyz-deltae00 (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65))
+;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
+;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
+;;       (deltae00 l1 a1 b1 l2 a2 b2))))
 
-(defun rgb255-deltae00 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgb))
-  (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
-    (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
-      (xyz-deltae00 x1 y1 z1 x2 y2 z2
-		    :illuminant (rgbspace-illuminant rgbspace)))))
+;; (defun rgb255-deltae00 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgb))
+;;   (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
+;;     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+;;       (xyz-deltae00 x1 y1 z1 x2 y2 z2
+;; 		    :illuminant (rgbspace-illuminant rgbspace)))))
