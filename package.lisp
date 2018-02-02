@@ -24,8 +24,8 @@
 	   :observer-cmf-arr
 	   :observer-begin-wl
 	   :observer-end-wl
-	   :observer-cie1931
-	   :observer-cie1964
+	   :obs-cie1931
+	   :obs-cie1964
 	   
 	   :xyy-to-xyz
 	   :xyz-to-xyy

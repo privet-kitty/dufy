@@ -89,7 +89,7 @@ converter_tree
     rgb -- hsv
     rgb -- hsl
 
-    lchab -- mhvc
+    lchab -- mhvc  [ label = "(illuminant C)" ]
     mhvc -- munsell
 
   }

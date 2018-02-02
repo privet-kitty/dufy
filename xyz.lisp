@@ -111,8 +111,8 @@ SPECTRUM-ARRAY linearly which can have arbitrary length:
      :cmf (gen-cmf-3 cmf-arr
 		     begin-wl end-wl))))
 
-(defparameter observer-cie1931 (make-observer cmf-arr-cie1931))
-(defparameter observer-cie1964 (make-observer cmf-arr-cie1964))
+(defparameter obs-cie1931 (make-observer cmf-arr-cie1931))
+(defparameter obs-cie1964 (make-observer cmf-arr-cie1964))
 
 
 
@@ -120,17 +120,13 @@ SPECTRUM-ARRAY linearly which can have arbitrary length:
 ;; http://www.rit.edu/cos/colorscience/rc_useful_data.php
 (defparameter s0-arr
   #.(make-array 54 :element-type 'double-float
-	      :initial-contents '(0.04d0 6d0 29.6d0 55.3d0 57.3d0 61.8d0 61.5d0 68.8d0 63.4d0 65.8d0 94.8d0 104.8d0 105.9d0 96.8d0 113.9d0 125.6d0 125.5d0 121.3d0 121.3d0 113.5d0 113.1d0 110.8d0 106.5d0 108.8d0 105.3d0 104.4d0 100d0 96d0 95.1d0 89.1d0 90.5d0 90.3d0 88.4d0 84d0 85.1d0 81.9d0 82.6d0 84.9d0 81.3d0 71.9d0 74.3d0 76.4d0 63.3d0 71.7d0 77d0 65.2d0 47.7d0 68.6d0 65d0 66d0 61d0 53.3d0 58.9d0 61.9d0)))
-
+		:initial-contents '(0.04d0 6d0 29.6d0 55.3d0 57.3d0 61.8d0 61.5d0 68.8d0 63.4d0 65.8d0 94.8d0 104.8d0 105.9d0 96.8d0 113.9d0 125.6d0 125.5d0 121.3d0 121.3d0 113.5d0 113.1d0 110.8d0 106.5d0 108.8d0 105.3d0 104.4d0 100d0 96d0 95.1d0 89.1d0 90.5d0 90.3d0 88.4d0 84d0 85.1d0 81.9d0 82.6d0 84.9d0 81.3d0 71.9d0 74.3d0 76.4d0 63.3d0 71.7d0 77d0 65.2d0 47.7d0 68.6d0 65d0 66d0 61d0 53.3d0 58.9d0 61.9d0)))
 (defparameter s1-arr
   #.(make-array 54 :element-type 'double-float
-	      :initial-contents '(0.02d0 4.5d0 22.4d0 42d0 40.6d0 41.6d0 38d0 42.4d0 38.5d0 35d0 43.4d0 46.3d0 43.9d0 37.1d0 36.7d0 35.9d0 32.6d0 27.9d0 24.3d0 20.1d0 16.2d0 13.2d0 8.6d0 6.1d0 4.2d0 1.9d0 0d0 -1.6d0 -3.5d0 -3.5d0 -5.8d0 -7.2d0 -8.6d0 -9.5d0 -10.9d0 -10.7d0 -12d0 -14d0 -13.6d0 -12d0 -13.3d0 -12.9d0 -10.6d0 -11.6d0 -12.2d0 -10.2d0 -7.8d0 -11.2d0 -10.4d0 -10.6d0 -9.7d0 -8.3d0 -9.3d0 -9.8d0 )))
-
+		:initial-contents '(0.02d0 4.5d0 22.4d0 42d0 40.6d0 41.6d0 38d0 42.4d0 38.5d0 35d0 43.4d0 46.3d0 43.9d0 37.1d0 36.7d0 35.9d0 32.6d0 27.9d0 24.3d0 20.1d0 16.2d0 13.2d0 8.6d0 6.1d0 4.2d0 1.9d0 0d0 -1.6d0 -3.5d0 -3.5d0 -5.8d0 -7.2d0 -8.6d0 -9.5d0 -10.9d0 -10.7d0 -12d0 -14d0 -13.6d0 -12d0 -13.3d0 -12.9d0 -10.6d0 -11.6d0 -12.2d0 -10.2d0 -7.8d0 -11.2d0 -10.4d0 -10.6d0 -9.7d0 -8.3d0 -9.3d0 -9.8d0)))
 (defparameter s2-arr
-  #.(make-array 54 :element-type 'double-float
-	      :initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0)))
-
-
+       #.(make-array 54 :element-type 'double-float
+		     :initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0)))
 (defparameter s0-func (gen-spectrum s0-arr 300 830))
 (defparameter s1-func (gen-spectrum s1-arr 300 830))
 (defparameter s2-func (gen-spectrum s2-arr 300 830))
@@ -159,10 +155,9 @@ SPECTRUM-ARRAY linearly which can have arbitrary length:
       arr)))
 
 (defun gen-illum-d-spectrum (temperature &optional (wl-begin 300) (wl-end 830))
-  "Generates the spectrum of Illuminant series D for a given temeprature."
+  "Generates the spectrum of the illuminant series D for a given temperature."
   (gen-spectrum (gen-illum-d-spectrum-array temperature wl-begin wl-end)
 	   wl-begin wl-end))
-	   
 
 				 
 (defun spectrum-sum (spectrum &key (wl-begin 300) (wl-end 830) (band 1))
@@ -214,10 +209,10 @@ SPECTRUM-ARRAY linearly which can have arbitrary length:
   (largey 0.0 :type double-float)
   (largez 0.0 :type double-float)
   (spectrum nil)
-  (observer observer-cie1931 :type observer))
+  (observer obs-cie1931 :type observer))
 
-(defvar illum-e) ;; avoid a WARNING
-(defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer observer-cie1931))
+(defvar illum-e) ;; to avoid WARNING
+(defun spectrum-to-xyz (spectrum &key (illuminant illum-e) (observer obs-cie1931))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
 case. The function SPECTRUM must be defined at least in [360, 830].
 The return values are not normalized."
@@ -227,7 +222,7 @@ The return values are not normalized."
 				(illuminant-spectrum illuminant)
 				:observer observer))
 
-(defun spectrum-to-xyz-by-illum-spd (spectrum illum-spd &key (observer observer-cie1931))
+(defun spectrum-to-xyz-by-illum-spd (spectrum illum-spd &key (observer obs-cie1931))
   "Another version of spectrum-to-xyz: actually, only the return value
 of (illuminant-spectrum illuminant), illum-spd here, is necessary in
 spectrum-to-xyz."
@@ -245,24 +240,24 @@ spectrum-to-xyz."
     (let ((factor (/ max-y)))
       (list (* x factor) (* y factor) (* z factor)))))
 
-;; (defun spectrum-to-lchab (spectrum &key (illuminant illum-e) (observer observer-cie1931))
+;; (defun spectrum-to-lchab (spectrum &key (illuminant illum-e) (observer obs-cie1931))
 ;;   (apply (rcurry #'xyz-to-lchab illuminant)
 ;; 	 (spectrum-to-xyz spectrum :illuminant illuminant :observer observer)))
 
 (let ((mat (make-array '(3 3)
 		       :element-type 'double-float
 		       :initial-element 0d0)))
-  (defun xyz-to-spectrum (x y z &key (illuminant illum-e) (observer observer-cie1931))
+  (defun xyz-to-spectrum (x y z &key (illuminant illum-e) (observer obs-cie1931))
     "Converts XYZ to spectrum, which is, of course, one spectrum among
 many."
     (destructuring-bind (a00 a10 a20)
-	(dufy:spectrum-to-xyz (dufy:observer-cmf-x dufy:observer-cie1931)
+	(spectrum-to-xyz (observer-cmf-x obs-cie1931)
 			      :illuminant illuminant)
       (destructuring-bind (a01 a11 a21)
-	  (dufy:spectrum-to-xyz (dufy:observer-cmf-y dufy:observer-cie1931)
+	  (spectrum-to-xyz (observer-cmf-y obs-cie1931)
 				:illuminant illuminant)
 	(destructuring-bind (a02 a12 a22)
-	    (dufy:spectrum-to-xyz (dufy:observer-cmf-z dufy:observer-cie1931)
+	    (spectrum-to-xyz (observer-cmf-z obs-cie1931)
 				  :illuminant illuminant)
 	  (setf (aref mat 0 0) a00
 		(aref mat 0 1) a01
@@ -296,7 +291,7 @@ many."
 	(list (/ x sum) (/ y sum) y))))
 
 
-(defun make-illuminant (x y &optional (spectrum nil) (observer observer-cie1931))
+(defun make-illuminant (x y &optional (spectrum nil) (observer obs-cie1931))
   "Defines an illuminant based on a white point. No error occurs, even
 if the given (x, y) and SPD contradicts to each other."
   (destructuring-bind (largex largey largez) (xyy-to-xyz x y 1d0)
@@ -308,7 +303,7 @@ if the given (x, y) and SPD contradicts to each other."
 		      :spectrum spectrum
 		      :observer observer)))
 
-(defun make-illuminant-by-spd (spectrum &optional (observer observer-cie1931))
+(defun make-illuminant-by-spd (spectrum &optional (observer obs-cie1931))
   "Defines an illuminant based on a spectral power distribution. The
 proper white point is automatically calculated."
   (destructuring-bind (largex largey largez)
@@ -324,8 +319,21 @@ proper white point is automatically calculated."
 			:spectrum spectrum
 			:observer observer))))
 
-(defparameter illum-a (make-illuminant 0.44757d0 0.40745d0))
-(defparameter illum-c (make-illuminant 0.31006d0 0.31616d0))
+
+(defparameter illum-a
+  (make-illuminant 0.44757d0 0.40745d0
+		   #'(lambda (wl)
+		       (* 100d0
+			  (expt (/ 560d0 wl) 5)
+			  (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
+			     (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0))))))
+			  
+
+(defparameter illum-c-arr (make-array 107 :element-type 'double-float
+				      :initial-contents '(0.0d0 0.0d0 0.0d0 0.0d0 0.0d0 0.20d0 0.40d0 1.55d0 2.70d0 4.85d0 7.00d0 9.95d0 12.90d0 17.20d0 21.40d0 27.5d0 33.00d0 39.92d0 47.40d0 55.17d0 63.30d0 71.81d0 80.60d0 89.53d0 98.10d0 105.80d0 112.40d0 117.75d0 121.50d0 123.45d0 124.00d0 123.60d0 123.10d0 123.30d0 123.80d0 124.09d0 123.90d0 122.92d0 120.70d0 116.90d0 112.10d0 106.98d0 102.30d0 98.81d0 96.90d0 96.78d0 98.00d0 99.94d0 102.10d0 103.95d0 105.20d0 105.67d0 105.30d0 104.11d0 102.30d0 100.15d0 97.80d0 95.43d0 93.20d0 91.22d0 89.70d0 88.83d0 88.40d0 88.19d0 88.10d0 88.06d0 88.00d0 87.86d0 87.80d0 87.99d0 88.20d0 88.20d0 87.90d0 87.22d0 86.30d0 85.30d0 84.00d0 82.21d0 80.20d0 78.24d0 76.30d0 74.36d0 72.40d0 70.40d0 68.30d0 66.30d0 64.40d0 62.80d0 61.50d0 60.20d0 59.20d0 58.50d0 58.10d0 58.00d0 58.20d0 58.50d0 59.10d0 78.91d0 79.55d0 76.48d0 73.40d0 68.66d0 63.92d0 67.35d0 70.78d0 72.61d0 74.44d0)))
+(defparameter illum-c (make-illuminant 0.31006d0 0.31616d0
+				       (gen-spectrum illum-c-arr 300 830)))
+
 (defparameter illum-d50 (make-illuminant 0.34567d0 0.35850d0
 					 (gen-illum-d-spectrum #.(* 5000 (/ 1.4388d0 1.438)))))
 (defparameter illum-d65 (make-illuminant 0.31271d0 0.32902d0
