@@ -16,10 +16,10 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 
 Dufy can handle the following concepts:
 
-* Illuminant: C, D65, etc.
+* Standard illuminant: C, D65, etc.
 * Observer (Color Matching Functions): CIE 1931 2° Standard Observer, CIE 1964 10°, etc.
 * Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIEDE2000, etc.
-* Chromatic Adaptaion Transform: Bradford, Von Kries, etc.
+* Chromatic adaptaion transform: Bradford, Von Kries, etc.
 
 
 # Dependencies
@@ -29,19 +29,20 @@ Dufy can handle the following concepts:
 All of the dependent libraries can be installed with quicklisp.
 
 # Install
+The easiest way to install dufy is to use [quicklisp](https://www.quicklisp.org/beta/):
 
-The easiest way to install dufy is to use quicklisp. The following is an example of the installation on SBCL:
+    * (ql:quickload :dufy)
 
-    > cd ~/quicklisp/local-projects
-    > git clone git@github.com:privet-kitty/dufy.git
-    > sbcl
+The latest version can also be installed with quicklisp:
+
+    $ cd ~/quicklisp/local-projects   # the path is held in ql:*local-project-directories*
+    $ git clone git@github.com:privet-kitty/dufy.git
+    $ sbcl   # , ccl, etc.
     
     * (ql:register-local-projects)
     * (ql:quickload :dufy)
 
-The path of the local projects is held in `ql:*local-project-directories*`.
-
-If you want to use ASDF without quicklisp, you should put the directory of dufy to an appropriate location and do `(asdf:load-system :dufy)`.
+If you want to use ASDF directly without quicklisp, you should put the directory of dufy to an appropriate location and do `(asdf:load-system :dufy)`.
 
 # Usage
 ## Basics
@@ -130,7 +131,7 @@ Likewise most converters regard the implicit standard illuminant as D65. You can
     * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:illum-a)   ; Illuminant A
     => (0.13427072267932444d0 0.1699996724486797d0 0.07545996979158637d0)
 
-When you nest two or more converters, you may want to use higher-order functions as [alexandria:rcurry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):
+When you nest two or more converters, you may want to use higher-order functions like [alexandria:rcurry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):
 
     * (apply #'dufy:xyz-to-rgb255
              (dufy:lab-to-xyz 87.0676 -78.1391 -20.5142))
