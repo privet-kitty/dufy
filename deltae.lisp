@@ -1,6 +1,6 @@
 (in-package :dufy)
 
-;; define a delta-E function with xyz-deltae and rgb255-deltae
+;; define delta-E functions for L*a*b*, xyz and rgb255
 (defmacro defdeltae (name args &body body)
   "Only &key arguments are allowed in sub-args."
   (labels ((extract (lst) ; extract sub-args

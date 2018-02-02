@@ -62,16 +62,20 @@
 
 
 (defun srgb-linearizer (x)
-  (clamp (if (<= x 0.04045d0)
-	     (/ x 12.92d0)
-	     (expt (/ (+ x 0.055d0) 1.055d0) 2.4d0))
-	 0d0 1d0))
+  "actually the same as bg-sRGB"
+  (cond ((> x #.(* 0.0031308d0 12.92d0))
+	 (expt (/ (+ 0.055d0 x) 1.055d0) 2.4d0))
+	((< x #.(* -0.0031308d0 12.92d0))
+	 (- (expt (/ (- 0.055d0 x) 1.055d0) 2.4d0)))
+	(t (* x #.(/ 12.92d0)))))
 
 (defun srgb-delinearizer (x)
-  (clamp (if (<= x 0.0031308d0)
-	     (* x 12.92d0)
-	     (- (* 1.055d0 (expt x #.(/ 1 2.4d0))) 0.055d0))
-	 0d0 1d0))
+  "actually the same as bg-sRGB"
+  (cond ((> x 0.0031308d0)
+	 (+ (* 1.055d0 (expt x #.(/ 1 2.4d0))) -0.055d0))
+	((< x -0.0031308d0)
+	 (+ (* -1.055d0 (expt (- x) #.(/ 1 2.4d0))) 0.055d0))
+	(t (* x 12.92d0))))
 
 (defparameter srgb
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
@@ -111,20 +115,25 @@
 		:linearizer (gen-linearizer 2.8d0)
 		:delinearizer (gen-delinearizer 2.8d0)))
 
-
+(defun prophoto-linearizer (x)
+  (cond ((> x #.(* 1/512 16d0))
+	 (expt x 1.8d0))
+	((< x #.(* -1/512 16d0))
+	 (- (expt (- x) 1.8d0)))
+	(t (* x #.(float 1/16 1d0)))))
+  
+(defun prophoto-delinearizer (x)
+  (cond ((> x #.(float 1/512 1d0))
+	 (expt x #.(/ 1.8d0)))
+	((< x #.(float -1/512 1d0))
+	 (- (expt (- x) #.(/ 1.8d0))))
+	(t (* x 16d0))))
+	    
 (defparameter prophoto
   (make-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
 		:illuminant illum-d50
-		:linearizer #'(lambda (x)
-				(clamp (if (<= x #.(* 1/512 16d0))
-					   (* x #.(float 1/16 1d0))
-					   (expt x 1.8d0))
-				       0d0 1d0))
-		:delinearizer #'(lambda (x)
-				  (clamp (if (<= x (float 1/512 1d0))
-					     (* x 16d0)
-					     (expt x #.(/ 1 1.8d0)))
-					 0d0 1d0))))			      
+		:linearizer #'prophoto-linearizer
+		:delinearizer #'prophoto-delinearizer))		      
  
 
 ;; convert XYZ to linear RGB in [0, 1]
@@ -233,7 +242,7 @@ OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (mapcar #'(lambda (x) (round (* (clamp x 0 1) 255d0))) rgb)
+    (values (apply #'rgb-to-rgb255 rgb)
 	    out-of-gamut)))
 
 ;; convert RGB ({0, 1, ..., 255}) to XYZ ([0, 1])

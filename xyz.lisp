@@ -434,7 +434,7 @@ the transform is virtually equivalent to that of illuminant E. "
 
 (defun calc-cat-matrix  (from-illuminant to-illuminant &optional (cat bradford))
   "Returns a 3*3 chromatic adaptation matrix between FROM-ILLUMINANT
-and TO-ILLUMINANT."
+and TO-ILLUMINANT in XYZ space."
   (let ((from-white-x (illuminant-largex from-illuminant))
 	(from-white-y (illuminant-largey from-illuminant))
 	(from-white-z (illuminant-largez from-illuminant))
@@ -487,7 +487,10 @@ and TO-ILLUMINANT."
 
 (declaim (ftype (function * function) gen-cat-function))
 (defun gen-cat-function (from-illuminant to-illuminant &optional (tmatrix bradford))
-  "Returns a chromatic adaptation function of XYZ values: #'(lambda (X Y Z) ...)"
+  "Returns a chromatic adaptation function on XYZ space:
+> (funcall (gen-cat-function illum-d65 illum-e) 0.9504d0 1.0d0 1.0889d0)
+=> (0.9999700272441295d0 0.999998887365445d0 0.9999997282885571d0)
+"
   (let ((mat (calc-cat-matrix from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))

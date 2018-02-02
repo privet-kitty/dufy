@@ -24,6 +24,7 @@
 ;;; Some arithmetic in a circle group
 ;;;
 
+
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
   "(X - Y) mod DIVISOR."
   (mod (- x y) divisor))
@@ -31,7 +32,8 @@
 (defun circular-nearer (theta1 x theta2 &optional (perimeter TWO-PI))
   "Compares counterclockwise distances between THETA1 and X and
 between X and THETA2; returns THETA1 or THETA2, whichever is nearer."
-  (if (<= (subtract-with-mod x theta1 perimeter) (subtract-with-mod theta2 x perimeter))
+  (if (<= (subtract-with-mod x theta1 perimeter)
+	  (subtract-with-mod theta2 x perimeter))
       theta1
       theta2))
 
