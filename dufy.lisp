@@ -309,7 +309,9 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	      rgbspace))
 
 (defun qrgb-to-hex (qr qg qb)
-  (+ (ash qr 16) (ash qg 8) qb))
+  (+ (ash (clamp qr 0 255) 16)
+     (ash (clamp qg 0 255) 8)
+     (clamp qb 0 255)))
 
 (defun hex-to-qrgb (hex)
   (list (logand (ash hex -16) #xff)

@@ -108,34 +108,34 @@ The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-
 In the above example of a conversion from CIELAB to RGB, `xyz-to-qrgb` returns two values. The second value is an out-of-gamut flag.
 
     * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601)
-    => (0 255 255)
+    => (-169 255 255)
     => T
     ;; i.e. The input XYZ color is out of gamut,
 
 Out of which gamut, however? By default, `xyz-to-qrgb` (and other `-to-qrgb` converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
 
     * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:srgb)  ; sRGB
-    => (0 255 255)
+    => (-169 255 255)
     => T 
 
     * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:adobe) ; Adobe RGB
-    => (0 255 255)
+    => (2 255 255)
     => NIL
 
 Likewise most converters regard the implicit standard illuminant as D65. You can also specify it explicitly:
 
     * (dufy:lab-to-xyz 48.26 -28.84 -8.475)                ; Illuminant D65 
     * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:illum-d65) ; Illuminant D65
-    => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
+    => (0.11617541639167948d0 0.16999970272400086d0 0.23092506326381615d0)
 
     * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:illum-a)   ; Illuminant A
-    => (0.13427072267932444d0 0.1699996724486797d0 0.07545996979158637d0)
+    => (0.13427074937083414d0 0.16999970272400086d0 0.07545998227535496d0)
 
 When you nest two or more converters, you may want to use higher-order functions like [alexandria:rcurry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):
 
     * (apply #'dufy:xyz-to-qrgb
              (dufy:lab-to-xyz 87.0676 -78.1391 -20.5142))
-    => (0 255 255)
+    => (-169 255 255)
     => T
 
     * (apply #'dufy:xyz-to-qrgb
@@ -145,7 +145,7 @@ When you nest two or more converters, you may want to use higher-order functions
 
     * (apply (alexandria:rcurry #'dufy:xyz-to-qrgb :rgbspace dufy:adobe)
              (dufy:lab-to-xyz 87.0676 -78.1391 -20.5142))
-    => (0 255 255)
+    => (3 255 255)
     => NIL
 
 ## Munsell Color System
