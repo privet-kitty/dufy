@@ -81,7 +81,7 @@
 	   :xyz-to-lab
 	   :lab-to-xyz
 	   :lstar-to-y
-	   :rgb255-to-lab
+	   :qrgb-to-lab
 	   :lab-to-lchab
 	   :lchab-to-lab
 	   :xyy-to-lab
@@ -108,12 +108,12 @@
 	   :lrgb-to-rgb
 	   :xyz-to-rgb
 	   :rgb-to-xyz
-	   :rgb-to-rgb255
-	   :rgb255-to-rgb
-	   :xyz-to-rgb255
-	   :rgb255-to-xyz
-	   :rgb255-to-hex
-	   :hex-to-rgb255
+	   :rgb-to-qrgb
+	   :qrgb-to-rgb
+	   :xyz-to-qrgb
+	   :qrgb-to-xyz
+	   :qrgb-to-hex
+	   :hex-to-qrgb
 	   :rgb-to-hex
 	   :hex-to-rgb
 	   :xyz-to-hex
@@ -121,44 +121,42 @@
 	   :two-pi
 	   :subtract-with-mod
 	   :circular-lerp
-	   :rgb1+
-	   :rgb1-
 
 	   :hsv-to-rgb
 	   :rgb-to-hsv
-	   :hsv-to-rgb255
-	   :rgb255-to-hsv
+	   :hsv-to-qrgb
+	   :qrgb-to-hsv
 	   :hsv-to-xyz
 	   :xyz-to-hsv
 
 	   :hsl-to-rgb
 	   :rgb-to-hsl
-	   :hsl-to-rgb255
-	   :rgb255-to-hsl
+	   :hsl-to-qrgb
+	   :qrgb-to-hsl
 	   :hsl-to-xyz
 	   :xyz-to-hsl
 	   
 	   ;; deltae.lisp
 	   :deltae
 	   :xyz-deltae
-	   :rgb255-deltae
+	   :qrgb-deltae
 	   :deltae94
 	   :xyz-deltae94
-	   :rgb255-deltae94
+	   :qrgb-deltae94
 	   :deltae00
 	   :xyz-deltae00
-	   :rgb255-deltae00
+	   :qrgb-deltae00
 
 	   ;; munsell.lisp
 	   :munsell-value-to-y
 	   :y-to-munsell-value
-	   :rgb255-to-munsell-value
+	   :qrgb-to-munsell-value
 	   :mhvc-out-of-mrd-p
 	   :mhvc-to-xyy
 	   :mhvc-to-xyz
 	   :mhvc-to-xyz-illum-c
 	   :mhvc-to-lrgb
-	   :mhvc-to-rgb255
+	   :mhvc-to-qrgb
 	   :mhvc-to-lchab
 	   :mhvc-to-munsell
 	   :munsell-to-mhvc
@@ -166,7 +164,7 @@
 	   :munsell-to-lchab
 	   :munsell-to-xyz
 	   :munsell-to-xyy
-	   :munsell-to-rgb255
+	   :munsell-to-qrgb
 	   :max-chroma
 	   :lchab-to-mhvc
 	   :lchab-to-munsell

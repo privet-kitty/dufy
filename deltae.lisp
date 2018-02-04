@@ -1,6 +1,6 @@
 (in-package :dufy)
 
-;; define delta-E functions for L*a*b*, xyz and rgb255
+;; define delta-E functions for L*a*b*, xyz and qrgb
 (defmacro defdeltae (name args &body body)
   "Only &key arguments are allowed in sub-args."
   (labels ((extract (lst) ; extract sub-args
@@ -13,7 +13,7 @@
 	   (sub-args-with-key (subseq args 6))
 	   (sub-args (cdr sub-args-with-key))
 	   (name-str (symbol-name name))
-	   (rgb255-name (intern (concatenate 'string "RGB255-" name-str) "DUFY"))
+	   (qrgb-name (intern (concatenate 'string "QRGB-" name-str) "DUFY"))
 	   (xyz-name (intern (concatenate 'string "XYZ-" name-str) "DUFY")))
       `(progn
 	 (defun ,name (,@main-args ,@sub-args-with-key)
@@ -22,9 +22,9 @@
 	   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
 	     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
 	       (,name l1 a1 b1 l2 a2 b2 ,@(extract sub-args)))))
-	 (defun ,rgb255-name (r1 g1 b1 r2 g2 b2 &key ,@sub-args (rgbspace srgbd65))
-	   (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
-	     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+	 (defun ,qrgb-name (r1 g1 b1 r2 g2 b2 &key ,@sub-args (rgbspace srgbd65))
+	   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
+	     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 	       (,xyz-name x1 y1 z1 x2 y2 z2 ,@(extract sub-args) :illuminant (rgbspace-illuminant rgbspace)))))))))
 
 
@@ -49,9 +49,9 @@
 ;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
 ;;       (deltae l1 a1 b1 l2 a2 b2))))
 
-;; (defun rgb255-deltae (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65))
-;;   (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
-;;     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+;; (defun qrgb-deltae (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65))
+;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
+;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 ;;       (xyz-deltae x1 y1 z1 x2 y2 z2 :illuminant (rgbspace-illuminant rgbspace)))))
 
 
@@ -96,9 +96,9 @@
 ;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
 ;;       (deltae94 l1 a1 b1 l2 a2 b2 :application application))))
 
-;; (defun rgb255-deltae94 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65) (application :graphic-arts))
-;;   (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
-;;     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+;; (defun qrgb-deltae94 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65) (application :graphic-arts))
+;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
+;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 ;;       (xyz-deltae94 x1 y1 z1 x2 y2 z2
 ;; 		    :illuminant (rgbspace-illuminant rgbspace)
 ;; 		    :application application))))
@@ -182,8 +182,8 @@
 ;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
 ;;       (deltae00 l1 a1 b1 l2 a2 b2))))
 
-;; (defun rgb255-deltae00 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgb))
-;;   (destructuring-bind (x1 y1 z1) (rgb255-to-xyz r1 g1 b1 rgbspace)
-;;     (destructuring-bind (x2 y2 z2) (rgb255-to-xyz r2 g2 b2 rgbspace)
+;; (defun qrgb-deltae00 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgb))
+;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
+;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 ;;       (xyz-deltae00 x1 y1 z1 x2 y2 z2
 ;; 		    :illuminant (rgbspace-illuminant rgbspace)))))

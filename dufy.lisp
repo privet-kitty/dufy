@@ -280,70 +280,63 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	 (rgb-to-lrgb r g b rgbspace)))
 
 
-(defun rgb-to-rgb255 (r g b)
+(defun rgb-to-qrgb (r g b)
   "Quantizes RGB values from [0, 1] to {0, 1, ..., 255}, though it
 accepts all the real values."
   (list (round (* r 255))
 	(round (* g 255))
 	(round (* b 255))))
 
-(defun rgb255-to-rgb (r255 g255 b255)
-  (list (* r255 #.(float 1/255 1d0))
-	(* g255 #.(float 1/255 1d0))
-	(* b255 #.(float 1/255 1d0))))
+(defun qrgb-to-rgb (qr qg qb)
+  (list (* qr #.(float 1/255 1d0))
+	(* qg #.(float 1/255 1d0))
+	(* qb #.(float 1/255 1d0))))
 
-(defun xyz-to-rgb255 (x y z &key (rgbspace srgb) (threshold 1d-4))
-  "Returns multiple values: (R255 G255 B255), OUT-OF-GAMUT-P.
+(defun xyz-to-qrgb (x y z &key (rgbspace srgb) (threshold 1d-4))
+  "Returns multiple values: (QR QG QB), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (apply #'rgb-to-rgb255 rgb)
+    (values (apply #'rgb-to-qrgb rgb)
 	    out-of-gamut)))
 
 ;; convert RGB ({0, 1, ..., 255}) to XYZ ([0, 1])
-(defun rgb255-to-xyz (r255 g255 b255 &optional (rgbspace srgb))
-  (rgb-to-xyz (* r255 #.(float 1/255 1d0))
-	      (* g255 #.(float 1/255 1d0))
-	      (* b255 #.(float 1/255 1d0))
+(defun qrgb-to-xyz (qr qg qb &optional (rgbspace srgb))
+  (rgb-to-xyz (* qr #.(float 1/255 1d0))
+	      (* qg #.(float 1/255 1d0))
+	      (* qb #.(float 1/255 1d0))
 	      rgbspace))
 
-(defun rgb255-to-hex (r255 g255 b255)
-  (+ (ash r255 16) (ash g255 8) b255))
+(defun qrgb-to-hex (qr qg qb)
+  (+ (ash qr 16) (ash qg 8) qb))
 
-(defun hex-to-rgb255 (hex)
+(defun hex-to-qrgb (hex)
   (list (logand (ash hex -16) #xff)
 	(logand (ash hex -8) #xff)
 	(logand hex #xff)))
 
 (defun hex-to-rgb (hex)
-  (apply #'rgb255-to-rgb
-	 (hex-to-rgb255 hex)))
+  (apply #'qrgb-to-rgb
+	 (hex-to-qrgb hex)))
 
 (defun rgb-to-hex (r g b)
-  (apply #'rgb255-to-hex
-	 (rgb-to-rgb255 r g b)))
+  (apply #'qrgb-to-hex
+	 (rgb-to-qrgb r g b)))
 
 (defun hex-to-xyz (hex &optional (rgbspace srgb))
-  (apply (rcurry #'rgb255-to-xyz rgbspace)
-	 (hex-to-rgb255 hex)))
+  (apply (rcurry #'qrgb-to-xyz rgbspace)
+	 (hex-to-qrgb hex)))
 
 (defun xyz-to-hex (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: HEX, OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [-THRESHOLD, 1+THRESHOLD]."
-  (multiple-value-bind (rgb255 out-of-gamut)
-      (xyz-to-rgb255 x y z :rgbspace rgbspace :threshold threshold)
-    (values (apply #'rgb255-to-hex rgb255)
+  (multiple-value-bind (qrgb out-of-gamut)
+      (xyz-to-qrgb x y z :rgbspace rgbspace :threshold threshold)
+    (values (apply #'qrgb-to-hex qrgb)
 	    out-of-gamut)))
 	 
-  
-(defmacro rgb1+ (x)
-  `(clamp (1+ ,x) 0 255))
-
-(defmacro rgb1- (x)
-  `(clamp (1- ,x) 0 255))
-
 
 ;;;
 ;;; L*a*b*, L*u*v*, LCh
@@ -429,9 +422,9 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
   (destructuring-bind (x y z) (lchab-to-xyz lstar cstarab hab illuminant)
     (xyz-to-xyy x y z)))
 
-(defun rgb255-to-lab (r255 g255 b255 &optional (rgbspace srgb))
+(defun qrgb-to-lab (qr qg qb &optional (rgbspace srgb))
   (apply (rcurry #'xyz-to-lab (rgbspace-illuminant rgbspace))
-	 (rgb255-to-xyz r255 g255 b255 rgbspace)))
+	 (qrgb-to-xyz qr qg qb rgbspace)))
 
 
 (defun calc-uvprime (x y)
@@ -532,7 +525,7 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	    ((= 4 h-prime-int) (list (+ base x) base (+ base c)))
 	    ((= 5 h-prime-int) (list (+ base c) base (+ base x)))))))
 	 
-(defun hsv-to-rgb255 (hue sat val)
+(defun hsv-to-qrgb (hue sat val)
   (mapcar #'(lambda (x) (round (* x 255d0)))
 	  (hsv-to-rgb hue sat val)))
 
@@ -552,10 +545,10 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 		  ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
     (list h s maxrgb)))
 	 
-(defun rgb255-to-hsv (r255 g255 b255)
-  (rgb-to-hsv (* r255 #.(float 1/255 1d0))
-	      (* g255 #.(float 1/255 1d0))
-	      (* b255 #.(float 1/255 1d0))))
+(defun qrgb-to-hsv (qr qg qb)
+  (rgb-to-hsv (* qr #.(float 1/255 1d0))
+	      (* qg #.(float 1/255 1d0))
+	      (* qb #.(float 1/255 1d0))))
 
 (defun xyz-to-hsv (x y z &key (rgbspace srgb) (threshold 1d-4))
   "Returns multiple values: (H S V), OUT-OF-GAMUT-P.
@@ -597,7 +590,7 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
 				   (+ min (* delta (- 360d0 hue) 0.016666666666666667d0)))))))
 				   
 
-(defun hsl-to-rgb255 (hue sat lum)
+(defun hsl-to-qrgb (hue sat lum)
   (mapcar #'(lambda (x) (round (* x 255d0)))
 	  (hsl-to-rgb hue sat lum)))
 
@@ -617,10 +610,10 @@ outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	    (* 0.5d0 (+ max min))))))
 	  
 
-(defun rgb255-to-hsl (r255 g255 b255)
-  (rgb-to-hsl (* r255 #.(float 1/255 1d0))
-	      (* g255 #.(float 1/255 1d0))
-	      (* b255 #.(float 1/255 1d0))))
+(defun qrgb-to-hsl (qr qg qb)
+  (rgb-to-hsl (* qr #.(float 1/255 1d0))
+	      (* qg #.(float 1/255 1d0))
+	      (* qb #.(float 1/255 1d0))))
 
 (defun xyz-to-hsl (x y z &key (rgbspace srgb) (threshold 1d-4))
     "Returns multiple values: (H S L), OUT-OF-GAMUT-P.

@@ -53,7 +53,7 @@ formula is based on ASTM D1535-08e1:"
   (- (* 116 (function-f (munsell-value-to-y v))) 16))
 
   
-(defun munsell-value-to-achromatic-rgb255 (v)
+(defun munsell-value-to-achromatic-qrgb (v)
   "Returns the gray corresponding to given Munsell value."
   (let ((x (round (* (delinearize (munsell-value-to-y v)) 255))))
     (list x x x)))
@@ -102,8 +102,8 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	  (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
 	     (* r (aref y-to-munsell-value-arr y2)))))))
 
-(defun rgb255-to-munsell-value (r g b &optional (rgbspace srgbd65))
-  (y-to-munsell-value (second (rgb255-to-xyz r g b rgbspace))))
+(defun qrgb-to-munsell-value (r g b &optional (rgbspace srgbd65))
+  (y-to-munsell-value (second (qrgb-to-xyz r g b rgbspace))))
 
 
 ;; hue ∈ Z/40, tmp-value ∈ {0, 1, ..., 10}, half-chroma ∈ {0, 1, ..., max-chroma/2}
@@ -393,14 +393,14 @@ as out-of-gamut by numerical error, if threshold is too small."
 	 (mhvc-to-xyz hue40 value chroma)))
 
 
-(defun mhvc-to-rgb255 (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
+(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
   "The standard illuminant is D65: that of RGBSPACE must also be D65."
-  (multiple-value-bind (rgb255 out-of-gamut)
-      (apply (rcurry #'xyz-to-rgb255 :rgbspace rgbspace :threshold threshold)
+  (multiple-value-bind (qrgb out-of-gamut)
+      (apply (rcurry #'xyz-to-qrgb :rgbspace rgbspace :threshold threshold)
 	     (mhvc-to-xyz hue40 value chroma))
     (if (and (= chroma 0))
-	(values rgb255 nil)
-	(values rgb255 out-of-gamut))))
+	(values qrgb nil)
+	(values qrgb out-of-gamut))))
 
 
 (define-condition invalid-munsell-spec-error (simple-error)
@@ -479,10 +479,10 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (apply #'xyz-to-xyy (munsell-to-xyz munsellspec)))
 
 
-(defun munsell-to-rgb255 (munsellspec &key (rgbspace dufy:srgb) (threshold 0.001d0))
+(defun munsell-to-qrgb (munsellspec &key (rgbspace dufy:srgb) (threshold 0.001d0))
   "Illuminant D65; the standard illuminant of RGBSPACE must also be D65.
-It returns multiple values: (R255 G255 B255), OUT-OF-GAMUT-P."
-  (apply (rcurry #'xyz-to-rgb255 :rgbspace rgbspace :threshold threshold)
+It returns multiple values: (QR QG QB), OUT-OF-GAMUT-P."
+  (apply (rcurry #'xyz-to-qrgb :rgbspace rgbspace :threshold threshold)
 	 (munsell-to-xyz munsellspec)))
 
 
