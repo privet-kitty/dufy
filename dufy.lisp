@@ -1,6 +1,57 @@
 (in-package :dufy)
 
 ;;;
+;;; Quotization model
+;;;
+
+(defstruct (quantization (:constructor $make-quantization))
+  "Definition of quantization method of RGB"
+  (normal t :type boolean) ;; t, if the range of dequantized value is [0, 1].
+  (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
+  (quantizer #'(lambda (x) (round (* 255d0 x))) :type function)
+  (dequantizer #'(lambda (n) (* n #.(/ 255d0))) :type function)
+  (nominal-min 0d0 :type double-float)
+  (nominal-max 1d0 :type double-float)
+  (quantized-max 255 :type (integer 1 #.most-positive-fixnum)))
+
+(defun make-quantization (&optional (bit-per-channel 8)
+			    (min 0d0)
+			    (max 1d0)
+			    (quantizer nil)
+			    (dequantizer nil))
+  (let* ((quantized-max (- (expt 2 bit-per-channel) 1))
+	 (quantized-max-float (float quantized-max 1d0))
+	 (/quantized-max-float (/ quantized-max-float))
+	 (normal (if (and (= min 0d0) (max 1d0)) t nil))
+	 (len (- max min)))
+    ($make-quantization
+     :normal normal
+     :bit-per-channel bit-per-channel
+     :quantized-max quantized-max
+     :nominal-min (float min 1d0)
+     :nominal-max (float max 1d0)
+     :quantizer (or quantizer
+		    (if normal
+			#'(lambda (x) (round (* quantized-max-float x)))
+			#'(lambda (x) (round (lerp (/ (- x min) len)
+						   0 quantized-max-float)))))
+     :dequantizer (or dequantizer
+		      #'(lambda (n) (+ min (* n /quantized-max-float)))))))
+
+;; Standard quantization methods between [0, 1] and {0, 1, ..., 2^bit-per-channel -1}
+(defparameter qtz-8bit-normal (make-quantization 8))
+(defparameter qtz-12bit-normal (make-quantization 16))
+(defparameter qtz-16bit-normal (make-quantization 16))
+
+(defparameter qtz-16bit-scrgb
+  (make-quantization 16 -0.5d0 7.4999d0
+		     #'(lambda (x) (round (+ (* 8192d0 x) 4096d0)))
+		     #'(lambda (n) (* (- n 4096) #.(/ 8192d0))))
+  "Quantization method in scRGB, IEC 61966-2-2:2003
+http://www.color.org/chardata/rgb/scrgb.xalter")
+
+
+;;;
 ;;; RGB Color Space
 ;;;
 
@@ -22,6 +73,7 @@
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
   (xb 0d0 :type double-float) (yb 0d0 :type double-float)
   (illuminant illum-d65)
+  (quantization qtz-8bit-normal)
   (linearizer #'identity)
   (delinearizer #'identity)
   (to-xyz-matrix identity-matrix :type (simple-array double-float (3 3)))
@@ -29,7 +81,7 @@
 
 
 
-(defun make-rgbspace (xr yr xg yg xb yb &key (illuminant illum-d65) (linearizer #'identity) (delinearizer #'identity))
+(defun make-rgbspace (xr yr xg yg xb yb &key (illuminant illum-d65) (quantization qtz-8bit-normal) (linearizer #'identity) (delinearizer #'identity))
   (let ((coordinates
 	 (make-array '(3 3)
 		     :element-type 'double-float
@@ -55,6 +107,7 @@
 						       (* sb (aref coordinates 2 2)))))))
 	($make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
 			:illuminant illuminant
+			:quantization quantization
 			:linearizer linearizer
 			:delinearizer delinearizer
 			:to-xyz-matrix m
@@ -154,8 +207,9 @@ the interval [-THRESHOLD, 1+THRESHOLD]."
 			    lr lg lb))		       
 
 (defun copy-rgbspace (rgbspace &optional (illuminant nil))
-  "This copier can copy RGBSPACE with different ILLUMINANT. If
-ILLUMINANT is nil, it is just a copier."
+  "Copies RGBSPACE with different standard illuminant. All the
+parameters are properly recalculated. If ILLLUMINANT is nil, it is
+just a copier."
   (if illuminant
       (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace) illuminant)))
 	(destructuring-bind (new-xr new-yr zr)
@@ -174,15 +228,17 @@ ILLUMINANT is nil, it is just a copier."
 			      (lrgb-to-xyz 0 0 1 rgbspace)))
 	      (declare (ignore zb))
 	      (make-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
-			    :illuminant illuminant
-			    :linearizer (rgbspace-linearizer rgbspace)
-			    :delinearizer (rgbspace-delinearizer rgbspace))))))
+			     :illuminant illuminant
+			     :quantization (rgbspace-quantization rgbspace )
+			     :linearizer (rgbspace-linearizer rgbspace)
+			     :delinearizer (rgbspace-delinearizer rgbspace))))))
       (make-rgbspace (rgbspace-xr rgbspace) (rgbspace-yr rgbspace)
-		    (rgbspace-xg rgbspace) (rgbspace-yg rgbspace)
-		    (rgbspace-xb rgbspace) (rgbspace-yb rgbspace)
-		    :illuminant (rgbspace-illuminant rgbspace)
-		    :linearizer (rgbspace-linearizer rgbspace)
-		    :delinearizer (rgbspace-delinearizer rgbspace))))
+		     (rgbspace-xg rgbspace) (rgbspace-yg rgbspace)
+		     (rgbspace-xb rgbspace) (rgbspace-yb rgbspace)
+		     :illuminant (rgbspace-illuminant rgbspace)
+		     :quantization (rgbspace-quantization rgbspace)
+		     :linearizer (rgbspace-linearizer rgbspace)
+		     :delinearizer (rgbspace-delinearizer rgbspace))))
 
 
 (defparameter srgbd50

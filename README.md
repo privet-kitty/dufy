@@ -1,7 +1,7 @@
 Dufy - Color Library for Common Lisp
 ====
 
-Dufy is a library for an exact color manipulation and conversion in various color models. It supports following color spaces:
+Dufy is a library for an exact color manipulation and conversion in various color models, which supports the following color spaces:
 
 * Munsell color system
 * All kinds of RGB spaces: sRGB, Adobe RGB, etc. (User-defined RGB working space is available.)
@@ -14,7 +14,7 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 * LMS
 * Spectrum (as spectral power distribution function)
 
-Dufy can handle the following concepts:
+Dufy can deal with the following concepts:
 
 * Standard illuminant: C, D65, etc.
 * Observer (Color Matching Functions): CIE 1931 2° Standard Observer, CIE 1964 10°, etc.

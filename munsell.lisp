@@ -256,9 +256,9 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	   (lstar (munsell-value-to-lstar true-value)))
       (if (= tmp-val1 tmp-val2)
 	  (mhvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark)
-	  ;; If the given color is so dark that it is out of MRD, we use
-	  ;; the fact that the chroma of LCH(ab) corresponds roughly to
-	  ;; that of Munsell.
+	  ;; If the given color is so dark that it is out of MRD, we
+	  ;; use the fact that the chroma of LCh(ab) corresponds
+	  ;; roughly to that of Munsell.
 	  (if (= tmp-val1 0)
 	      (destructuring-bind (disused cstarab hab)
 		  (mhvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
@@ -604,7 +604,8 @@ equal to MAX-ITERATION.
 				      :max-iteration max-iteration
 				      :factor factor
 				      :threshold threshold))))
-  
+
+
 (defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
   (apply #'mhvc-to-munsell

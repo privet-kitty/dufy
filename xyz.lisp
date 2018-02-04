@@ -51,7 +51,7 @@ SPECTRUM-ARRAY linearly which can have arbitrary length:
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
   "Defines an observer based on CMF arrays."
   (labels ((gen-cmf-1 (arr num &optional (wl-begin 360) (wl-end 830))
-	     ;; Almost equivalent to GEN-SPECTRUM
+	     ;; verbose, almost equivalent to GEN-SPECTRUM
 	     (let* ((size (- (array-dimension arr 0) 1)))
 	       (if (= size (- wl-end wl-begin))
 		   #'(lambda (wavelength-nm)
@@ -512,7 +512,7 @@ and TO-ILLUMINANT in XYZ space."
 	       (apply ca-func
 		      (xyy-to-xyz x y largey))))))
 
-(defun xyz-normalize (x y z)
+(defun normalize-xyz (x y z)
   "Normalizes Y to 1."
   (let ((/y (/ y)))
     (list (* /y x)
