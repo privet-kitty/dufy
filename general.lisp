@@ -11,6 +11,12 @@
       (and (<= (abs (- number (car (the cons more-numbers)))) threshold)
 	   (apply #'nearly= threshold more-numbers))))
 
+(defun nearly-equal (threshold lst1 lst2)
+  (if (null lst1)
+      t
+      (and (nearly= threshold (car lst1) (car lst2))
+	   (nearly-equal threshold (cdr lst1) (cdr lst2)))))
+
 (defun nearly<= (threshold number &rest more-numbers)
   (if (null more-numbers)
       t

@@ -4,6 +4,7 @@
   (:use :common-lisp :alexandria)
   (:export :nearyly=
 	   :nearly<=
+	   :nearly-equal
 
 	   ;; xyz.lisp
 	   :gen-spectrum
