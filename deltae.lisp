@@ -12,9 +12,8 @@
     (let* ((main-args (subseq args 0 6))
 	   (sub-args-with-key (subseq args 6))
 	   (sub-args (cdr sub-args-with-key))
-	   (name-str (symbol-name name))
-	   (qrgb-name (intern (concatenate 'string "QRGB-" name-str) "DUFY"))
-	   (xyz-name (intern (concatenate 'string "XYZ-" name-str) "DUFY")))
+	   (qrgb-name (intern (format nil "QRGB-~A" name) :dufy))
+	   (xyz-name (intern (format nil "XYZ-~A" name) :dufy)))
       `(progn
 	 (defun ,name (,@main-args ,@sub-args-with-key)
 	   ,@body)

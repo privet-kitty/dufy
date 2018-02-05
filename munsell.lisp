@@ -278,6 +278,10 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 		    (lab-to-lchab lstar astar bstar)))))))))
 
 
+(defun bench-mhvc-to-lchab (&optional (num 300000))
+  (time (dotimes (x num)
+	  (mhvc-to-lchab (random 40d0) (random 10d0) (random 50d0)))))
+
 (define-condition invalid-mhvc-error (simple-error)
   ((value :initarg :value
 	  :initform 0d0
@@ -307,13 +311,13 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 
 (defun mhvc-to-lchab (hue40 value chroma)
   "Note: The Standard Illuminant is C."
-  (let ((d-hue (mod (float hue40 1d0) 40))
+  (let ((d-hue (mod (float hue40 1d0) 40d0))
 	(d-value (float (clamp value 0d0 10d0) 1d0))
 	(d-chroma (float (clamp chroma 0d0 *maximum-chroma*) 1d0)))
     ;; (format t "~A ~A ~A" d-hue (* d-value 5) (/ d-chroma 2))
     (if (>= value 1d0)
-	(mhvc-to-lchab-general-case d-hue d-value (/ d-chroma 2) nil)
-	(mhvc-to-lchab-general-case d-hue (* d-value 5) (/ d-chroma 2) t))))
+	(mhvc-to-lchab-general-case d-hue d-value (* d-chroma 0.5d0) nil)
+	(mhvc-to-lchab-general-case d-hue (* d-value 5d0) (* d-chroma 0.5d0) t))))
 
 ;; known bug
 ;; (clgplot:plot (loop for c from 0 to 100 by 0.5 collect (second (dufy:mhvc-to-lchab 31 0.8d0 c))))
@@ -444,7 +448,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 
 (defun mhvc-to-munsell (hue40 value chroma &optional (digits 2))
   (let ((unit (concatenate 'string "~," (write-to-string digits) "F")))
-    (if (< chroma (expt 0.09999999999999999d0 digits)) ; if achromatic
+    (if (< chroma (* 0.5d0 (expt 0.1d0 digits))) ; if achromatic
 	(format nil (concatenate 'string "N " unit) value)
 	(let* ((hue40$ (mod hue40 40d0))
 	       (hue-number (floor (/ hue40$ 4)))
@@ -641,18 +645,19 @@ equal to MAX-ITERATION.
 
 (defun test-inverter2 (&optional (num-loop 100000))
   "For devel."
-  (let ((d65-to-c (dufy:gen-cat-function dufy:illum-d65 dufy:illum-c))
+  (let ((d65-to-c (gen-cat-function illum-d65 illum-c))
 	(sum 0)
-	(my-xyz-to-lchab (alexandria:rcurry #'dufy:xyz-to-lchab dufy:illum-c))
+	(my-xyz-to-lchab (rcurry #'xyz-to-lchab illum-c))
 	(max-ite 300))
     (dotimes (x num-loop (float (/ sum num-loop) 1d0))
       (let ((r (random 65536)) (g (random 65536)) (b (random 65536)))
 	(destructuring-bind (lstar cstarab hab)
 	    (apply my-xyz-to-lchab
 		   (apply d65-to-c
-			  (dufy:rgb-to-xyz (/ r 65535d0) (/ g 65535d0) (/ b 65535d0))))
+			  (rgb-to-xyz (/ r 65535d0) (/ g 65535d0) (/ b 65535d0)
+				      adobe)))
 	  (multiple-value-bind (lst ite)
-	      (dufy:lchab-to-mhvc lstar cstarab hab :max-iteration max-ite :factor 0.5d0)
+	      (lchab-to-mhvc lstar cstarab hab :max-iteration max-ite :factor 0.5d0)
 	    (declare (ignore lst))
 	    (when (or (= ite max-ite) (= ite -1))
 	      (incf sum)

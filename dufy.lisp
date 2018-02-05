@@ -354,6 +354,7 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
       (+ (* #.(/ 24389/27 116d0) x) #.(float 16/116 1d0))))
 
 (defun xyz-to-lab (x y z &optional (illuminant illum-d65))
+  (declare (optimize (speed 3) (safety 1)))
   (let ((fx (function-f (/ (float x 1d0) (illuminant-largex illuminant))))
 	(fy (function-f (float y 1d0)))
 	(fz (function-f (/ (float z 1d0) (illuminant-largez illuminant)))))
@@ -480,27 +481,6 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 (defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant illum-d65))
   (destructuring-bind (l u v) (lchuv-to-luv lstar cstaruv huv)
     (luv-to-xyz l u v illuminant)))
-
-
-
-;; obsolete
-;; (defun polar-mean-of-xy (x1 y1 x2 y2)
-;;   (destructuring-bind (r1 theta1) (xy-to-polar x1 y1)
-;;     (destructuring-bind (r2 theta2) (xy-to-polar x2 y2)
-;;       (polar-to-xy (* 0.5d0 (+ r1 r2))
-;; 		   (circular-lerp 0.5d0 theta1 theta2)))))
-
-;; (defun xy-to-polar (x y)
-;;   (let ((dx (- x 0.31006d0))
-;; 	(dy (- y 0.31616d0)))
-;;     (list (sqrt (+ (* dx dx) (* dy dy)))
-;; 	  (mod (atan dy dx) TWO-PI))))
-
-;; (defun polar-to-xy (r theta)
-;;   (let ((dx (* r (cos theta)))
-;; 	(dy (* r (sin theta))))
-;;     (list (+ dx 0.31006d0) (+ dy 0.31616d0))))
-
 
 
 ;;;
