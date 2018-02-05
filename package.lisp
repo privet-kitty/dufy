@@ -24,8 +24,8 @@
 	   :observer-cmf-arr
 	   :observer-begin-wl
 	   :observer-end-wl
-	   :obs-cie1931
-	   :obs-cie1964
+	   :+obs-cie1931+
+	   :+obs-cie1964+
 	   
 	   :xyy-to-xyz
 	   :xyz-to-xyy
@@ -38,8 +38,8 @@
 	   :illuminant-spectrum
 	   :make-illuminant
 	   :make-illuminant-by-spd
-	   :illum-a :illum-e
-	   :illum-c :illum-d50 :illum-d65
+	   :+illum-a+ :+illum-e+
+	   :+illum-c+ :+illum-d50+ :+illum-d65+
 	   :calc-cat-matrix
 	   :gen-cat-function
 	   :gen-cat-function-xyy
@@ -50,18 +50,18 @@
 	   :cat-inv-matrix
 	   :xyz-to-lms
 	   :lms-to-xyz
-	   :bradford
-	   :xyz-scaling
-	   :von-kries
-	   :cmccat97
-	   :cmccat2000
-	   :cat97s-revised
-	   :cat02
+	   :+bradford+
+	   :+xyz-scaling+
+	   :+von-kries+
+	   :+cmccat97+
+	   :+cmccat2000+
+	   :+cat97s-revised+
+	   :+cat02+
 
 	   :rgbspace
-	   :srgb :srgbd65 :srgbd50
-	   :adobe :adobed65 :adobed50
-	   :ntsc1953 :pal/secam :prophoto
+	   :+srgb+ :+srgbd50+
+	   :+adobe+ :+adobed50+
+	   :+ntsc1953+ :+pal/secam+ :+prophoto+
 	   :make-rgbspace
 	   :copy-rgbspace
 	   :rgbspace-linearizer

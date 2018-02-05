@@ -114,21 +114,21 @@ In the above example of a conversion from CIELAB to RGB, `xyz-to-qrgb` returns t
 
 Out of which gamut, however? By default, `xyz-to-qrgb` (and other `-to-qrgb` converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
 
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:srgb)  ; sRGB
+    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+srgb+)  ; sRGB
     => (-169 255 255)
     => T 
 
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:adobe) ; Adobe RGB
+    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+adobe+) ; Adobe RGB
     => (2 255 255)
     => NIL
 
 Likewise most converters regard the implicit standard illuminant as D65. You can also specify it explicitly:
 
     * (dufy:lab-to-xyz 48.26 -28.84 -8.475)                ; Illuminant D65 
-    * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:illum-d65) ; Illuminant D65
+    * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:+illum-d65+) ; Illuminant D65
     => (0.11617541639167948d0 0.16999970272400086d0 0.23092506326381615d0)
 
-    * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:illum-a)   ; Illuminant A
+    * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:+illum-a+)   ; Illuminant A
     => (0.13427074937083414d0 0.16999970272400086d0 0.07545998227535496d0)
 
 When you nest two or more converters, you may want to use higher-order functions like [alexandria:rcurry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):
@@ -140,10 +140,10 @@ When you nest two or more converters, you may want to use higher-order functions
 
     * (apply #'dufy:xyz-to-qrgb
              (dufy:lab-to-xyz 87.0676 -78.1391 -20.5142)
-             :rgbspace dufy:adobe)
+             :rgbspace dufy:+adobe+)
     => GRAMMATICAL ERROR
 
-    * (apply (alexandria:rcurry #'dufy:xyz-to-qrgb :rgbspace dufy:adobe)
+    * (apply (alexandria:rcurry #'dufy:xyz-to-qrgb :rgbspace dufy:+adobe+)
              (dufy:lab-to-xyz 87.0676 -78.1391 -20.5142))
     => (3 255 255)
     => NIL

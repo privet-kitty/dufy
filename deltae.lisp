@@ -17,11 +17,11 @@
       `(progn
 	 (defun ,name (,@main-args ,@sub-args-with-key)
 	   ,@body)
-	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant illum-d65))
+	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
 	   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
 	     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
 	       (,name l1 a1 b1 l2 a2 b2 ,@(extract sub-args)))))
-	 (defun ,qrgb-name (r1 g1 b1 r2 g2 b2 &key ,@sub-args (rgbspace srgbd65))
+	 (defun ,qrgb-name (r1 g1 b1 r2 g2 b2 &key ,@sub-args (rgbspace +srgb+))
 	   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
 	     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 	       (,xyz-name x1 y1 z1 x2 y2 z2 ,@(extract sub-args) :illuminant (rgbspace-illuminant rgbspace)))))))))
@@ -43,12 +43,12 @@
 	       (* deltaa deltaa)
 	       (* deltab deltab))))))
 
-;; (defun xyz-deltae (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65))
+;; (defun xyz-deltae (x1 y1 z1 x2 y2 z2 &key (illuminant +illum-d65+))
 ;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
 ;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
 ;;       (deltae l1 a1 b1 l2 a2 b2))))
 
-;; (defun qrgb-deltae (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65))
+;; (defun qrgb-deltae (r1 g1 b1 r2 g2 b2 &key (rgbspace +srgb+))
 ;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
 ;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 ;;       (xyz-deltae x1 y1 z1 x2 y2 z2 :illuminant (rgbspace-illuminant rgbspace)))))
@@ -90,12 +90,12 @@
 		       (* term3 term3))))))))))
 
 
-;; (defun xyz-deltae94 (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65) (application :graphic-arts))
+;; (defun xyz-deltae94 (x1 y1 z1 x2 y2 z2 &key (illuminant +illum-d65+) (application :graphic-arts))
 ;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
 ;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
 ;;       (deltae94 l1 a1 b1 l2 a2 b2 :application application))))
 
-;; (defun qrgb-deltae94 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgbd65) (application :graphic-arts))
+;; (defun qrgb-deltae94 (r1 g1 b1 r2 g2 b2 &key (rgbspace +srgb+) (application :graphic-arts))
 ;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
 ;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 ;;       (xyz-deltae94 x1 y1 z1 x2 y2 z2
@@ -176,12 +176,12 @@
 			 (* varSH varSH))
 		      (* varRT (/ deltaCprime varSC) (/ deltalargeHprime varSH)))))))))
 
-;; (defun xyz-deltae00 (x1 y1 z1 x2 y2 z2 &key (illuminant illum-d65))
+;; (defun xyz-deltae00 (x1 y1 z1 x2 y2 z2 &key (illuminant +illum-d65+))
 ;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
 ;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
 ;;       (deltae00 l1 a1 b1 l2 a2 b2))))
 
-;; (defun qrgb-deltae00 (r1 g1 b1 r2 g2 b2 &key (rgbspace srgb))
+;; (defun qrgb-deltae00 (r1 g1 b1 r2 g2 b2 &key (rgbspace +srgb+))
 ;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
 ;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 ;;       (xyz-deltae00 x1 y1 z1 x2 y2 z2

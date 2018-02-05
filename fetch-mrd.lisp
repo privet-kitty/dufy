@@ -180,7 +180,7 @@
 
 (defun get-lchab-from-dat (hue-num value chroma)
   (aif (get-xyy-from-dat hue-num value chroma)
-       (apply (alexandria:rcurry #'dufy:xyz-to-lchab dufy:illum-c)
+       (apply (alexandria:rcurry #'dufy:xyz-to-lchab dufy:+illum-c+)
 	      (apply #'dufy:xyy-to-xyz it))))
 
 (defun get-extrapolated-lchab-from-dat (hue-num value chroma)
@@ -222,7 +222,7 @@
 
 (defun xyy-to-lchab (x y largey)
   (destructuring-bind (lstar cstarab hab)
-      (apply (alexandria:rcurry #'dufy:xyz-to-lchab dufy:illum-c)
+      (apply (alexandria:rcurry #'dufy:xyz-to-lchab dufy:+illum-c+)
 	     (dufy:xyy-to-xyz x y largey))
     (list (alexandria:clamp lstar 0d0 100d0)
 	  cstarab

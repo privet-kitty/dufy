@@ -3,9 +3,9 @@
 ;; The bradford transformations between D65 and C are frequently used here.
 (declaim (type function d65-to-c c-to-d65))
 (defparameter d65-to-c
-  (gen-cat-function illum-d65 illum-c))
+  (gen-cat-function +illum-d65+ +illum-c+))
 (defparameter c-to-d65
-  (gen-cat-function illum-c illum-d65))
+  (gen-cat-function +illum-c+ +illum-d65+))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *maximum-chroma* #.(float (expt 2 32) 1d0)
@@ -74,7 +74,7 @@ formula is based on ASTM D1535-08e1:"
 (defun munsell-value-to-achromatic-lchab (v)
   "Illuminant C"
   (apply #'lab-to-lchab
-	 (apply (rcurry #'xyz-to-lab illum-c)
+	 (apply (rcurry #'xyz-to-lab +illum-c+)
 		(xyy-to-xyz 0.31006d0
 			    0.31616d0
 			    (munsell-value-to-y v)))))
@@ -102,7 +102,7 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	  (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
 	     (* r (aref y-to-munsell-value-arr y2)))))))
 
-(defun qrgb-to-munsell-value (r g b &optional (rgbspace srgbd65))
+(defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
   (y-to-munsell-value (second (qrgb-to-xyz r g b rgbspace))))
 
 
@@ -368,7 +368,7 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 adaptation, since the Munsell Renotation Data is measured under the
 Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
-  (apply (the function (rcurry #'lchab-to-xyz illum-c))
+  (apply (the function (rcurry #'lchab-to-xyz +illum-c+))
 	 (mhvc-to-lchab hue40 value chroma)))
   
 				   
@@ -389,7 +389,7 @@ the Illuminant C."
 ;;   (apply c-to-d65
 ;; 	 (apply #'xyy-to-xyz (mhvc-to-xyy hue40 value chroma))))
 
-(defun mhvc-to-lrgb (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
+(defun mhvc-to-lrgb (hue40 value chroma &key (rgbspace +srgb+) (threshold 0.001d0))
   "The standard illuminant is D65: that of RGBSPACE must also be D65.
 Note that boundary colors, e.g. pure white (N 10.0), could be judged
 as out-of-gamut by numerical error, if threshold is too small."
@@ -397,7 +397,7 @@ as out-of-gamut by numerical error, if threshold is too small."
 	 (mhvc-to-xyz hue40 value chroma)))
 
 
-(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace dufy:srgb) (threshold 0.001d0))
+(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (threshold 0.001d0))
   "The standard illuminant is D65: that of RGBSPACE must also be D65."
   (multiple-value-bind (qrgb out-of-gamut)
       (apply (rcurry #'xyz-to-qrgb :rgbspace rgbspace :threshold threshold)
@@ -484,7 +484,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (apply #'xyz-to-xyy (munsell-to-xyz munsellspec)))
 
 
-(defun munsell-to-qrgb (munsellspec &key (rgbspace dufy:srgb) (threshold 0.001d0))
+(defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (threshold 0.001d0))
   "Illuminant D65; the standard illuminant of RGBSPACE must also be D65.
 It returns multiple values: (QR QG QB), OUT-OF-GAMUT-P."
   (apply (rcurry #'xyz-to-qrgb :rgbspace rgbspace :threshold threshold)
@@ -571,7 +571,7 @@ It returns multiple values: (QR QG QB), OUT-OF-GAMUT-P."
 		(delta-c (* delta-cstarab #.(/ 5.5d0))))
 	   ;; (destructuring-bind (x y largeY)
 	   ;; 	   (apply #'xyz-to-xyy
-	   ;; 		  (apply (gen-cat-function illum-d65 illum-c)
+	   ;; 		  (apply (gen-cat-function +illum-d65+ +illum-c+)
 	   ;; 			 (lchab-to-xyz lstar tmp-cstarab tmp-hab)))
 	   ;; 	 (format t "~A ~A ~A~%" x y largey))
 	   (if (and (<= (abs delta-hue40) threshold)
@@ -645,9 +645,9 @@ equal to MAX-ITERATION.
 
 (defun test-inverter2 (&optional (num-loop 100000))
   "For devel."
-  (let ((d65-to-c (gen-cat-function illum-d65 illum-c))
+  (let ((d65-to-c (gen-cat-function +illum-d65+ +illum-c+))
 	(sum 0)
-	(my-xyz-to-lchab (rcurry #'xyz-to-lchab illum-c))
+	(my-xyz-to-lchab (rcurry #'xyz-to-lchab +illum-c+))
 	(max-ite 300))
     (dotimes (x num-loop (float (/ sum num-loop) 1d0))
       (let ((r (random 65536)) (g (random 65536)) (b (random 65536)))
@@ -655,7 +655,7 @@ equal to MAX-ITERATION.
 	    (apply my-xyz-to-lchab
 		   (apply d65-to-c
 			  (rgb-to-xyz (/ r 65535d0) (/ g 65535d0) (/ b 65535d0)
-				      adobe)))
+				      +adobe+)))
 	  (multiple-value-bind (lst ite)
 	      (lchab-to-mhvc lstar cstarab hab :max-iteration max-ite :factor 0.5d0)
 	    (declare (ignore lst))
