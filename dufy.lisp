@@ -488,7 +488,7 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 ;;   (destructuring-bind (r1 theta1) (xy-to-polar x1 y1)
 ;;     (destructuring-bind (r2 theta2) (xy-to-polar x2 y2)
 ;;       (polar-to-xy (* 0.5d0 (+ r1 r2))
-;; 		   (circular-lerp theta1 theta2 0.5d0)))))
+;; 		   (circular-lerp 0.5d0 theta1 theta2)))))
 
 ;; (defun xy-to-polar (x y)
 ;;   (let ((dx (- x 0.31006d0))

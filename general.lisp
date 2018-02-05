@@ -52,7 +52,7 @@ returns MIN or MAX, whichever is nearer to NUMBER."
 	    number$ ;[number, max, min] or [max, min, number]
 	    (circular-nearer max$ number$ min$))))) ; [max, number, min]
 
-(defun circular-lerp-loose (theta1 theta2 coef &optional (perimeter TWO-PI))
+(defun circular-lerp-loose (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
 circle group. There is a possibility that the return value slightly
 exceeds the interval [THETA1, THETA2], due to floating-point error. If
@@ -60,7 +60,7 @@ that is incovenient, use CIRCULAR-LERP instead."
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (mod (+ theta1 (* dtheta coef)) perimeter)))
 
-(defun circular-lerp (theta1 theta2 coef &optional (perimeter TWO-PI))
+(defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
 circle group. It doesn't exceed the given interval from THETA1 to
 THETA2, if COEF is in [0, 1]. It is, however, slower than

@@ -157,7 +157,7 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 ;; 		   (xy-to-polar x1 y1)
 ;; 		 (destructuring-bind (r2 theta2)
 ;; 		     (xy-to-polar x2 y2)
-;; 		   (let* ((theta (circular-lerp theta1 theta2 (- hue hue1)))
+;; 		   (let* ((theta (circular-lerp (- hue hue1) theta1 theta2))
 ;; 			  (r (+ (* r1 (/ (subtract-with-mod theta2 theta)
 ;; 					 (subtract-with-mod theta2 theta1)))
 ;; 				(* r2 (/ (subtract-with-mod theta theta1)
@@ -181,11 +181,11 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 		     (double-float lstar cstarab1 hab1 cstarab2 hab2))
 	    (if (= hab1 hab2)
 		(list lstar cstarab1 hab1)
-		(let* ((hab (circular-lerp hab1 hab2 (- hue40 hue1) 360d0))
-		       (cstarab (+ (* cstarab1 (/ (the double-float (subtract-with-mod hab2 hab 360d0))
-						  (the double-float (subtract-with-mod hab2 hab1 360d0))))
-				   (* cstarab2 (/ (the double-float (subtract-with-mod hab hab1 360d0))
-						  (the double-float (subtract-with-mod hab2 hab1 360d0)))))))
+		(let* ((hab (the double-float (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
+		       (cstarab (+ (* cstarab1 (/ (mod (- hab2 hab) 360d0)
+						  (mod (- hab2 hab1) 360d0)))
+				   (* cstarab2 (/ (mod (- hab hab1) 360d0)
+						  (mod (- hab2 hab1) 360d0))))))
 		  (list lstar cstarab hab))))))))
 
 
@@ -424,10 +424,11 @@ but the capital letters and  '/' are reserved:
 CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 => ERROR,
 "
-  (let ((lst (mapcar (compose (alexandria:rcurry #'coerce 'double-float)
-			      #'read-from-string)
-		     (remove "" (cl-ppcre:split "[^0-9.a-z#\-]+" munsellspec)
-			     :test #'string=))))
+  (let ((lst (let ((*read-default-float-format* 'double-float))
+	       (mapcar (compose (rcurry #'coerce 'double-float)
+				#'read-from-string)
+		       (remove "" (cl-ppcre:split "[^0-9.a-z#\-]+" munsellspec)
+			       :test #'string=)))))
     (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" munsellspec))
 	   (hue-number
 	    (switch (hue-name :test #'string=)
