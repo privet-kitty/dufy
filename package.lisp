@@ -59,9 +59,12 @@
 	   :+cat02+
 
 	   :rgbspace
-	   :+srgb+ :+srgbd50+
-	   :+adobe+ :+adobed50+
-	   :+ntsc1953+ :+pal/secam+ :+prophoto+
+	   :+srgb+
+	   :+bg-srgb-10+ :+bg-srgb-12+ :+bg-srgb-16+
+	   :+scrgb-16+ :+scrgb-nl+
+	   :+adobe+ :+adobe-16+
+	   :+ntsc1953+ :+pal/secam+
+	   :+prophoto+ :+prophoto-12+ :prophoto-16+
 	   :make-rgbspace
 	   :copy-rgbspace
 	   :rgbspace-linearizer
@@ -75,13 +78,20 @@
 	   :rgbspace-yb
 	   :rgbspace-to-xyz-matrix
 	   :rgbspace-from-xyz-matrix
+	   :rgbspace-normal
+	   :rgbspace-lmin
+	   :rgbspace-lmax
+	   :rgbspace-bit-per-channel
+	   :rgbspace-min
+	   :rgbspace-max
+	   :rgbspace-quantizer
+	   :rgbspace-dequantizer
 	   :gen-linearizer
 	   :gen-delinearizer
 
 	   :xyz-to-lab
 	   :lab-to-xyz
 	   :lstar-to-y
-	   :qrgb-to-lab
 	   :lab-to-lchab
 	   :lchab-to-lab
 	   :xyy-to-lab
@@ -114,8 +124,8 @@
 	   :qrgb-to-xyz
 	   :qrgb-to-hex
 	   :hex-to-qrgb
-	   :rgb-to-hex
-	   :hex-to-rgb
+	   ;; :rgb-to-hex
+	   ;; :hex-to-rgb
 	   :xyz-to-hex
 	   :hex-to-xyz
 	   :two-pi

@@ -1,7 +1,7 @@
 (in-package :dufy)
 
 ;;;
-;;; Quotization model
+;;; Quotization model (currently not used)
 ;;;
 
 (defstruct (quantization (:constructor $make-quantization))
@@ -10,6 +10,7 @@
   (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
   (quantizer #'(lambda (x) (round (* 255d0 x))) :type function)
   (dequantizer #'(lambda (n) (* n #.(/ 255d0))) :type function)
+  ;; nominal range of gamma-corrected values
   (nominal-min 0d0 :type double-float)
   (nominal-max 1d0 :type double-float)
   (quantized-max 255 :type (integer 1 #.most-positive-fixnum)))
@@ -38,10 +39,13 @@
      :dequantizer (or dequantizer
 		      #'(lambda (n) (+ min (* n /quantized-max-float)))))))
 
-;; Standard quantization methods between [0, 1] and {0, 1, ..., 2^bit-per-channel -1}
-(defparameter +qtz-8bit-normal+ (make-quantization 8))
-(defparameter +qtz-12bit-normal+ (make-quantization 16))
-(defparameter +qtz-16bit-normal+ (make-quantization 16))
+;; Standard quantization methods  [0, 1] and {0, 1, ..., 2^bit-per-channel -1}
+(defparameter +qtz-8bit-normal+ (make-quantization 8)
+  "Quantization between [0, 1] and {0, 1, ..., #xFF}")
+(defparameter +qtz-12bit-normal+ (make-quantization 12)
+  "Quantization between [0, 1] and {0, 1, ..., #xFFF}")
+(defparameter +qtz-16bit-normal+ (make-quantization 16)
+  "Quantization between [0, 1] and {0, 1, ..., #xFFFF}")
 
 (defparameter +qtz-16bit-scrgb+
   (make-quantization 16 -0.5d0 7.4999d0
@@ -69,19 +73,37 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 
 (defstruct (rgbspace (:constructor $make-rgbspace)
 		     (:copier nil))
+  "Structure of RGB space, including encoding characteristics"
+  ;; primary coordinates
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
   (xb 0d0 :type double-float) (yb 0d0 :type double-float)
-  (illuminant +illum-d65+)
-  (quantization +qtz-8bit-normal+)
-  (linearizer #'identity)
-  (delinearizer #'identity)
+  
+  (illuminant +illum-d65+ :type illuminant)
   (to-xyz-matrix identity-matrix :type (simple-array double-float (3 3)))
-  (from-xyz-matrix identity-matrix :type (simple-array double-float (3 3))))
+  (from-xyz-matrix identity-matrix :type (simple-array double-float (3 3)))
+
+  ;; nominal range of linear values
+  (lmin 0d0 :type double-float)
+  (lmax 1d0 :type double-float)
+  (linearizer #'identity :type function)
+  (delinearizer #'identity :type function)
+
+  ;; nominal range of gamma-corrected values
+  (min 0d0 :type double-float)
+  (max 1d0 :type double-float)
+  (normal t :type boolean) ; t, if min = 0d0 and max = 1d0
+
+  ;; quantization
+  (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
+  (qmax 255 :type (integer 1 #.most-positive-fixnum)) ; maximum of quantized values
+  (quantizer #'(lambda (x) (round (* 255d0 x))) :type function)
+  (dequantizer #'(lambda (n) (* n #.(/ 255d0))) :type function))
 
 
 
-(defun make-rgbspace (xr yr xg yg xb yb &key (illuminant +illum-d65+) (quantization +qtz-8bit-normal+) (linearizer #'identity) (delinearizer #'identity))
+
+(defun make-rgbspace (xr yr xg yg xb yb &key (illuminant +illum-d65+) (lmin 0d0) (lmax 1d0) (linearizer #'identity) (delinearizer #'identity) (bit-per-channel 8) (quantizer nil) (dequantizer nil) (force-normal nil))
   (let ((coordinates
 	 (make-array '(3 3)
 		     :element-type 'double-float
@@ -93,28 +115,49 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 				 (illuminant-largex illuminant)
 				 (illuminant-largey illuminant)
 				 (illuminant-largez illuminant))
-      (let ((m
-	     (make-array '(3 3)
-			 :element-type 'double-float
-			 :initial-contents (list (list (* sr (aref coordinates 0 0))
-						       (* sg (aref coordinates 0 1))
-						       (* sb (aref coordinates 0 2)))
-						 (list (* sr (aref coordinates 1 0))
-						       (* sg (aref coordinates 1 1))
-						       (* sb (aref coordinates 1 2)))
-						 (list (* sr (aref coordinates 2 0))
-						       (* sg (aref coordinates 2 1))
-						       (* sb (aref coordinates 2 2)))))))
+      (let* ((mat
+	      (make-array '(3 3)
+			  :element-type 'double-float
+			  :initial-contents (list (list (* sr (aref coordinates 0 0))
+							(* sg (aref coordinates 0 1))
+							(* sb (aref coordinates 0 2)))
+						  (list (* sr (aref coordinates 1 0))
+							(* sg (aref coordinates 1 1))
+							(* sb (aref coordinates 1 2)))
+						  (list (* sr (aref coordinates 2 0))
+							(* sg (aref coordinates 2 1))
+							(* sb (aref coordinates 2 2))))))
+	     (min (if force-normal 0d0 (funcall delinearizer lmin)))
+	     (max (if force-normal 1d0 (funcall delinearizer lmax)))
+	     (normal (if (and (= min 0d0) (= max 1d0))
+			 t nil))
+	     (qmax (- (expt 2 bit-per-channel) 1))
+	     (qmax-float (float qmax 1d0))
+	     (/qmax-float (/ qmax-float))
+	     (len (- max min)))
 	($make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
 			:illuminant illuminant
-			:quantization quantization
 			:linearizer linearizer
 			:delinearizer delinearizer
-			:to-xyz-matrix m
-			:from-xyz-matrix (invert-matrix33 m))))))
+			:to-xyz-matrix mat
+			:from-xyz-matrix (invert-matrix33 mat)
+			:lmin lmin
+			:lmax lmax
+			:min min
+			:max max
+			:normal normal
+			:bit-per-channel bit-per-channel
+			:qmax qmax
+			:quantizer (or quantizer
+				       (if normal
+					   #'(lambda (x) (round (* qmax-float x)))
+					   #'(lambda (x) (round (lerp (/ (- x min) len)
+								      0 qmax-float)))))
+			:dequantizer (or dequantizer
+					 #'(lambda (n) (+ min (* len n /qmax-float)))))))))
 
 
-(defun srgb-linearizer (x)
+(defun linearize-srgb (x)
   "actually the same as bg-sRGB"
   (cond ((> x #.(* 0.0031308d0 12.92d0))
 	 (expt (/ (+ 0.055d0 x) 1.055d0) 2.4d0))
@@ -122,7 +165,7 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 	 (- (expt (/ (- 0.055d0 x) 1.055d0) 2.4d0)))
 	(t (* x #.(/ 12.92d0)))))
 
-(defun srgb-delinearizer (x)
+(defun delinearize-srgb (x)
   "actually the same as bg-sRGB"
   (cond ((> x 0.0031308d0)
 	 (+ (* 1.055d0 (expt x #.(/ 1 2.4d0))) -0.055d0))
@@ -130,18 +173,64 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 	 (+ (* -1.055d0 (expt (- x) #.(/ 1 2.4d0))) 0.055d0))
 	(t (* x 12.92d0))))
 
+(defun linearize-scrgb-nl (x)
+  (cond ((> x #.(* 4.5d0 0.018d0))
+	 (expt (/ (+ 0.099d0 x) 1.099d0) #.(/ 0.45d0)))
+	((< x (* 4.5d0 -0.018d0))
+	 (- (expt (/ (- 0.099d0 x) 1.099d0) #.(/ 0.45d0))))
+	(t (* x #.(/ 4.5d0)))))
+
+(defun delinearize-scrgb-nl (x)
+  (cond ((> x 0.018d0)
+	 (+ (* 1.099d0 (expt x 0.45d0)) -0.099d0))
+	((< x -0.018d0)
+	 (+ (* -1.099d0 (expt (- x) 0.45d0)) 0.099d0))
+	(t (* x 4.5d0))))
+
+
 (defparameter +srgb+
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		:linearizer #'srgb-linearizer				
-		:delinearizer #'srgb-delinearizer))
+		:linearizer #'linearize-srgb				
+		:delinearizer #'delinearize-srgb
+		:force-normal t))
 
-;; (defun adobe-linearizer (x)
+(defparameter +bg-srgb-10+
+  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
+		:linearizer #'linearize-srgb				
+		:delinearizer #'delinearize-srgb
+		:lmin -0.53d0
+		:lmax 1.68d0
+		:bit-per-channel 10)
+  "bg-sRGB, 10bit
+http://www.color.org/chardata/rgb/bgsrgb.xalter")
+
+(defparameter +scrgb-16+
+  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
+		:lmin -0.5d0
+		:lmax 7.4999d0
+		:bit-per-channel 16)
+  "scRGB, IEC 61966-2-2:2003
+http://www.color.org/chardata/rgb/scrgb.xalter")
+
+(defparameter +scrgb-nl+
+  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
+		:lmin -0.6038d0
+		:lmax 7.5913d0
+		:linearizer #'linearize-scrgb-nl
+		:delinearizer #'delinearize-scrgb-nl
+		:bit-per-channel 12)
+  "scRGB-nl, IEC 61966-2-2:2003
+http://www.color.org/chardata/rgb/scrgb-nl.xalter")
+
+		
+
+;; (defun linearize-adobe (x)
 ;;   (clamp (if (<= x 0.0556d0)
 ;; 	     (* x #.(float 1/32 1d0))
 ;; 	     (expt x 2.2d0))
 ;; 	 0d0 1d0))
 
-;; (defun adobe-delinearizer (x)
+;; (defun delinearize-adobe (x)
 ;;   (clamp (if (<= x 0.00174d0)
 ;; 	     (* x 32d0)
 ;; 	     (expt x #.(/ 1 2.2d0)))
@@ -150,7 +239,8 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 (defparameter +adobe+
   (make-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
 		:linearizer (gen-linearizer #.(float 563/256 1d0))
-		:delinearizer (gen-delinearizer #.(float 563/256 1d0))))
+		:delinearizer (gen-delinearizer #.(float 563/256 1d0)))
+  "Adobe RGB (1998), 8bit per channel")
 
 (defparameter +ntsc1953+
   (make-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
@@ -163,14 +253,14 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 		:linearizer (gen-linearizer 2.8d0)
 		:delinearizer (gen-delinearizer 2.8d0)))
 
-(defun prophoto-linearizer (x)
+(defun linearize-prophoto (x)
   (cond ((> x #.(* 1/512 16d0))
 	 (expt x 1.8d0))
 	((< x #.(* -1/512 16d0))
 	 (- (expt (- x) 1.8d0)))
 	(t (* x #.(float 1/16 1d0)))))
   
-(defun prophoto-delinearizer (x)
+(defun delinearize-prophoto (x)
   (cond ((> x #.(float 1/512 1d0))
 	 (expt x #.(/ 1.8d0)))
 	((< x #.(float -1/512 1d0))
@@ -180,68 +270,81 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 (defparameter +prophoto+
   (make-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
 		:illuminant +illum-d50+
-		:linearizer #'prophoto-linearizer
-		:delinearizer #'prophoto-delinearizer))		      
+		:linearizer #'linearize-prophoto
+		:delinearizer #'delinearize-prophoto))		      
  
 
-;; convert XYZ to linear RGB in [0, 1]
 (defun xyz-to-lrgb (x y z &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of LR, LG and LB is outside
-the interval [-THRESHOLD, 1+THRESHOLD]."
-  (destructuring-bind (lr lg lb)
-      (multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
-				x y z)
-    (let ((out-of-gamut (not (and  (nearly<= threshold 0 lr 1)
-				   (nearly<= threshold 0 lg 1)
-				   (nearly<= threshold 0 lb 1)))))
-      (values (list lr lg lb) out-of-gamut))))
+the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
+  (let ((inf (- (rgbspace-lmin rgbspace) threshold))
+	(sup (+ (rgbspace-lmax rgbspace) threshold)))
+    (destructuring-bind (lr lg lb)
+	(multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
+				 x y z)
+      (values (list lr lg lb)
+	      (not (and  (<= inf lr sup)
+			 (<= inf lg sup)
+			 (<= inf lb sup)))))))
 
 (defun lrgb-to-xyz (lr lg lb &optional (rgbspace +srgb+))
   (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
 			    lr lg lb))		       
 
-(defun copy-rgbspace (rgbspace &optional (illuminant nil))
-  "Copies RGBSPACE with different standard illuminant. All the
-parameters are properly recalculated. If ILLLUMINANT is nil, it is
-just a copier."
-  (if illuminant
-      (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace) illuminant)))
-	(destructuring-bind (new-xr new-yr zr)
-	    (apply #'xyz-to-xyy
-		   (apply ca-func
-			  (lrgb-to-xyz 1 0 0 rgbspace)))
-	  (declare (ignore zr))
-	  (destructuring-bind (new-xg new-yg zg)
-	      (apply #'xyz-to-xyy
-		     (apply ca-func
-			    (lrgb-to-xyz 0 1 0 rgbspace)))
-	    (declare (ignore zg))
-	    (destructuring-bind (new-xb new-yb zb)
-		(apply #'xyz-to-xyy
-		       (apply ca-func
-			      (lrgb-to-xyz 0 0 1 rgbspace)))
-	      (declare (ignore zb))
-	      (make-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
-			     :illuminant illuminant
-			     :quantization (rgbspace-quantization rgbspace )
-			     :linearizer (rgbspace-linearizer rgbspace)
-			     :delinearizer (rgbspace-delinearizer rgbspace))))))
-      (make-rgbspace (rgbspace-xr rgbspace) (rgbspace-yr rgbspace)
-		     (rgbspace-xg rgbspace) (rgbspace-yg rgbspace)
-		     (rgbspace-xb rgbspace) (rgbspace-yb rgbspace)
-		     :illuminant (rgbspace-illuminant rgbspace)
-		     :quantization (rgbspace-quantization rgbspace)
-		     :linearizer (rgbspace-linearizer rgbspace)
-		     :delinearizer (rgbspace-delinearizer rgbspace))))
+(defun copy-rgbspace (rgbspace &key (illuminant nil) (bit-per-channel nil))
+  "Returns a new RGBSPACE with different standard illuminant and/or
+bit-per-channel. All the parameters are properly recalculated. If both
+are nil, it is just a copier."
+  (destructuring-bind (new-xr new-yr new-xg new-yg new-xb new-yb)
+      (if illuminant
+	  (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace) illuminant)))
+	    (labels ((get-new-xy (r g b)
+		       (subseq (apply #'xyz-to-xyy
+				      (apply ca-func
+					     (lrgb-to-xyz r g b rgbspace)))
+			       0 2)))
+	      (append (get-new-xy 1 0 0)
+		      (get-new-xy 0 1 0)
+		      (get-new-xy 0 0 1))))
+	  (list (rgbspace-xr rgbspace) (rgbspace-yr rgbspace)
+		(rgbspace-xg rgbspace) (rgbspace-yg rgbspace)
+		(rgbspace-xb rgbspace) (rgbspace-yb rgbspace)))
+    (make-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
+		   :illuminant (or illuminant (rgbspace-illuminant rgbspace))
+		   :linearizer (rgbspace-linearizer rgbspace)
+		   :delinearizer (rgbspace-delinearizer rgbspace)
+		   :lmin (rgbspace-lmin rgbspace)
+		   :lmax (rgbspace-lmax rgbspace)
+		   :bit-per-channel (or bit-per-channel (rgbspace-bit-per-channel rgbspace))
+		   :force-normal (rgbspace-normal rgbspace))))
+
+;; (defparameter +srgbd50+
+;;   (copy-rgbspace +srgb+ :illuminant +illum-d50+))
+
+;; (defparameter +adobed50+
+;;   (copy-rgbspace +adobe+ :illuminant +illum-d50+))
 
 
-(defparameter +srgbd50+
-  (copy-rgbspace +srgb+ +illum-d50+))
+(defparameter +adobe-16+
+  (copy-rgbspace +adobe+ :bit-per-channel 16)
+  "Adobe RGB (1998), 16 bit per channel.")
 
-(defparameter +adobed50+
-  (copy-rgbspace +adobe+ +illum-d50+))
+(defparameter +bg-srgb-12+
+  (copy-rgbspace +bg-srgb-10+ :bit-per-channel 12)
+  "bg-sRGB, 12 bit per channel,
+http://www.color.org/chardata/rgb/bgsrgb.xalter")
 
+(defparameter +bg-srgb-16+
+  (copy-rgbspace +bg-srgb-10+ :bit-per-channel 16)
+  "bg-sRGB, 16 bit per channel,
+http://www.color.org/chardata/rgb/bgsrgb.xalter")
+
+(defparameter +prophoto-12+
+  (copy-rgbspace +prophoto+ :bit-per-channel 12))
+
+(defparameter +prophoto-16+
+  (copy-rgbspace +prophoto+ :bit-per-channel 16))
 
 (defun linearize (x &optional (rgbspace +srgb+))
   (funcall (rgbspace-linearizer rgbspace) x))
@@ -264,7 +367,8 @@ just a copier."
 (defun xyz-to-rgb (x y z &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns multiple values: (R G B), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
-are outside the interval [-THRESHOLD, 1+THRESHOLD]."
+are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
+THRESHOLD]."
   (multiple-value-bind (lrgb out-of-gamut)
       (xyz-to-lrgb x y z :rgbspace rgbspace :threshold threshold)
     (values (mapcar (rgbspace-delinearizer rgbspace) lrgb)
@@ -275,63 +379,70 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 	 (rgb-to-lrgb r g b rgbspace)))
 
 
-(defun rgb-to-qrgb (r g b)
-  "Quantizes RGB values from [0, 1] to {0, 1, ..., 255}, though it
-accepts all the real values."
-  (list (round (* r 255))
-	(round (* g 255))
-	(round (* b 255))))
+(defun rgb-to-qrgb (r g b &optional (rgbspace +srgb+))
+  "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1], typically) to {0, 1,
+..., RGBSPACE-QMAX} ({0, 1, ..., 255}, typically), though it accepts
+all the real values."
+  (let ((quantizer (rgbspace-quantizer rgbspace)))
+    (list (funcall quantizer r)
+	  (funcall quantizer g)
+	  (funcall quantizer b))))
 
-(defun qrgb-to-rgb (qr qg qb)
-  (list (* qr #.(float 1/255 1d0))
-	(* qg #.(float 1/255 1d0))
-	(* qb #.(float 1/255 1d0))))
+(defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
+  (let ((dequantizer (rgbspace-dequantizer rgbspace)))
+    (list (funcall dequantizer qr)
+	  (funcall dequantizer qg)
+	  (funcall dequantizer qb))))
 
 (defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns multiple values: (QR QG QB), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
-are outside the interval [-THRESHOLD, 1+THRESHOLD]."
+are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
+THRESHOLD]."
   (multiple-value-bind (rgb out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (apply #'rgb-to-qrgb rgb)
+    (values (apply (rcurry #'rgb-to-qrgb rgbspace) rgb)
 	    out-of-gamut)))
 
-;; convert RGB ({0, 1, ..., 255}) to XYZ ([0, 1])
 (defun qrgb-to-xyz (qr qg qb &optional (rgbspace +srgb+))
-  (rgb-to-xyz (* qr #.(float 1/255 1d0))
-	      (* qg #.(float 1/255 1d0))
-	      (* qb #.(float 1/255 1d0))
-	      rgbspace))
+  (apply (rcurry #'rgb-to-xyz rgbspace)
+	 (qrgb-to-rgb qr qg qb rgbspace)))
 
-(defun qrgb-to-hex (qr qg qb)
-  (+ (ash (clamp qr 0 255) 16)
-     (ash (clamp qg 0 255) 8)
-     (clamp qb 0 255)))
 
-(defun hex-to-qrgb (hex)
-  (list (logand (ash hex -16) #xff)
-	(logand (ash hex -8) #xff)
-	(logand hex #xff)))
+(defun qrgb-to-hex (qr qg qb &optional (rgbspace +srgb+))
+  (let ((bpc (rgbspace-bit-per-channel rgbspace))
+	(qmax (rgbspace-qmax rgbspace)))
+    (+ (ash (clamp qr 0 qmax) (+ bpc bpc))
+       (ash (clamp qg 0 qmax) bpc)
+       (clamp qb 0 qmax))))
 
-(defun hex-to-rgb (hex)
-  (apply #'qrgb-to-rgb
-	 (hex-to-qrgb hex)))
+(defun hex-to-qrgb (hex &optional (rgbspace +srgb+))
+  (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
+	(qmax (rgbspace-qmax rgbspace)))
+    (list (logand (ash hex (+ minus-bpc minus-bpc)) qmax)
+	  (logand (ash hex minus-bpc) qmax)
+	  (logand hex qmax))))
 
-(defun rgb-to-hex (r g b)
-  (apply #'qrgb-to-hex
-	 (rgb-to-qrgb r g b)))
+;; (defun hex-to-rgb (hex)
+;;   (apply #'qrgb-to-rgb
+;; 	 (hex-to-qrgb hex)))
+
+;; (defun rgb-to-hex (r g b)
+;;   (apply #'qrgb-to-hex
+;; 	 (rgb-to-qrgb r g b)))
 
 (defun hex-to-xyz (hex &optional (rgbspace +srgb+))
   (apply (rcurry #'qrgb-to-xyz rgbspace)
-	 (hex-to-qrgb hex)))
+	 (hex-to-qrgb hex rgbspace)))
 
 (defun xyz-to-hex (x y z &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns multiple values: HEX, OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
-are outside the interval [-THRESHOLD, 1+THRESHOLD]."
+are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
+THRESHOLD]."
   (multiple-value-bind (qrgb out-of-gamut)
       (xyz-to-qrgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (apply #'qrgb-to-hex qrgb)
+    (values (apply (rcurry #'qrgb-to-hex rgbspace) qrgb)
 	    out-of-gamut)))
 	 
 
@@ -419,11 +530,6 @@ are outside the interval [-THRESHOLD, 1+THRESHOLD]."
 (defun lchab-to-xyy (lstar cstarab hab &optional (illuminant +illum-d65+))
   (destructuring-bind (x y z) (lchab-to-xyz lstar cstarab hab illuminant)
     (xyz-to-xyy x y z)))
-
-(defun qrgb-to-lab (qr qg qb &optional (rgbspace +srgb+))
-  (apply (rcurry #'xyz-to-lab (rgbspace-illuminant rgbspace))
-	 (qrgb-to-xyz qr qg qb rgbspace)))
-
 
 (defun calc-uvprime (x y)
   (let ((denom (+ (* -2d0 x) (* 12d0 y) 3d0)))
