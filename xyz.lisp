@@ -503,14 +503,14 @@ and TO-ILLUMINANT in XYZ space."
     #'(lambda (x y z)
 	(multiply-matrix-and-vec mat x y z))))
 
-(declaim (ftype (function * function) gen-cat-function-xyy))
-(defun gen-cat-function-xyy (from-illuminant to-illuminant &optional (tmatrix +bradford+))
-  "Returns a chromatic adaptation function of xyY values: #'(lambda (X Y LARGEY) ...)"
-  (let ((ca-func (gen-cat-function from-illuminant to-illuminant tmatrix)))
-    #'(lambda (x y largey)
-	(apply #'xyz-to-xyy
-	       (apply ca-func
-		      (xyy-to-xyz x y largey))))))
+;; (declaim (ftype (function * function) gen-cat-function-xyy))
+;; (defun gen-cat-function-xyy (from-illuminant to-illuminant &optional (tmatrix +bradford+))
+;;   "Returns a chromatic adaptation function of xyY values: #'(lambda (X Y LARGEY) ...)"
+;;   (let ((ca-func (gen-cat-function from-illuminant to-illuminant tmatrix)))
+;;     #'(lambda (x y largey)
+;; 	(apply #'xyz-to-xyy
+;; 	       (apply ca-func
+;; 		      (xyy-to-xyz x y largey))))))
 
 (defun normalize-xyz (x y z)
   "Normalizes Y to 1."

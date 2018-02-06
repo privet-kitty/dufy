@@ -37,7 +37,7 @@
 			#'(lambda (x) (round (lerp (/ (- x min) len)
 						   0 quantized-max-float)))))
      :dequantizer (or dequantizer
-		      #'(lambda (n) (+ min (* n /quantized-max-float)))))))
+		      #'(lambda (n) (+ min (* len n /quantized-max-float)))))))
 
 ;; Standard quantization methods  [0, 1] and {0, 1, ..., 2^bit-per-channel -1}
 (defparameter +qtz-8bit-normal+ (make-quantization 8)

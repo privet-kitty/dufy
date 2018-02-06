@@ -43,7 +43,6 @@
 	   :+illum-c+ :+illum-d50+ :+illum-d65+
 	   :calc-cat-matrix
 	   :gen-cat-function
-	   :gen-cat-function-xyy
 
 	   :cat
 	   :make-cat
