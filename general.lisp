@@ -95,7 +95,7 @@ THETA2] in a circle group."
 ;;; Matrix operation
 ;;;
 
-(defparameter identity-matrix
+(defparameter +identity-matrix+
   (make-array '(3 3) :element-type 'double-float
 	      :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 

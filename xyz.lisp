@@ -349,8 +349,8 @@ proper white point is automatically calculated."
 (defstruct (cat (:constructor $make-cat))
   "Model of chromatic adaptation transformation. Currently only linear
 models are available."
-  (matrix identity-matrix :type (simple-array double-float (3 3)))
-  (inv-matrix identity-matrix :type (simple-array double-float (3 3))))
+  (matrix +identity-matrix+ :type (simple-array double-float (3 3)))
+  (inv-matrix +identity-matrix+ :type (simple-array double-float (3 3))))
 
 (defun make-cat (mat)
   (let ((mat-arr (make-array '(3 3)

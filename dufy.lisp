@@ -80,8 +80,8 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
   (xb 0d0 :type double-float) (yb 0d0 :type double-float)
   
   (illuminant +illum-d65+ :type illuminant)
-  (to-xyz-matrix identity-matrix :type (simple-array double-float (3 3)))
-  (from-xyz-matrix identity-matrix :type (simple-array double-float (3 3)))
+  (to-xyz-matrix +identity-matrix+ :type (simple-array double-float (3 3)))
+  (from-xyz-matrix +identity-matrix+ :type (simple-array double-float (3 3)))
 
   ;; nominal range of linear values
   (lmin 0d0 :type double-float)

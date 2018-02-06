@@ -156,14 +156,14 @@ Dufy can handle Munsell color system in the same way as other color spaces:
     * (dufy:munsell-to-xyz "3.2R 4.5/86.1")
     => (1.7829826193301206d0 0.13203741599941943d0 -0.029038360620048102d0)
 
-The converters are based on [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php). In the second example `munsell-to-xyz` extrapolate the colors far out of the data (and the MacAdam Limits, of course), which is meaningless in many cases but will be necessary to process the boundary colors.
+The converters are based on [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php). In the second example `munsell-to-xyz` extrapolate the colors far out of the data (and the MacAdam limits, of course), which is meaningless in many cases but will be necessary to process the boundary colors.
 
     * (dufy:munsell-to-mhvc "3.2R 4.5/6.1")
     => (1.28 4.5 6.1)
     * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
     => (0.19362651664295685d0 0.15142718526994225d0 0.12281280768620023d0)
 
-`munsell` is a standard string notation of Munsell color. `mhvc` is its three-number specification, which will be easier to deal with in some cases. The hue number of `mhvc` corresponds to the hue string of `munsell` as follows:
+`munsell` is the standard string notation of Munsell color. `mhvc` is its three-number specification, which will be easier to deal with in some cases. A hue number of `mhvc` corresponds to a hue string of `munsell` as follows:
 
 | Hue in `mhvc` | Hue in `munsell` |
 | -------------------- | --------------------- | 
@@ -172,7 +172,7 @@ The converters are based on [Munsell renotation data](https://www.rit.edu/cos/co
 | ... | ... |
 | 36 to 40 | 10P (=0RP) to 10RP (=0R) |
 
-The hue number of `mhvc` is a circle group: i.e. hues outside the interval [0, 40] are acceptable:
+The hue of of `mhvc` is a circle group: i.e. hues outside the interval [0, 40] are acceptable:
 
     * (dufy:mhvc-to-spec -400.0 4.5 6.1) ; the same as (0.0 4.5 6.1)
     => "0.00R 4.50/6.10"
