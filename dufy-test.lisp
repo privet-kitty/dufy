@@ -95,7 +95,7 @@
 	       (multiple-value-list
 		(hex-to-qrgb (qrgb-to-hex 0 5001 65535 +bg-srgb-16+)
 			     +bg-srgb-16+))))
-    (dolist (hex '(#x000011112222 #xeeeebbbbffff))
+    (dolist (hex '(#x000011112222 #xeeeeabcdffff))
       (is (= hex
 	     (multiple-value-bind (hex flag)
 		 (multiple-value-call #'xyz-to-hex
@@ -104,7 +104,7 @@
 	       (declare (ignore flag))
 	       hex)))))
 	     
-(test test-lab
+(test test-lab/luv
   (dolist (xyy *xyy-set*)
     (is (nearly-equal 1d-4
 		      xyy
@@ -122,7 +122,7 @@
 				xyz)
 			 *illum-d55-10*))))))
 
-(test test-hsv
+(test test-hsv/hsl
   (loop for xyz-to-foo in '(xyz-to-hsv xyz-to-hsl)
      for foo-to-xyz in '(hsv-to-xyz hsl-to-xyz) do
        (dolist (xyz *xyz-set*)
@@ -145,6 +145,13 @@
 					qrgb)
 				 rgbspace))
 			      0 3)))))))
+
+(test test-deltae
+  (let ((*read-default-float-format* 'double-float))
+    (is (nearly= 1d-3
+		 (deltae00 63.0109 -31.0961 -5.8663
+			   62.8187 -29.7946 -4.0864)
+		 1.2630))))
 
 
 ;; (let ((*read-default-float-format* 'double-float))

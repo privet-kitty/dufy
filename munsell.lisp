@@ -53,42 +53,32 @@ formula is based on ASTM D1535-08e1:"
   (- (* 116 (function-f (munsell-value-to-y v))) 16))
 
   
-(defun munsell-value-to-achromatic-qrgb (v)
-  "Returns the gray corresponding to given Munsell value."
-  (let ((x (round (* (delinearize (munsell-value-to-y v)) 255))))
-    (list x x x)))
-
-;; (defun munsell-value-to-achromatic-xyy (v)
-;;   (let* ((y (munsell-value-to-y v))
-;; 	 (largex (+ (* 0.4124564d0 y) (* 0.3575761d0 y) (* 0.1804375d0 y)))
-;; 	 (largey (+ (* 0.2126729d0 y) (* 0.7151522d0 y) (* 0.0721750d0 y)))
-;; 	 (largez (+ (* 0.0193339d0 y) (* 0.1191920d0 y) (* 0.9503041d0 y))))
-;;     (apply #'(lambda (x y largey) (list x y (clamp largey 0d0 1d0)))
-;; 	   (apply #'xyz-to-xyy
-;; 		  (funcall d65-to-c largex largey largez)))))
+;; (defun munsell-value-to-achromatic-qrgb (v)
+;;   "Returns the gray corresponding to given Munsell value."
+;;   (let ((x (round (* (delinearize (munsell-value-to-y v)) 255))))
+;;     (values x x x)))
 
 (defun munsell-value-to-achromatic-xyy (v)
   "Illuminant C."
-  (list 0.31006d0 0.31616d0 (munsell-value-to-y v)))
+  (values 0.31006d0 0.31616d0 (munsell-value-to-y v)))
 
-(defun munsell-value-to-achromatic-lchab (v)
-  "Illuminant C"
-  (apply #'lab-to-lchab
-	 (apply (rcurry #'xyz-to-lab +illum-c+)
-		(xyy-to-xyz 0.31006d0
-			    0.31616d0
-			    (munsell-value-to-y v)))))
+;; (defun munsell-value-to-achromatic-lchab (v)
+;;   "Illuminant C"
+;;   (apply #'lab-to-lchab
+;; 	 (apply (rcurry #'xyz-to-lab +illum-c+)
+;; 		(xyy-to-xyz 0.31006d0
+;; 			    0.31616d0
+;; 			    (munsell-value-to-y v)))))
 
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
   "For devel. Another version of munsell-value-to-achromatic-xyy based
 on the Munsell renotation data. V must be integer. It is nearly equal
 to munsell-value-to-achromatic-xyy"
-  (list 0.31006d0 0.31616d0
-	(clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0)
-			v)
-		  0.975d0)
-	       0d0 1d0)))
+  (values 0.31006d0 0.31616d0
+	  (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
+		    0.975d0)
+		 0d0 1d0)))
 
 (defun y-to-munsell-value (y)
   "Interpolates the inversion table of MUNSELL-VALUE-TO-Y linearly,
@@ -105,20 +95,6 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 (defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
   (y-to-munsell-value (second (qrgb-to-xyz r g b rgbspace))))
 
-
-;; hue ∈ Z/40, tmp-value ∈ {0, 1, ..., 10}, half-chroma ∈ {0, 1, ..., max-chroma/2}
-;; If dark is t, tmp-value ∈ {0, 1, 2, 3, 4 ,5} and treated as {0, 0.2, ...., 1.0}.
-;; (defun mhvc-to-xyy-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
-;;   (let ((hue (mod hue40 40)))
-;;     (if dark
-;; 	(list (aref mrd-array-dark hue tmp-value half-chroma 0)
-;; 	      (aref mrd-array-dark hue tmp-value half-chroma 1)
-;; 	      (aref mrd-array-dark hue tmp-value half-chroma 2))
-;; 	(list (aref mrd-array hue tmp-value half-chroma 0)
-;; 	      (aref mrd-array hue tmp-value half-chroma 1)
-;; 	      (aref mrd-array hue tmp-value half-chroma 2)))))
-
-
   
 (defun mhvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
@@ -128,41 +104,15 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 		 mrd-array-lchab-dark
 		 mrd-array-lchab)))
     (if (<= half-chroma 25)
-	(list (aref arr hue40 tmp-value half-chroma 0)
-	      (aref arr hue40 tmp-value half-chroma 1)
-	      (aref arr hue40 tmp-value half-chroma 2))
-	;; the case chroma > 50
+	(values (aref arr hue40 tmp-value half-chroma 0)
+		(aref arr hue40 tmp-value half-chroma 1)
+		(aref arr hue40 tmp-value half-chroma 2))
+	;; in the case chroma > 50
 	(let ((cstarab (aref arr hue40 tmp-value 25 1))
 	      (factor (* half-chroma #.(float 1/25 1d0))))
-	  (list (aref arr hue40 tmp-value 25 0)
-		(* cstarab factor)
-		(aref arr hue40 tmp-value 25 2))))))
-	 
-
-;; (defun mhvc-to-xyy-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
-;;   (let* ((hue (mod hue40 40))
-;; 	 (hue1 (floor hue))
-;; 	 (hue2 (ceiling hue)))
-;;     (cond ((= hue1 hue2)
-;; 	   (mhvc-to-xyy-simplest-case (round hue) tmp-value half-chroma dark))
-;; 	  ((or (zerop tmp-value) (zerop half-chroma))
-;; 	   (munsell-value-to-achromatic-xyy (if dark (* tmp-value 0.2d0) tmp-value))) ;avoid division with zero
-;; 	  (t 
-;; 	   (destructuring-bind (x1 y1 largey)
-;; 	       (mhvc-to-xyy-simplest-case hue1 tmp-value half-chroma dark)
-;; 	     (destructuring-bind (x2 y2 disused)
-;; 		 (mhvc-to-xyy-simplest-case hue2 tmp-value half-chroma dark)
-;;             (declare (ignore disused))
-;; 	       (destructuring-bind (r1 theta1)
-;; 		   (xy-to-polar x1 y1)
-;; 		 (destructuring-bind (r2 theta2)
-;; 		     (xy-to-polar x2 y2)
-;; 		   (let* ((theta (circular-lerp (- hue hue1) theta1 theta2))
-;; 			  (r (+ (* r1 (/ (subtract-with-mod theta2 theta)
-;; 					 (subtract-with-mod theta2 theta1)))
-;; 				(* r2 (/ (subtract-with-mod theta theta1)
-;; 					 (subtract-with-mod theta2 theta1))))))
-;; 		     (append (polar-to-xy r theta) (list largey)))))))))))
+	  (values (aref arr hue40 tmp-value 25 0)
+		  (* cstarab factor)
+		  (aref arr hue40 tmp-value 25 2))))))
 
 
 (defun mhvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
@@ -173,37 +123,20 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	 (hue2 (mod (ceiling hue40) 40)))
     (if (= hue1 hue2)
 	(mhvc-to-lchab-simplest-case (round hue40) tmp-value half-chroma dark)
-	(destructuring-bind (lstar cstarab1 hab1)
+	(multiple-value-bind (lstar cstarab1 hab1)
 	    (mhvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
-	  (destructuring-bind (disused cstarab2 hab2)
+	  (multiple-value-bind (disused cstarab2 hab2)
 	      (mhvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
 	    (declare (ignore disused)
 		     (double-float lstar cstarab1 hab1 cstarab2 hab2))
 	    (if (= hab1 hab2)
-		(list lstar cstarab1 hab1)
+		(values lstar cstarab1 hab1)
 		(let* ((hab (the double-float (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
 		       (cstarab (+ (* cstarab1 (/ (mod (- hab2 hab) 360d0)
 						  (mod (- hab2 hab1) 360d0)))
 				   (* cstarab2 (/ (mod (- hab hab1) 360d0)
 						  (mod (- hab2 hab1) 360d0))))))
-		  (list lstar cstarab hab))))))))
-
-
-;; (defun mhvc-to-xyy-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
-;;   (let ((hchroma1 (floor half-chroma))
-;; 	(hchroma2 (ceiling half-chroma)))
-;;     (if (= hchroma1 hchroma2)
-;; 	(mhvc-to-xyy-value-chroma-integer-case hue40 tmp-value (round half-chroma) dark)
-;; 	(destructuring-bind (x1 y1 largey)
-;; 	    (mhvc-to-xyy-value-chroma-integer-case hue40 tmp-value hchroma1 dark)
-;; 	  (destructuring-bind (x2 y2 disused)
-;; 	      (mhvc-to-xyy-value-chroma-integer-case hue40 tmp-value hchroma2 dark)
-;;          (declare (ignore disused))
-;; 	    (let* ((x (+ (* x1 (- hchroma2 half-chroma))
-;; 			 (* x2 (- half-chroma hchroma1))))
-;; 		   (y (+ (* y1 (- hchroma2 half-chroma))
-;; 			 (* y2 (- half-chroma hchroma1)))))
-;; 	      (list x y largey)))))))
+		  (values lstar cstarab hab))))))))
 
 
 (defun mhvc-to-lchab-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
@@ -215,12 +148,12 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	(hchroma2 (ceiling half-chroma)))
     (if (= hchroma1 hchroma2)
 	(mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value (round half-chroma) dark)
-	(destructuring-bind (lstar astar1 bstar1)
-	    (apply #'lchab-to-lab
-		   (mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma1 dark))
-	  (destructuring-bind (disused astar2 bstar2)
-	      (apply #'lchab-to-lab
-		     (mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma2 dark))
+	(multiple-value-bind (lstar astar1 bstar1)
+	    (multiple-value-call #'lchab-to-lab
+	      (mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma1 dark))
+	  (multiple-value-bind (disused astar2 bstar2)
+	      (multiple-value-call #'lchab-to-lab
+		(mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma2 dark))
 	    (declare (ignore disused)
 		     (double-float lstar astar1 bstar1 astar2 bstar2))
 	    (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
@@ -229,22 +162,6 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 			     (* bstar2 (- half-chroma hchroma1)))))
 	      (lab-to-lchab lstar astar bstar)))))))
 
-;; (defun mhvc-to-xyy-general-case (hue40 tmp-value half-chroma &optional (dark nil))
-;;   (let ((true-value (if dark (* tmp-value 0.2d0) tmp-value)))
-;;     (let  ((tmp-val1 (floor tmp-value))
-;; 	   (tmp-val2 (ceiling tmp-value))
-;; 	   (largey (munsell-value-to-y true-value)))
-;;       (if (= tmp-val1 tmp-val2)
-;; 	  (mhvc-to-xyy-value-integer-case hue40 tmp-val1 half-chroma dark)
-;; 	  (destructuring-bind (x1 y1 largey1)
-;; 	      (mhvc-to-xyy-value-integer-case hue40 tmp-val1 half-chroma dark)
-;; 	    (destructuring-bind (x2 y2 largey2)
-;; 		(mhvc-to-xyy-value-integer-case hue40 tmp-val2 half-chroma dark)
-;; 	      (let* ((x (+ (* x1 (/ (- largey2 largey) (- largey2 largey1)))
-;; 			   (* x2 (/ (- largey largey1) (- largey2 largey1)))))
-;; 		     (y (+ (* y1 (/ (- largey2 largey) (- largey2 largey1)))
-;; 			   (* y2 (/ (- largey largey1) (- largey2 largey1))))))
-;; 		(list x y largey))))))))
 
 (defun mhvc-to-lchab-general-case (hue40 tmp-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
@@ -257,19 +174,19 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
       (if (= tmp-val1 tmp-val2)
 	  (mhvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark)
 	  ;; If the given color is so dark that it is out of MRD, we
-	  ;; use the fact that the chroma of LCh(ab) corresponds
-	  ;; roughly to that of Munsell.
+	  ;; use the fact that the chroma and hue of LCh(ab)
+	  ;; corresponds roughly to that of Munsell.
 	  (if (= tmp-val1 0)
-	      (destructuring-bind (disused cstarab hab)
+	      (multiple-value-bind (disused cstarab hab)
 		  (mhvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
 		(declare (ignore disused))
-		(list lstar cstarab hab))
-	      (destructuring-bind (lstar1 astar1 bstar1)
-		  (apply #'lchab-to-lab
-			 (mhvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark))
-		(destructuring-bind (lstar2 astar2 bstar2)
-		    (apply #'lchab-to-lab
-			   (mhvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
+		(values lstar cstarab hab))
+	      (multiple-value-bind (lstar1 astar1 bstar1)
+		  (multiple-value-call #'lchab-to-lab
+		    (mhvc-to-lchab-value-integer-case hue40 tmp-val1 half-chroma dark))
+		(multiple-value-bind (lstar2 astar2 bstar2)
+		    (multiple-value-call #'lchab-to-lab
+		      (mhvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
 		  (declare (double-float lstar lstar1 astar1 bstar1 lstar2 astar2 bstar2))
 		  (let* ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
 				   (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
@@ -663,3 +580,21 @@ equal to MAX-ITERATION.
 	      (incf sum)
 	      (format t "~A ~A ~A, (~a ~a ~a) ~A~%" lstar cstarab hab r g b ite))))))))
 
+
+;; CL-USER> (dufy::bench-mhvc-to-lchab 1000000)
+;; Evaluation took:
+;;   3.609 seconds of real time
+;;   3.609375 seconds of total run time (3.593750 user, 0.015625 system)
+;;   [ Run times consist of 0.234 seconds GC time, and 3.376 seconds non-GC time. ]
+;;   100.00% CPU
+;;   9,027,683,932 processor cycles
+;;   3,592,749,056 bytes consed
+
+;; CL-USER> (dufy::bench-mhvc-to-lchab 1000000)
+;; Evaluation took:
+;;   4.062 seconds of real time
+;;   4.062500 seconds of total run time (4.062500 user, 0.000000 system)
+;;   [ Run times consist of 0.079 seconds GC time, and 3.984 seconds non-GC time. ]
+;;   100.00% CPU
+;;   10,132,278,943 processor cycles
+;;   4,589,905,232 bytes consed

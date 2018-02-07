@@ -18,13 +18,16 @@
 	 (defun ,name (,@main-args ,@sub-args-with-key)
 	   ,@body)
 	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
-	   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-	     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-	       (,name l1 a1 b1 l2 a2 b2 ,@(extract sub-args)))))
+	   (multiple-value-call #',name
+	     (xyz-to-lab x1 y1 z1 illuminant)
+	     (xyz-to-lab x2 y2 z2 illuminant)
+	     ,@(extract sub-args)))
 	 (defun ,qrgb-name (r1 g1 b1 r2 g2 b2 &key ,@sub-args (rgbspace +srgb+))
-	   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
-	     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
-	       (,xyz-name x1 y1 z1 x2 y2 z2 ,@(extract sub-args) :illuminant (rgbspace-illuminant rgbspace)))))))))
+	   (multiple-value-call #',xyz-name
+	     (qrgb-to-xyz r1 g1 b1 rgbspace)
+	     (qrgb-to-xyz r2 g2 b2 rgbspace)
+	     ,@(extract sub-args)
+	     :illuminant (rgbspace-illuminant rgbspace)))))))
 
 
 ;; CIE76
@@ -186,3 +189,9 @@
 ;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
 ;;       (xyz-deltae00 x1 y1 z1 x2 y2 z2
 ;; 		    :illuminant (rgbspace-illuminant rgbspace)))))
+
+(defun bench-deltae00 (&optional (num 1000000))
+  (time (dotimes (x num)
+	  (qrgb-deltae00 (random 65536) (random 65536) (random 65536)
+			 (random 65536) (random 65536) (random 65536)
+			 :rgbspace +bg-srgb-16+))))

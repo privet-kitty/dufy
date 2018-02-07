@@ -166,7 +166,6 @@
 	   ;; munsell.lisp
 	   :munsell-value-to-y
 	   :y-to-munsell-value
-	   :qrgb-to-munsell-value
 	   :mhvc-out-of-mrd-p
 	   :mhvc-to-xyy
 	   :mhvc-to-xyz
