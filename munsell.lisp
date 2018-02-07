@@ -406,6 +406,10 @@ as out-of-gamut by numerical error, if threshold is too small."
 	(values qrgb nil)
 	(values qrgb out-of-gamut))))
 
+(defun bench-mhvc-to-qrgb (&optional (num 300000))
+  (time (dotimes (x num)
+	  (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
+
 
 (define-condition invalid-munsell-spec-error (simple-error)
   ((spec :initarg :spec
