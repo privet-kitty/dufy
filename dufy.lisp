@@ -560,13 +560,13 @@ THRESHOLD]."
 	   (y (if (<= lstar 8d0)
 		  (* (illuminant-largey illuminant)
 		     lstar
-		     0.008856451679035631d0)
+		     #.(expt 3/29 3d0))
 		  (* (illuminant-largey illuminant)
 		     (* l l l)))))
       (list (* y (/ (* 9d0 uprime) (* 4d0 vprime)))
 	    y
 	    (* y (/ (- 12d0 (* 3d0 uprime) (* 20d0 vprime)) (* 4d0 vprime)))))))
-	    
+
 (defun luv-to-lchuv (lstar ustar vstar)
   (list lstar
 	(sqrt (+ (* ustar ustar) (* vstar vstar)))
