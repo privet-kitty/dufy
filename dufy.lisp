@@ -497,8 +497,8 @@ THRESHOLD]."
 		(* (illuminant-x illuminant) fx fx fx)
 		(* (- fx #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-x illuminant)))
 	    (if (> fy #.(float 6/29 1d0))
-		(* fy fy fy)
-		(* (- fy #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29)))
+		(* (illuminant-y illuminant) fy fy fy)
+		(* (- fy #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-y illuminant)))
 	    (if (> fz #.(float 6/29 1d0))
 		(* (illuminant-z illuminant) fz fz fz)
 		(* (- fz #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-z illuminant))))))
@@ -550,57 +550,69 @@ THRESHOLD]."
     (lchab-to-xyz lstar cstarab hab illuminant)) )
 
 
+(declaim (ftype (function (double-float double-float) (values double-float double-float)) calc-uvprime))
 (defun calc-uvprime (x y)
+  (declare (optimize (speed 3) (safety 0)))
   (let ((denom (+ (* -2d0 x) (* 12d0 y) 3d0)))
-    (list (/ (* 4d0 x) denom)
-	  (/ (* 9d0 y) denom))))
+    (values (/ (* 4d0 x) denom)
+	    (/ (* 9d0 y) denom))))
 
+(declaim (ftype (function (double-float double-float double-float) (values double-float double-float)) calc-uvprime-from-xyz))
 (defun calc-uvprime-from-xyz (x y z)
+  (declare (optimize (speed 3) (safety 0)))
   (let ((denom (+ x (* 15d0 y) (* 3d0 z))))
-    (list (/ (* 4d0 x) denom)
-	  (/ (* 9d0 y) denom))))
+    (values (/ (* 4d0 x) denom)
+	    (/ (* 9d0 y) denom))))
 
 (defun xyz-to-luv (x y z &optional (illuminant +illum-d65+))
-  (destructuring-bind (uprime vprime) (calc-uvprime-from-xyz x y z)
-    (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-small-x illuminant) (illuminant-small-y illuminant))
-      (let* ((yr (/ y (illuminant-y illuminant)))
-	     (lstar (if (> yr 0.008856451679035631d0)
-			(- (* 116d0 (expt yr #.(float 1/3 1d0))) 16d0)
-			(* 903.2962962962963d0 yr))))
-	(list lstar
-	      (* 13d0 lstar (- uprime urprime))
-	      (* 13d0 lstar (- vprime vrprime)))))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
+    (multiple-value-bind (uprime vprime)
+	(calc-uvprime-from-xyz x y z)
+      (multiple-value-bind (urprime vrprime)
+	  (calc-uvprime (illuminant-small-x illuminant) (illuminant-small-y illuminant))
+	(let* ((yr (/ y (illuminant-y illuminant)))
+	       (lstar (if (> yr #.(expt 6/29 3d0))
+			  (- (* 116d0 (expt yr #.(float 1/3 1d0))) 16d0)
+			  (* #.(expt 29/3 3d0) yr))))
+	  (values lstar
+		  (* 13d0 lstar (- uprime urprime))
+		  (* 13d0 lstar (- vprime vrprime))))))))
 
 (defun luv-to-xyz (lstar ustar vstar &optional (illuminant +illum-d65+))
-  (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-small-x illuminant) (illuminant-small-y illuminant))
-    (let* ((uprime (+ (/ ustar (* 13d0 lstar)) urprime))
-	   (vprime (+ (/ vstar (* 13d0 lstar)) vrprime))
-	   (l (/ (+ lstar 16d0) 116d0))
-	   (y (if (<= lstar 8d0)
-		  (* (illuminant-y illuminant)
-		     lstar
-		     0.008856451679035631d0)
-		  (* (illuminant-y illuminant)
-		     (* l l l)))))
-      (list (* y (/ (* 9d0 uprime) (* 4d0 vprime)))
-	    y
-	    (* y (/ (- 12d0 (* 3d0 uprime) (* 20d0 vprime)) (* 4d0 vprime)))))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((lstar (float lstar 1d0)) (ustar (float ustar 1d0)) (vstar (float vstar 1d0)))
+    (multiple-value-bind (urprime vrprime)
+	(calc-uvprime (illuminant-small-x illuminant) (illuminant-small-y illuminant))
+      (let* ((uprime (+ (/ ustar (* 13d0 lstar)) urprime))
+	     (vprime (+ (/ vstar (* 13d0 lstar)) vrprime))
+	     (l (/ (+ lstar 16d0) 116d0))
+	     (y (if (<= lstar 8d0)
+		    (* (illuminant-y illuminant)
+		       lstar
+		       (expt 3/29 3d0))
+		    (* (illuminant-y illuminant)
+		       (* l l l)))))
+	(values (* y (/ (* 9d0 uprime) (* 4d0 vprime)))
+		y
+		(* y (/ (- 12d0 (* 3d0 uprime) (* 20d0 vprime)) (* 4d0 vprime))))))))
 	    
 (defun luv-to-lchuv (lstar ustar vstar)
-  (list lstar
-	(sqrt (+ (* ustar ustar) (* vstar vstar)))
-	(mod (* (atan vstar ustar) CONST-360/TWO-PI) 360d0)))
+  (values lstar
+	  (sqrt (+ (* ustar ustar) (* vstar vstar)))
+	  (mod (* (atan vstar ustar) CONST-360/TWO-PI) 360d0)))
 
 (defun lchuv-to-luv (lstar cstaruv huv)
   (let ((hue-two-pi (* huv CONST-TWO-PI/360)))
-    (list lstar (* cstaruv (cos hue-two-pi)) (* cstaruv (sin hue-two-pi)))))
+    (values lstar (* cstaruv (cos hue-two-pi)) (* cstaruv (sin hue-two-pi)))))
 
 (defun xyz-to-lchuv (x y z &optional (illuminant +illum-d65+))
-  (apply #'luv-to-lchuv (xyz-to-luv x y z illuminant)))
+  (multiple-value-call #'luv-to-lchuv (xyz-to-luv x y z illuminant)))
 
 (defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant +illum-d65+))
-  (destructuring-bind (l u v) (lchuv-to-luv lstar cstaruv huv)
-    (luv-to-xyz l u v illuminant)))
+  (multiple-value-call #'luv-to-xyz
+    (lchuv-to-luv lstar cstaruv huv)
+    illuminant))
 
 
 ;;;

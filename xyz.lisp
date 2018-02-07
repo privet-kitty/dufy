@@ -307,7 +307,7 @@ many."
     (if (= sum 0)
 	(values 0d0 0d0 y)
 	(values (/ x sum) (/ y sum) y))))
-
+  
 	    
 (defun make-illuminant (small-x small-y &optional (spectrum nil) (observer +obs-cie1931+))
   "Defines an illuminant based on a white point. No error occurs, even
@@ -535,12 +535,12 @@ and TO-ILLUMINANT in XYZ space."
 
 ;; (declaim (ftype (function * function) gen-cat-function-xyy))
 ;; (defun gen-cat-function-xyy (from-illuminant to-illuminant &optional (tmatrix +bradford+))
-;;   "Returns a chromatic adaptation function of xyY values: #'(lambda (X Y LARGEY) ...)"
+;;   "Returns a chromatic adaptation function of xyY values: #'(lambda (SMALL-X SMALL-Y Y) ...)"
 ;;   (let ((ca-func (gen-cat-function from-illuminant to-illuminant tmatrix)))
-;;     #'(lambda (x y largey)
+;;     #'(lambda (small-x small-y y)
 ;; 	(apply #'xyz-to-xyy
 ;; 	       (apply ca-func
-;; 		      (xyy-to-xyz x y largey))))))
+;; 		      (xyy-to-xyz small-x small-y y))))))
 
 (defun normalize-xyz (x y z)
   "Normalizes Y to 1."

@@ -112,6 +112,14 @@
 		       (multiple-value-call #'lchab-to-xyy
 			 (apply (rcurry #'xyy-to-lchab *illum-d55-10*)
 				xyy)
+			 *illum-d55-10*)))))
+  (dolist (xyz *xyz-set*)
+    (is (nearly-equal 1d-4
+		      xyz
+		      (multiple-value-list
+		       (multiple-value-call #'lchuv-to-xyz
+			 (apply (rcurry #'xyz-to-lchuv *illum-d55-10*)
+				xyz)
 			 *illum-d55-10*))))))
 
 ;; (let ((*read-default-float-format* 'double-float))
