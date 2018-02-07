@@ -632,105 +632,118 @@ THRESHOLD]."
 	   (h-prime-int (floor h-prime))
 	   (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
 	   (base (- val c)))
-      (cond ((= sat 0d0) (list base base base))
-	    ((= 0 h-prime-int) (list (+ base c) (+ base x) base))
-	    ((= 1 h-prime-int) (list (+ base x) (+ base c) base))
-	    ((= 2 h-prime-int) (list base (+ base c) (+ base x)))
-	    ((= 3 h-prime-int) (list base (+ base x) (+ base c)))
-	    ((= 4 h-prime-int) (list (+ base x) base (+ base c)))
-	    ((= 5 h-prime-int) (list (+ base c) base (+ base x)))))))
+      (cond ((= sat 0d0) (values base base base))
+	    ((= 0 h-prime-int) (values (+ base c) (+ base x) base))
+	    ((= 1 h-prime-int) (values (+ base x) (+ base c) base))
+	    ((= 2 h-prime-int) (values base (+ base c) (+ base x)))
+	    ((= 3 h-prime-int) (values base (+ base x) (+ base c)))
+	    ((= 4 h-prime-int) (values (+ base x) base (+ base c)))
+	    ((= 5 h-prime-int) (values (+ base c) base (+ base x)))))))
 	 
 (defun hsv-to-qrgb (hue sat val &optional (rgbspace +srgb+))
-  (apply (rcurry #'rgb-to-qrgb rgbspace)
-	 (hsv-to-rgb hue sat val)))
+  (multiple-value-call #'rgb-to-qrgb
+    (hsv-to-rgb hue sat val)
+    :rgbspace rgbspace))
 
 (defun hsv-to-xyz (hue sat val &optional (rgbspace +srgb+))
-  (apply (rcurry #'rgb-to-xyz rgbspace)
-	 (hsv-to-rgb hue sat val)))
+  (multiple-value-call #'rgb-to-xyz
+    (hsv-to-rgb hue sat val)
+    rgbspace))
 
 (defun rgb-to-hsv (r g b)
-  (let* ((maxrgb (coerce (max r g b) 'double-float))
-	 (minrgb (coerce (min r g b) 'double-float))
-	 (s (if (= maxrgb 0)
-		0d0
-		(/ (- maxrgb minrgb) maxrgb)))
-	 (h (cond ((= minrgb maxrgb) 0d0)
-		  ((= minrgb b) (+ (* 60d0 (/ (- g r) (- maxrgb minrgb))) 60d0))
-		  ((= minrgb r) (+ (* 60d0 (/ (- b g) (- maxrgb minrgb))) 180d0))
-		  ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
-    (list h s maxrgb)))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((r (float r 1d0)) (g (float g 1d0)) (b (float b 1d0)))
+    (let* ((maxrgb (coerce (max r g b) 'double-float))
+	   (minrgb (coerce (min r g b) 'double-float))
+	   (s (if (= maxrgb 0d0)
+		  0d0
+		  (/ (- maxrgb minrgb) maxrgb)))
+	   (h (cond ((= minrgb maxrgb) 0d0)
+		    ((= minrgb b) (+ (* 60d0 (/ (- g r) (- maxrgb minrgb))) 60d0))
+		    ((= minrgb r) (+ (* 60d0 (/ (- b g) (- maxrgb minrgb))) 180d0))
+		    ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
+      (values h s maxrgb))))
 	 
 (defun qrgb-to-hsv (qr qg qb &optional (rgbspace +srgb+))
-  (apply #'rgb-to-hsv
-	 (qrgb-to-rgb qr qg qb rgbspace)))
+  (multiple-value-call #'rgb-to-hsv
+    (qrgb-to-rgb qr qg qb rgbspace)))
 
 (defun xyz-to-hsv (x y z &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns multiple values: (H S V), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of **linear** RGB values are
 outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
 THRESHOLD]."
-  (multiple-value-bind (rgb out-of-gamut)
+  (multiple-value-bind (r g b out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (apply #'rgb-to-hsv rgb)
-	    out-of-gamut)))
+    (multiple-value-bind (h s v)
+	(rgb-to-hsv r g b)
+      (values h s v out-of-gamut))))
   
 
 (defun hsl-to-rgb (hue sat lum)
   "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0,
 1]; all the real values outside the interval are also acceptable."
-  (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (- (* lum 2d0) 1d0)))))
-	 (max (+ lum tmp))
-	 (min (- lum tmp))
-	 (delta (- max min))
-	 (h-prime (* (mod hue 360d0) #.(float 1/60 1d0)))
-	 (h-prime-int (floor h-prime)))
-    (cond ((= sat 0d0) (list max max max))
-	  ((= 0 h-prime-int) (list max
-				   (+ min (* delta hue #.(float 1/60 1d0)))
-				   min))
-	  ((= 1 h-prime-int) (list (+ min (* delta (- 120d0 hue) #.(float 1/60 1d0)))
-				   max
-				   min))
-	  ((= 2 h-prime-int) (list min
-				   max
-				   (+ min (* delta (- hue 120d0) #.(float 1/60 1d0)))))
-	  ((= 3 h-prime-int) (list min
-				   (+ min (* delta (- 240d0 hue) #.(float 1/60 1d0)))
-				   max))
-	  ((= 4 h-prime-int) (list (+ min (* delta (- hue 240d0) #.(float 1/60 1d0)))
-				   min
-				   max))
-	  ((= 5 h-prime-int) (list max
-				   min
-				   (+ min (* delta (- 360d0 hue) #.(float 1/60 1d0))))))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((hue (float hue 1d0))
+	(sat (float sat 1d0))
+	(lum (float lum 1d0)))
+    (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (- (* lum 2d0) 1d0)))))
+	   (max (+ lum tmp))
+	   (min (- lum tmp))
+	   (delta (- max min))
+	   (h-prime (* (mod hue 360d0) #.(float 1/60 1d0)))
+	   (h-prime-int (floor h-prime)))
+      (cond ((= sat 0d0) (values max max max))
+	    ((= 0 h-prime-int) (values max
+				       (+ min (* delta hue #.(float 1/60 1d0)))
+				       min))
+	    ((= 1 h-prime-int) (values (+ min (* delta (- 120d0 hue) #.(float 1/60 1d0)))
+				       max
+				       min))
+	    ((= 2 h-prime-int) (values min
+				       max
+				       (+ min (* delta (- hue 120d0) #.(float 1/60 1d0)))))
+	    ((= 3 h-prime-int) (values min
+				       (+ min (* delta (- 240d0 hue) #.(float 1/60 1d0)))
+				       max))
+	    ((= 4 h-prime-int) (values (+ min (* delta (- hue 240d0) #.(float 1/60 1d0)))
+				       min
+				       max))
+	    ((= 5 h-prime-int) (values max
+				       min
+				       (+ min (* delta (- 360d0 hue) #.(float 1/60 1d0)))))))))
  
 
 (defun hsl-to-qrgb (hue sat lum &optional (rgbspace +srgb+))
-  (apply (rcurry #'rgb-to-qrgb rgbspace)
-	 (hsl-to-rgb hue sat lum)))
+  (multiple-value-call #'rgb-to-qrgb
+    (hsl-to-rgb hue sat lum)
+    :rgbspace rgbspace))
 
 (defun hsl-to-xyz (hue sat lum &optional (rgbspace +srgb+))
-  (apply (rcurry #'rgb-to-xyz rgbspace)
-	 (hsl-to-rgb hue sat lum)))
+  (multiple-value-call #'rgb-to-xyz
+    (hsl-to-rgb hue sat lum)
+    rgbspace))
 
 (defun rgb-to-hsl (r g b)
-  (let ((min (min r g b))
-	(max (max r g b)))
-    (let ((hue (cond ((= min max) 0d0)
-		     ((= min b) (+ 60d0 (* 60d0 (/ (- g r) (- max min)))))
-		     ((= min r) (+ 180d0 (* 60d0 (/ (- b g) (- max min)))))
-		     ((= min g) (+ 300d0 (* 60d0 (/ (- r b) (- max min))))))))
-      (list hue
-	    (let ((denom (- 1d0 (abs (+ max min -1d0)))))
-	      (if (zerop denom)
-		  0d0
-		  (/ (- max min) denom)))
-	    (* 0.5d0 (+ max min))))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((r (float r 1d0)) (g (float g 1d0)) (b (float b 1d0)))
+    (let ((min (min r g b))
+	  (max (max r g b)))
+      (let ((hue (cond ((= min max) 0d0)
+		       ((= min b) (+ 60d0 (* 60d0 (/ (- g r) (- max min)))))
+		       ((= min r) (+ 180d0 (* 60d0 (/ (- b g) (- max min)))))
+		       ((= min g) (+ 300d0 (* 60d0 (/ (- r b) (- max min))))))))
+	(values hue
+		(let ((denom (- 1d0 (abs (+ max min -1d0)))))
+		  (if (zerop denom)
+		      0d0
+		      (/ (- max min) denom)))
+		(* 0.5d0 (+ max min)))))))
 	  
 
 (defun qrgb-to-hsl (qr qg qb &optional (rgbspace +srgb+))
-  (apply #'rgb-to-hsl
-	 (qrgb-to-rgb qr qg qb rgbspace)))
+  (multiple-value-call #'rgb-to-hsl
+    (qrgb-to-rgb qr qg qb rgbspace)))
 
 
 (defun xyz-to-hsl (x y z &key (rgbspace +srgb+) (threshold 1d-4))
@@ -738,7 +751,8 @@ THRESHOLD]."
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
 THRESHOLD]."
-  (multiple-value-bind (rgb out-of-gamut)
+  (multiple-value-bind (r g b out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (apply #'rgb-to-hsl rgb)
-	    out-of-gamut)))
+    (multiple-value-bind (h s l)
+	(rgb-to-hsl r g b)
+      (values h s l out-of-gamut))))

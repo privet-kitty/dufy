@@ -10,7 +10,7 @@
 (defparameter *xyz-set*
   '((0.6018278793248849d0 0.3103175002768938d0 0.028210681843353954d0)
     (4.846309924502165d-6 5.099078671483812d-6 5.552388656107547d-6)
-    (0.9504285453771808d0 1.0000000000000002d0 1.0889003707981277d0)))
+    (0.9504285453771808d0 1.0000000000000202d0 1.0889003707981277d0)))
 
 (defparameter *xyy-set*
   (mapcar #'(lambda (lst) (multiple-value-list (apply #'xyz-to-xyy lst)))
@@ -121,6 +121,31 @@
 			 (apply (rcurry #'xyz-to-lchuv *illum-d55-10*)
 				xyz)
 			 *illum-d55-10*))))))
+
+(test test-hsv
+  (loop for xyz-to-foo in '(xyz-to-hsv xyz-to-hsl)
+     for foo-to-xyz in '(hsv-to-xyz hsl-to-xyz) do
+       (dolist (xyz *xyz-set*)
+	 (is (nearly-equal 1d-4
+			   xyz
+			   (multiple-value-list
+			    (apply (rcurry foo-to-xyz +bg-srgb-16+)
+				   (subseq (multiple-value-list
+					    (apply (rcurry xyz-to-foo :rgbspace +bg-srgb-16+)
+						   xyz))
+					   0 3)))))))
+  (loop for qrgb-to-foo in '(qrgb-to-hsv qrgb-to-hsl)
+     for foo-to-qrgb in '(hsv-to-qrgb hsl-to-qrgb) do
+       (dolist (rgbspace (list +bg-srgb-16+ +prophoto-16+))
+	 (dolist (qrgb *qrgb16-set*)
+	   (is (equal qrgb
+		      (subseq (multiple-value-list
+			       (multiple-value-call foo-to-qrgb
+				 (apply (rcurry qrgb-to-foo rgbspace)
+					qrgb)
+				 rgbspace))
+			      0 3)))))))
+
 
 ;; (let ((*read-default-float-format* 'double-float))
 ;;   (test test-core
