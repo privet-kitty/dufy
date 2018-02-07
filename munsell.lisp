@@ -236,10 +236,6 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	(mhvc-to-lchab-general-case d-hue d-value (* d-chroma 0.5d0) nil)
 	(mhvc-to-lchab-general-case d-hue (* d-value 5d0) (* d-chroma 0.5d0) t))))
 
-;; known bug
-;; (clgplot:plot (loop for c from 0 to 100 by 0.5 collect (second (dufy:mhvc-to-lchab 31 0.8d0 c))))
-
-
 ;; (defun compare-munsell-converter (mc)
 ;;   (let ((deltaes nil)
 ;; 	(max-deltae 0)
@@ -285,8 +281,9 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 adaptation, since the Munsell Renotation Data is measured under the
 Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
-  (apply (the function (rcurry #'lchab-to-xyz +illum-c+))
-	 (mhvc-to-lchab hue40 value chroma)))
+  (multiple-value-call #'lchab-to-xyz
+    (mhvc-to-lchab hue40 value chroma)
+    +illum-c+))
   
 				   
 (defun mhvc-to-xyz (hue40 value chroma)
@@ -294,34 +291,42 @@ Illuminant C."
 transformation, since the Munsell Renotation Data is measured under
 the Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
-  (apply c-to-d65
-	 (mhvc-to-xyz-illum-c hue40 value chroma)))
+  (multiple-value-call c-to-d65
+    (mhvc-to-xyz-illum-c hue40 value chroma)))
 
 (defun mhvc-to-xyy (hue40 value chroma)
   "Illuminant D65."
-  (apply #'xyz-to-xyy
-	 (mhvc-to-xyz hue40 value chroma)))
+  (multiple-value-call #'xyz-to-xyy
+    (mhvc-to-xyz hue40 value chroma)))
 
 ;; (defun mhvc-to-xyz (hue40 value chroma)
 ;;   (apply c-to-d65
 ;; 	 (apply #'xyy-to-xyz (mhvc-to-xyy hue40 value chroma))))
 
-(defun mhvc-to-lrgb (hue40 value chroma &key (rgbspace +srgb+) (threshold 0.001d0))
+(defun mhvc-to-lrgb (hue40 value chroma &key (rgbspace +srgb+) (threshold 1d-4))
   "The standard illuminant is D65: that of RGBSPACE must also be D65.
 Note that boundary colors, e.g. pure white (N 10.0), could be judged
 as out-of-gamut by numerical error, if threshold is too small."
-  (apply (rcurry #'xyz-to-lrgb :rgbspace rgbspace :threshold threshold)
-	 (mhvc-to-xyz hue40 value chroma)))
+  (multiple-value-call #'xyz-to-lrgb
+    (mhvc-to-xyz hue40 value chroma)
+    :rgbspace rgbspace
+    :threshold threshold))
 
 
-(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (threshold 0.001d0))
+(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (threshold 1d-4))
   "The standard illuminant is D65: that of RGBSPACE must also be D65."
-  (multiple-value-bind (qrgb out-of-gamut)
-      (apply (rcurry #'xyz-to-qrgb :rgbspace rgbspace :threshold threshold)
-	     (mhvc-to-xyz hue40 value chroma))
-    (if (and (= chroma 0))
-	(values qrgb nil)
-	(values qrgb out-of-gamut))))
+  (multiple-value-bind (qr qg qb out-of-gamut)
+      (multiple-value-call #'xyz-to-qrgb
+	(mhvc-to-xyz hue40 value chroma) :rgbspace rgbspace :threshold threshold)
+    ;(if (zerop chroma)
+    ;;	(values qr qg qb nil)
+	(values qr qg qb out-of-gamut)))
+;; )
+
+
+(defun bench-mhvc-to-qrgb (&optional (num 300000))
+  (time (dotimes (x num)
+	  (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
 
 
 (define-condition invalid-munsell-spec-error (simple-error)
@@ -580,21 +585,3 @@ equal to MAX-ITERATION.
 	      (incf sum)
 	      (format t "~A ~A ~A, (~a ~a ~a) ~A~%" lstar cstarab hab r g b ite))))))))
 
-
-;; CL-USER> (dufy::bench-mhvc-to-lchab 1000000)
-;; Evaluation took:
-;;   3.609 seconds of real time
-;;   3.609375 seconds of total run time (3.593750 user, 0.015625 system)
-;;   [ Run times consist of 0.234 seconds GC time, and 3.376 seconds non-GC time. ]
-;;   100.00% CPU
-;;   9,027,683,932 processor cycles
-;;   3,592,749,056 bytes consed
-
-;; CL-USER> (dufy::bench-mhvc-to-lchab 1000000)
-;; Evaluation took:
-;;   4.062 seconds of real time
-;;   4.062500 seconds of total run time (4.062500 user, 0.000000 system)
-;;   [ Run times consist of 0.079 seconds GC time, and 3.984 seconds non-GC time. ]
-;;   100.00% CPU
-;;   10,132,278,943 processor cycles
-;;   4,589,905,232 bytes consed
