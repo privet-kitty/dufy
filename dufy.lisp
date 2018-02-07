@@ -13,7 +13,7 @@
   ;; nominal range of gamma-corrected values
   (nominal-min 0d0 :type double-float)
   (nominal-max 1d0 :type double-float)
-  (quantized-max 255 :type (integer 1 #.most-positive-fixnum)))
+  (quantized-max 255 :type (integer 0 #.most-positive-fixnum)))
 
 (defun make-quantization (&optional (bit-per-channel 8)
 			    (min 0d0)
@@ -110,11 +110,11 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 		     :initial-contents (list (list xr xg xb)
 					     (list yr yg yb)
 					     (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
-    (destructuring-bind (sr sg sb)
-	(multiply-matrix-and-vec (invert-matrix33 coordinates)
-				 (illuminant-largex illuminant)
-				 (illuminant-largey illuminant)
-				 (illuminant-largez illuminant))
+    (multiple-value-bind (sr sg sb)
+	(multiply-mat-vec (invert-matrix33 coordinates)
+			  (illuminant-x illuminant)
+			  (illuminant-y illuminant)
+			  (illuminant-z illuminant))
       (let* ((mat
 	      (make-array '(3 3)
 			  :element-type 'double-float
@@ -192,7 +192,8 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
 		:linearizer #'linearize-srgb				
 		:delinearizer #'delinearize-srgb
-		:force-normal t))
+		:force-normal t)
+  "sRGB")
 
 (defparameter +bg-srgb-10+
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
@@ -201,7 +202,7 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 		:lmin -0.53d0
 		:lmax 1.68d0
 		:bit-per-channel 10)
-  "bg-sRGB, 10bit
+  "bg-sRGB, 10-bit per channel
 http://www.color.org/chardata/rgb/bgsrgb.xalter")
 
 (defparameter +scrgb-16+
@@ -240,7 +241,7 @@ http://www.color.org/chardata/rgb/scrgb-nl.xalter")
   (make-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
 		:linearizer (gen-linearizer #.(float 563/256 1d0))
 		:delinearizer (gen-delinearizer #.(float 563/256 1d0)))
-  "Adobe RGB (1998), 8bit per channel")
+  "Adobe RGB (1998), 8-bit per channel")
 
 (defparameter +ntsc1953+
   (make-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
@@ -271,7 +272,9 @@ http://www.color.org/chardata/rgb/scrgb-nl.xalter")
   (make-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
 		:illuminant +illum-d50+
 		:linearizer #'linearize-prophoto
-		:delinearizer #'delinearize-prophoto))		      
+		:delinearizer #'delinearize-prophoto)
+  "Prophoto RGB (also known as ROMM RGB), 8-bit per channel,
+http://www.color.org/ROMMRGB.pdf")		      
  
 
 (defun xyz-to-lrgb (x y z &key (rgbspace +srgb+) (threshold 1d-4))
@@ -280,17 +283,17 @@ OUT-OF-GAMUT-P is true, if at least one of LR, LG and LB is outside
 the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
   (let ((inf (- (rgbspace-lmin rgbspace) threshold))
 	(sup (+ (rgbspace-lmax rgbspace) threshold)))
-    (destructuring-bind (lr lg lb)
-	(multiply-matrix-and-vec (rgbspace-from-xyz-matrix rgbspace)
-				 x y z)
-      (values (list lr lg lb)
+    (multiple-value-bind (lr lg lb)
+	(multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
+			  x y z)
+      (values lr lg lb
 	      (not (and  (<= inf lr sup)
 			 (<= inf lg sup)
 			 (<= inf lb sup)))))))
 
 (defun lrgb-to-xyz (lr lg lb &optional (rgbspace +srgb+))
-  (multiply-matrix-and-vec (rgbspace-to-xyz-matrix rgbspace)
-			    lr lg lb))		       
+  (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
+		    lr lg lb))		       
 
 (defun copy-rgbspace (rgbspace &key (illuminant nil) (bit-per-channel nil))
   "Returns a new RGBSPACE with different standard illuminant and/or
@@ -328,23 +331,27 @@ are nil, it is just a copier."
 
 (defparameter +adobe-16+
   (copy-rgbspace +adobe+ :bit-per-channel 16)
-  "Adobe RGB (1998), 16 bit per channel.")
+  "Adobe RGB (1998), 16-bit per channel.")
 
 (defparameter +bg-srgb-12+
   (copy-rgbspace +bg-srgb-10+ :bit-per-channel 12)
-  "bg-sRGB, 12 bit per channel,
+  "bg-sRGB, 12-bit per channel,
 http://www.color.org/chardata/rgb/bgsrgb.xalter")
 
 (defparameter +bg-srgb-16+
   (copy-rgbspace +bg-srgb-10+ :bit-per-channel 16)
-  "bg-sRGB, 16 bit per channel,
+  "bg-sRGB, 16-bit per channel,
 http://www.color.org/chardata/rgb/bgsrgb.xalter")
 
 (defparameter +prophoto-12+
-  (copy-rgbspace +prophoto+ :bit-per-channel 12))
+  (copy-rgbspace +prophoto+ :bit-per-channel 12)
+  "Prophoto RGB (also known as ROMM RGB), 12-bit per channel,
+http://www.color.org/ROMMRGB.pdf")
 
 (defparameter +prophoto-16+
-  (copy-rgbspace +prophoto+ :bit-per-channel 16))
+  (copy-rgbspace +prophoto+ :bit-per-channel 16)
+  "Prophoto RGB (also known as ROMM RGB), 16-bit per channel,
+http://www.color.org/ROMMRGB.pdf")
 
 (defun linearize (x &optional (rgbspace +srgb+))
   (funcall (rgbspace-linearizer rgbspace) x))
@@ -354,59 +361,67 @@ http://www.color.org/chardata/rgb/bgsrgb.xalter")
 
 (defun lrgb-to-rgb (lr lg lb &optional (rgbspace +srgb+))
   (let ((delin (rgbspace-delinearizer rgbspace)))
-    (list (funcall delin lr)
-	  (funcall delin lg)
-	  (funcall delin lb))))
+    (values (funcall delin lr)
+	    (funcall delin lg)
+	    (funcall delin lb))))
 
 (defun rgb-to-lrgb (r g b &optional (rgbspace +srgb+))
   (let ((lin (rgbspace-linearizer rgbspace)))
-    (list (funcall lin r)
-	  (funcall lin g)
-	  (funcall lin b))))
+    (values (funcall lin r)
+	    (funcall lin g)
+	    (funcall lin b))))
 
 (defun xyz-to-rgb (x y z &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns multiple values: (R G B), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
 THRESHOLD]."
-  (multiple-value-bind (lrgb out-of-gamut)
+  (multiple-value-bind (lr lg lb out-of-gamut)
       (xyz-to-lrgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (mapcar (rgbspace-delinearizer rgbspace) lrgb)
-	    out-of-gamut)))
+    (multiple-value-bind (r g b)
+	(lrgb-to-rgb lr lg lb rgbspace)
+      (values r g b out-of-gamut))))
 
 (defun rgb-to-xyz (r g b &optional (rgbspace +srgb+))
-  (apply (rcurry #'lrgb-to-xyz rgbspace)
-	 (rgb-to-lrgb r g b rgbspace)))
+  (multiple-value-call #'lrgb-to-xyz
+    (rgb-to-lrgb r g b rgbspace)
+    rgbspace))
 
 
-(defun rgb-to-qrgb (r g b &optional (rgbspace +srgb+))
+(defun rgb-to-qrgb (r g b &key (rgbspace +srgb+) (clamp nil))
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1], typically) to {0, 1,
 ..., RGBSPACE-QMAX} ({0, 1, ..., 255}, typically), though it accepts
 all the real values."
-  (let ((quantizer (rgbspace-quantizer rgbspace)))
-    (list (funcall quantizer r)
-	  (funcall quantizer g)
-	  (funcall quantizer b))))
+  (let ((quantizer (compose (the single-valued-function
+				 (if clamp
+				     (rcurry #'clamp 0d0 (rgbspace-qmax rgbspace))
+				     #'identity))
+			    (rgbspace-quantizer rgbspace))))
+    (values (funcall quantizer r) 
+	    (funcall quantizer g)
+	    (funcall quantizer b))))
 
 (defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
   (let ((dequantizer (rgbspace-dequantizer rgbspace)))
-    (list (funcall dequantizer qr)
-	  (funcall dequantizer qg)
-	  (funcall dequantizer qb))))
+    (values (funcall dequantizer qr)
+	    (funcall dequantizer qg)
+	    (funcall dequantizer qb))))
 
-(defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (threshold 1d-4))
+(defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (threshold 1d-4) (clamp nil))
   "Returns multiple values: (QR QG QB), OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
 THRESHOLD]."
-  (multiple-value-bind (rgb out-of-gamut)
+  (multiple-value-bind (r g b out-of-gamut)
       (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (apply (rcurry #'rgb-to-qrgb rgbspace) rgb)
-	    out-of-gamut)))
+    (multiple-value-bind (qr qg qb)
+	(rgb-to-qrgb r g b :rgbspace rgbspace :clamp clamp)
+      (values qr qg qb out-of-gamut))))
 
 (defun qrgb-to-xyz (qr qg qb &optional (rgbspace +srgb+))
-  (apply (rcurry #'rgb-to-xyz rgbspace)
-	 (qrgb-to-rgb qr qg qb rgbspace)))
+  (multiple-value-call #'rgb-to-xyz
+    (qrgb-to-rgb qr qg qb rgbspace)
+    rgbspace))
 
 
 (defun qrgb-to-hex (qr qg qb &optional (rgbspace +srgb+))
@@ -419,9 +434,9 @@ THRESHOLD]."
 (defun hex-to-qrgb (hex &optional (rgbspace +srgb+))
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
 	(qmax (rgbspace-qmax rgbspace)))
-    (list (logand (ash hex (+ minus-bpc minus-bpc)) qmax)
-	  (logand (ash hex minus-bpc) qmax)
-	  (logand hex qmax))))
+    (values (logand (ash hex (+ minus-bpc minus-bpc)) qmax)
+	    (logand (ash hex minus-bpc) qmax)
+	    (logand hex qmax))))
 
 ;; (defun hex-to-rgb (hex)
 ;;   (apply #'qrgb-to-rgb
@@ -432,26 +447,26 @@ THRESHOLD]."
 ;; 	 (rgb-to-qrgb r g b)))
 
 (defun hex-to-xyz (hex &optional (rgbspace +srgb+))
-  (apply (rcurry #'qrgb-to-xyz rgbspace)
-	 (hex-to-qrgb hex rgbspace)))
+  (multiple-value-call #'qrgb-to-xyz
+    (hex-to-qrgb hex rgbspace)
+    rgbspace))
 
 (defun xyz-to-hex (x y z &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns multiple values: HEX, OUT-OF-GAMUT-P.
 OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
 are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
 THRESHOLD]."
-  (multiple-value-bind (qrgb out-of-gamut)
+  (multiple-value-bind (qr qg qb out-of-gamut)
       (xyz-to-qrgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (apply (rcurry #'qrgb-to-hex rgbspace) qrgb)
+    (values (qrgb-to-hex qr qg qb rgbspace)
 	    out-of-gamut)))
-	 
 
 ;;;
 ;;; L*a*b*, L*u*v*, LCh
 ;;;
 
 (declaim (inline function-f)
-	 (ftype (function (double-float) double-float) function-f))
+	 (ftype (function * double-float) function-f))
 (defun function-f (x)
   (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
@@ -461,16 +476,16 @@ THRESHOLD]."
 
 (defun xyz-to-lab (x y z &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
-  (let ((fx (function-f (/ (float x 1d0) (illuminant-largex illuminant))))
+  (let ((fx (function-f (/ (float x 1d0) (illuminant-x illuminant))))
 	(fy (function-f (float y 1d0)))
-	(fz (function-f (/ (float z 1d0) (illuminant-largez illuminant)))))
-    (list (- (* 116d0 fy) 16d0)
-	  (* 500d0 (- fx fy))
-	  (* 200d0 (- fy fz)))))
+	(fz (function-f (/ (float z 1d0) (illuminant-z illuminant)))))
+    (values (- (* 116d0 fy) 16d0)
+	    (* 500d0 (- fx fy))
+	    (* 200d0 (- fy fz)))))
 
-(defun xyy-to-lab (x y largey &optional (illuminant +illum-d65+))
-  (destructuring-bind (x y z) (xyy-to-xyz x y largey)
-    (xyz-to-lab x y z illuminant)))
+(defun xyy-to-lab (small-x small-y y &optional (illuminant +illum-d65+))
+  (multiple-value-bind (new-x new-y new-z) (xyy-to-xyz small-x small-y y)
+    (xyz-to-lab new-x new-y new-z illuminant)))
 
 (defun lab-to-xyz (lstar astar bstar &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1))
@@ -478,15 +493,15 @@ THRESHOLD]."
   (let* ((fy (* (+ lstar 16d0) #.(float 1/116 1d0)))
 	 (fx (+ fy (* astar 0.002d0)))
 	 (fz (- fy (* bstar 0.005d0))))
-    (list (if (> fx #.(float 6/29 1d0))
-	      (* (illuminant-largex illuminant) fx fx fx)
-	      (* (- fx #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-largex illuminant)))
-	  (if (> fy #.(float 6/29 1d0))
-	      (* fy fy fy)
-	      (* (- fy #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29)))
-	  (if (> fz #.(float 6/29 1d0))
-	      (* (illuminant-largez illuminant) fz fz fz)
-	      (* (- fz #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-largez illuminant))))))
+    (values (if (> fx #.(float 6/29 1d0))
+		(* (illuminant-x illuminant) fx fx fx)
+		(* (- fx #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-x illuminant)))
+	    (if (> fy #.(float 6/29 1d0))
+		(* fy fy fy)
+		(* (- fy #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29)))
+	    (if (> fz #.(float 6/29 1d0))
+		(* (illuminant-z illuminant) fz fz fz)
+		(* (- fz #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-z illuminant))))))
 
 (defun lstar-to-y (lstar)
   (declare (optimize (speed 3) (safety 1))
@@ -502,34 +517,38 @@ THRESHOLD]."
   (- (* 116d0 (function-f (float y 1d0))) 16d0))
  
 (defun lab-to-xyy (lstar astar bstar &optional (illuminant +illum-d65+))
-  (destructuring-bind (x y z) (lab-to-xyz lstar astar bstar illuminant)
-    (xyz-to-xyy x y z)))
+  (multiple-value-call #'xyz-to-xyy
+    (lab-to-xyz lstar astar bstar illuminant)))
 
 (define-constant CONST-TWO-PI/360 (/ TWO-PI 360))
 (define-constant CONST-360/TWO-PI (/ 360 TWO-PI))
 
 (defun lab-to-lchab (lstar astar bstar)
-  (list lstar
-	(sqrt (+ (* astar astar) (* bstar bstar)))
-	(mod (* (atan bstar astar) CONST-360/TWO-PI) 360d0)))
+  (values lstar
+	  (sqrt (+ (* astar astar) (* bstar bstar)))
+	  (mod (* (atan bstar astar) CONST-360/TWO-PI) 360d0)))
 
 (defun lchab-to-lab (lstar cstarab hab)
   (let ((hue-two-pi (* hab CONST-TWO-PI/360)))
-    (list lstar (* cstarab (cos hue-two-pi)) (* cstarab (sin hue-two-pi)))))
+    (values lstar
+	    (* cstarab (cos hue-two-pi))
+	    (* cstarab (sin hue-two-pi)))))
 
 (defun xyz-to-lchab (x y z &optional (illuminant +illum-d65+))
-  (apply #'lab-to-lchab (xyz-to-lab x y z illuminant)))
+  (multiple-value-call #'lab-to-lchab (xyz-to-lab x y z illuminant)))
 
-(defun xyy-to-lchab (x y largey &optional (illuminant +illum-d65+))
-  (apply #'lab-to-lchab (xyy-to-lab x y largey illuminant)))
+(defun xyy-to-lchab (small-x small-y y &optional (illuminant +illum-d65+))
+  (multiple-value-call #'lab-to-lchab (xyy-to-lab small-x small-y y illuminant)))
 
 (defun lchab-to-xyz (lstar cstarab hab &optional (illuminant +illum-d65+))
-  (destructuring-bind (l a b) (lchab-to-lab lstar cstarab hab)
-    (lab-to-xyz l a b illuminant)))
+  (multiple-value-call #'lab-to-xyz
+      (lchab-to-lab lstar cstarab hab)
+      illuminant))
 
 (defun lchab-to-xyy (lstar cstarab hab &optional (illuminant +illum-d65+))
-  (destructuring-bind (x y z) (lchab-to-xyz lstar cstarab hab illuminant)
-    (xyz-to-xyy x y z)))
+  (multiple-value-call #'xyz-to-xyy
+    (lchab-to-xyz lstar cstarab hab illuminant)) )
+
 
 (defun calc-uvprime (x y)
   (let ((denom (+ (* -2d0 x) (* 12d0 y) 3d0)))
@@ -543,8 +562,8 @@ THRESHOLD]."
 
 (defun xyz-to-luv (x y z &optional (illuminant +illum-d65+))
   (destructuring-bind (uprime vprime) (calc-uvprime-from-xyz x y z)
-    (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-x illuminant) (illuminant-y illuminant))
-      (let* ((yr (/ y (illuminant-largey illuminant)))
+    (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-small-x illuminant) (illuminant-small-y illuminant))
+      (let* ((yr (/ y (illuminant-y illuminant)))
 	     (lstar (if (> yr 0.008856451679035631d0)
 			(- (* 116d0 (expt yr #.(float 1/3 1d0))) 16d0)
 			(* 903.2962962962963d0 yr))))
@@ -553,15 +572,15 @@ THRESHOLD]."
 	      (* 13d0 lstar (- vprime vrprime)))))))
 
 (defun luv-to-xyz (lstar ustar vstar &optional (illuminant +illum-d65+))
-  (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-x illuminant) (illuminant-y illuminant))
+  (destructuring-bind (urprime vrprime) (calc-uvprime (illuminant-small-x illuminant) (illuminant-small-y illuminant))
     (let* ((uprime (+ (/ ustar (* 13d0 lstar)) urprime))
 	   (vprime (+ (/ vstar (* 13d0 lstar)) vrprime))
 	   (l (/ (+ lstar 16d0) 116d0))
 	   (y (if (<= lstar 8d0)
-		  (* (illuminant-largey illuminant)
+		  (* (illuminant-y illuminant)
 		     lstar
 		     0.008856451679035631d0)
-		  (* (illuminant-largey illuminant)
+		  (* (illuminant-y illuminant)
 		     (* l l l)))))
       (list (* y (/ (* 9d0 uprime) (* 4d0 vprime)))
 	    y

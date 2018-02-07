@@ -5,6 +5,8 @@
 
 (define-constant TWO-PI (+ PI PI))
 
+(deftype single-valued-function () '(function * (values t &optional)))
+
 (defun nearly= (threshold number &rest more-numbers)
   (if (null more-numbers)
       t
@@ -23,7 +25,8 @@
       (and (<= (- number (car (the cons more-numbers))) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
-(defparameter *empty-function* ())
+(defun empty-function ()
+  "Used instead of NIL.")
 
 
 ;;;
@@ -99,6 +102,10 @@ THETA2] in a circle group."
   (make-array '(3 3) :element-type 'double-float
 	      :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 
+(defparameter +empty-matrix+
+  (make-array '(3 3) :element-type 'double-float)
+  "Used instead of NIL")
+
 (defun invert-matrix33 (mat)
   (let ((det (+ (* (aref mat 0 0) (aref mat 1 1) (aref mat 2 2))
 		(* (aref mat 1 0) (aref mat 2 1) (aref mat 0 2))
@@ -127,13 +134,13 @@ THETA2] in a circle group."
 				  (* (aref mat 0 1) (aref mat 1 0))) det))
 	  invmat))
 
-(defun multiply-matrix-and-vec (matrix x y z)
-  (list (+ (* x (aref matrix 0 0))
-	   (* y (aref matrix 0 1))
-	   (* z (aref matrix 0 2)))
-	(+ (* x (aref matrix 1 0))
-	   (* y (aref matrix 1 1))
-	   (* z (aref matrix 1 2)))
-	(+ (* x (aref matrix 2 0))
-	   (* y (aref matrix 2 1))
-	   (* z (aref matrix 2 2)))))
+(defun multiply-mat-vec (matrix x y z)
+  (values (+ (* x (aref matrix 0 0))
+	     (* y (aref matrix 0 1))
+	     (* z (aref matrix 0 2)))
+	  (+ (* x (aref matrix 1 0))
+	     (* y (aref matrix 1 1))
+	     (* z (aref matrix 1 2)))
+	  (+ (* x (aref matrix 2 0))
+	     (* y (aref matrix 2 1))
+	     (* z (aref matrix 2 2)))))

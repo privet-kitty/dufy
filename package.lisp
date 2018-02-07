@@ -5,6 +5,11 @@
   (:export :nearyly=
 	   :nearly<=
 	   :nearly-equal
+	   :circular-nearer
+	   :circular-clamp
+	   :circular-lerp
+	   :circular-member
+	   
 
 	   ;; xyz.lisp
 	   :gen-spectrum
@@ -31,17 +36,18 @@
 	   :xyy-to-xyz
 	   :xyz-to-xyy
 	   :illuminant
+	   :illuminant-small-x
+	   :illuminant-small-y
 	   :illuminant-x
 	   :illuminant-y
-	   :illuminant-largex
-	   :illuminant-largey
-	   :illuminant-largez
+	   :illuminant-z
 	   :illuminant-spectrum
+	   :illuminant-observer
+	   :illuminant-has-spectrum
 	   :make-illuminant
 	   :make-illuminant-by-spd
 	   :+illum-a+ :+illum-e+
 	   :+illum-c+ :+illum-d50+ :+illum-d65+
-	   :calc-cat-matrix
 	   :gen-cat-function
 
 	   :cat
@@ -64,7 +70,7 @@
 	   :+scrgb-16+ :+scrgb-nl+
 	   :+adobe+ :+adobe-16+
 	   :+ntsc1953+ :+pal/secam+
-	   :+prophoto+ :+prophoto-12+ :prophoto-16+
+	   :+prophoto+ :+prophoto-12+ :+prophoto-16+
 	   :make-rgbspace
 	   :copy-rgbspace
 	   :rgbspace-linearizer
@@ -108,8 +114,8 @@
 	   :xyz-to-lchuv
 	   :lchuv-to-xyz
 
-	   :delinearize
-	   :linearize
+	   ;; :delinearize
+	   ;; :linearize
 	   :nearly=
 	   :nearly<=
 	   :xyz-to-lrgb
