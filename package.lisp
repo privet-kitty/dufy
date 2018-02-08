@@ -90,6 +90,7 @@
 	   :rgbspace-bit-per-channel
 	   :rgbspace-min
 	   :rgbspace-max
+	   :rgbspace-qmax
 	   :rgbspace-quantizer
 	   :rgbspace-dequantizer
 	   :gen-linearizer

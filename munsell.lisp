@@ -363,10 +363,13 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	      (t (error (make-condition 'invalid-munsell-spec-error
 					:spec (format nil "Invalid hue designator: ~A" hue-name)))))))
       (if (< hue-number 0)
-	  (list 0d0 (car lst) 0d0)
-	  (progn
-	    (setf (car lst) (+ (* hue-number 4) (/ (* (car lst) 2) 5)))
-	    lst)))))
+	  (values 0d0 (car lst) 0d0)
+	  (if (/= (length lst) 3)
+	      (error (make-condition 'invalid-munsell-spec-error
+				     :spec lst))
+	      (progn
+		(setf (car lst) (+ (* hue-number 4) (/ (* (car lst) 2) 5)))
+		(values-list lst)))))))
 
 (defun mhvc-to-munsell (hue40 value chroma &optional (digits 2))
   (let ((unit (concatenate 'string "~," (write-to-string digits) "F")))
@@ -384,18 +387,18 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 
 
 (defun munsell-out-of-mrd-p (munsellspec)
-  (apply #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
+  (multiple-value-call #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
 
 (defun munsell-to-lchab (munsellspec)
   "Illuminant C."
-  (destructuring-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
+  (multiple-value-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
     (if (mhvc-invalid-p hue40 value chroma)
 	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
 	(mhvc-to-lchab hue40 value chroma))))
 
 (defun munsell-to-xyz (munsellspec)
   "Illuminant D65."
-  (destructuring-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
+  (multiple-value-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
     (if (mhvc-invalid-p hue40 value chroma)
 	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
 	(mhvc-to-xyz hue40 value chroma))))
@@ -403,18 +406,19 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 
 (defun munsell-to-xyy (munsellspec)
   "Illuminant D65."
-  (apply #'xyz-to-xyy (munsell-to-xyz munsellspec)))
+  (multiple-value-call #'xyz-to-xyy (munsell-to-xyz munsellspec)))
 
 
 (defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (threshold 0.001d0))
   "Illuminant D65; the standard illuminant of RGBSPACE must also be D65.
 It returns multiple values: (QR QG QB), OUT-OF-GAMUT-P."
-  (apply (rcurry #'xyz-to-qrgb :rgbspace rgbspace :threshold threshold)
-	 (munsell-to-xyz munsellspec)))
+  (multiple-value-call #'xyz-to-qrgb
+    (munsell-to-xyz munsellspec)
+     :rgbspace rgbspace :threshold threshold))
 
 
 (defun max-chroma-lchab (hue40 value &key (use-dark t))
-  "Returns the LCH(ab) value of the color on the max-chroma boundary in MRD."
+  "Returns the LCh(ab) value of the color on the max-chroma boundary in MRD."
   (mhvc-to-lchab hue40
 		 value
 		 (max-chroma hue40 value :use-dark use-dark)))
@@ -424,19 +428,6 @@ It returns multiple values: (QR QG QB), OUT-OF-GAMUT-P."
   (if (<= (- x (floor x)) epsilon)
       (floor x)
       x))
-			   
-;; (defun find-hue40-floor-with-max-chroma (lstar hab)
-;;   (let* ((inf 0)
-;; 	 (sup 40)
-;; 	 (value (lstar 
-;; 	 (lchab-inf (list lstar
-;; 			  (max-chroma-lchab inf (
-;;     (loop
-;; 	 (if (<= (- sup inf) 1)
-;; 	     (return inf)
-;; 	     (let ((mid (round (/ (+ sup inf) 2))))
-	       
-	       
 	   
 (defun rough-munsell-hue-to-hab (h)
   (mod (* h 9) 360))
@@ -449,9 +440,9 @@ It returns multiple values: (QR QG QB), OUT-OF-GAMUT-P."
 (defun rough-lchab-to-mhvc (lstar cstarab hab)
   (declare (optimize (speed 3) (safety 0))
 	   (double-float lstar cstarab hab))
-  (list (* hab #.(float 40/360 1d0))
-	(lstar-to-munsell-value lstar)
-	(* cstarab #.(/ 5.5d0))))
+  (values (* hab #.(float 40/360 1d0))
+	  (lstar-to-munsell-value lstar)
+	  (* cstarab #.(/ 5.5d0))))
 
 (defun lstar-to-munsell-value (lstar)
   (y-to-munsell-value (lstar-to-y lstar)))
@@ -480,28 +471,20 @@ It returns multiple values: (QR QG QB), OUT-OF-GAMUT-P."
 	(v (lstar-to-munsell-value lstar))
 	(tmp-c (float init-chroma 1d0)))
     (declare (double-float tmp-hue40))
-    (values-list
-     (dotimes (i max-iteration (list (list (mod tmp-hue40 40) v tmp-c)
-				     max-iteration))
-       (destructuring-bind (disused tmp-cstarab tmp-hab)
-	   (mhvc-to-lchab tmp-hue40 v tmp-c)
-	 (declare (ignore disused)
-		  (double-float tmp-cstarab tmp-hab))
-	 (let* ((delta-cstarab (- cstarab tmp-cstarab))
-		(delta-hab (circular-delta hab tmp-hab))
-		(delta-hue40 (* delta-hab #.(float 40/360 1d0)))
-		(delta-c (* delta-cstarab #.(/ 5.5d0))))
-	   ;; (destructuring-bind (x y largeY)
-	   ;; 	   (apply #'xyz-to-xyy
-	   ;; 		  (apply (gen-cat-function +illum-d65+ +illum-c+)
-	   ;; 			 (lchab-to-xyz lstar tmp-cstarab tmp-hab)))
-	   ;; 	 (format t "~A ~A ~A~%" x y largey))
-	   (if (and (<= (abs delta-hue40) threshold)
-		    (<= (abs delta-c) threshold))
-	       (return (list (list (mod tmp-hue40 40d0) v tmp-c)
-			     i))
-	       (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
-		     tmp-c (max (+ tmp-c (* factor delta-c)) 0d0)))))))))
+    (dotimes (i max-iteration (values (mod tmp-hue40 40) v tmp-c max-iteration))
+      (multiple-value-bind (disused tmp-cstarab tmp-hab)
+	  (mhvc-to-lchab tmp-hue40 v tmp-c)
+	(declare (ignore disused)
+		 (double-float tmp-cstarab tmp-hab))
+	(let* ((delta-cstarab (- cstarab tmp-cstarab))
+	       (delta-hab (circular-delta hab tmp-hab))
+	       (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
+	       (delta-c (* delta-cstarab #.(/ 5.5d0))))
+	  (if (and (<= (abs delta-hue40) threshold)
+		   (<= (abs delta-c) threshold))
+	      (return (values (mod tmp-hue40 40d0) v tmp-c i))
+	      (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
+		    tmp-c (max (+ tmp-c (* factor delta-c)) 0d0))))))))
 
 
 (defun lchab-to-mhvc (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
@@ -514,16 +497,16 @@ where delta(H_n) and delta(C_n) is internally calculated at every
 step. H and C could diverge, if FACTOR is too large. The return
 values are as follows:
 1. If max(delta(H_n), delta(C_n)) falls below THRESHOLD:
-=> (H V C), NUMBER-OF-ITERATION.
+=> H V C NUMBER-OF-ITERATION.
 2. If the number of iteration exceeds MAX-ITERATION:
-=> (H V C), MAX-ITERATION.
+=> H V C MAX-ITERATION.
 In other words: The inversion has failed, if the second value is
 equal to MAX-ITERATION.
 "
   (let ((lstar (float lstar 1d0))
 	(cstarab (float cstarab 1d0))
 	(hab (float hab 1d0)))
-    (destructuring-bind (init-h disused init-c)
+    (multiple-value-bind (init-h disused init-c)
 	(rough-lchab-to-mhvc lstar cstarab hab)
       (declare (ignore disused))
       (invert-mhvc-to-lchab-with-init lstar cstarab hab
@@ -533,18 +516,15 @@ equal to MAX-ITERATION.
 				      :threshold threshold))))
 
 
-(defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+(defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant C."
-  (apply #'mhvc-to-munsell
-	 (lchab-to-mhvc lstar cstarab hab
-			:max-iteration max-iteration
-			:factor factor
-			:threshold threshold)))
-
-;; doesn't converge
-;; (dufy:lchab-to-mhvc 3.09565130553003d0 2.5275165653794356d0 117.79866815533752d0 :factor 0.5d0)
-;; (dufy:lchab-to-mhvc 2.0280881393322865d0 3.1180501904964038d0 118.30287515570836d0 :factor 0.2 :max-iteration 300)
-
+  (multiple-value-bind (h v c ite)
+      (lchab-to-mhvc lstar cstarab hab
+		     :max-iteration max-iteration
+		     :factor factor
+		     :threshold threshold)
+    (values (mhvc-to-munsell h v c digits)
+	    ite)))
 
 (defun test-inverter ()
   "For devel."
@@ -556,32 +536,32 @@ equal to MAX-ITERATION.
 	(do ((cstarab 0 (+ cstarab 10)))
 	    ((= cstarab 200) nil)
 	  (multiple-value-bind (lst number)
-	      (dufy::lchab-to-mhvc lstar cstarab hab
-				   :threshold 1d-6 :max-iteration max-iteration)
+	      (lchab-to-mhvc lstar cstarab hab
+			     :threshold 1d-6 :max-iteration max-iteration)
 	    (declare (ignore lst))
-	    (when (= number -1)
-	      (format t "beyond MRD at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab)
-	      (return))
 	    (when (= number max-iteration)
 	      (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
 
-(defun test-inverter2 (&optional (num-loop 100000))
+(defun test-inverter2 (&optional (num-loop 100000) (rgbspace +srgb+))
   "For devel."
-  (let ((d65-to-c (gen-cat-function +illum-d65+ +illum-c+))
+  (let ((qmax+1 (1+ (rgbspace-qmax rgbspace)))
+	(cat-func (gen-cat-function (rgbspace-illuminant rgbspace) +illum-c+))
 	(sum 0)
-	(my-xyz-to-lchab (rcurry #'xyz-to-lchab +illum-c+))
 	(max-ite 300))
     (dotimes (x num-loop (float (/ sum num-loop) 1d0))
-      (let ((r (random 65536)) (g (random 65536)) (b (random 65536)))
-	(destructuring-bind (lstar cstarab hab)
-	    (apply my-xyz-to-lchab
-		   (apply d65-to-c
-			  (rgb-to-xyz (/ r 65535d0) (/ g 65535d0) (/ b 65535d0)
-				      +adobe+)))
-	  (multiple-value-bind (lst ite)
+      (let ((qr (random qmax+1)) (qg (random qmax+1)) (qb (random qmax+1)))
+	(multiple-value-bind (lstar cstarab hab)
+	    (multiple-value-call #'xyz-to-lchab
+	      (multiple-value-call cat-func
+		(qrgb-to-xyz qr qg qb rgbspace))
+	      +illum-c+)
+	  (multiple-value-bind (h v c ite)
 	      (lchab-to-mhvc lstar cstarab hab :max-iteration max-ite :factor 0.5d0)
-	    (declare (ignore lst))
-	    (when (or (= ite max-ite) (= ite -1))
+	    (declare (ignore h v c))
+	    (when (= ite max-ite)
 	      (incf sum)
-	      (format t "~A ~A ~A, (~a ~a ~a) ~A~%" lstar cstarab hab r g b ite))))))))
+	      (format t "~A ~A ~A, (~a ~a ~a) ~A~%" lstar cstarab hab qr qg qb ite))))))))
 
+;; doesn't converge:
+;; LCH = 90.25015693115249d0 194.95626408656423d0 115.6958104971207d0
+;; (38754 63266 343) in ProPhoto-16

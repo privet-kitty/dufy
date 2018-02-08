@@ -135,6 +135,7 @@ THETA2] in a circle group."
 	  invmat))
 
 (defun multiply-mat-vec (matrix x y z)
+  (declare ((optimize (speed 3) (safety 0)))
   (values (+ (* x (aref matrix 0 0))
 	     (* y (aref matrix 0 1))
 	     (* z (aref matrix 0 2)))
