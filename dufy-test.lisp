@@ -79,30 +79,29 @@
     (is (nearly-equal 1d-4
 		      xyz
 		      (multiple-value-list
-		       (apply (rcurry #'rgb-to-xyz +scrgb-nl+)
-			      (subseq (multiple-value-list (apply (rcurry #'xyz-to-rgb :rgbspace +scrgb-nl+) xyz))
-				      0 3))))))
+		       (multiple-value-call #'rgb-to-xyz
+			 (apply (rcurry #'xyz-to-rgb +scrgb-nl+) xyz)
+			 +scrgb-nl+)))))
   (dolist (rgbspace (list +bg-srgb-16+ +prophoto-16+))
     (dolist (qrgb *qrgb16-set*)
       (is (equal qrgb
-		 (subseq (multiple-value-list
-			  (multiple-value-call #'xyz-to-qrgb
-			    (apply (rcurry #'qrgb-to-xyz rgbspace)
-				   qrgb)
-			    :rgbspace rgbspace))
-			 0 3)))))
-    (is (equal '(0 5001 65535)
-	       (multiple-value-list
-		(hex-to-qrgb (qrgb-to-hex 0 5001 65535 +bg-srgb-16+)
-			     +bg-srgb-16+))))
-    (dolist (hex '(#x000011112222 #xeeeeabcdffff))
-      (is (= hex
-	     (multiple-value-bind (hex flag)
-		 (multiple-value-call #'xyz-to-hex
+		 (multiple-value-list
+		  (multiple-value-call #'xyz-to-qrgb
+		    (apply (rcurry #'qrgb-to-xyz rgbspace)
+			   qrgb)
+		    :rgbspace rgbspace))))))
+  (is (equal '(0 5001 65535)
+	     (multiple-value-list
+	      (hex-to-qrgb (qrgb-to-hex 0 5001 65535 +bg-srgb-16+)
+			   +bg-srgb-16+))))
+  (dolist (hex '(#x000011112222 #xeeeeabcdffff))
+    (is (= hex
+	   (multiple-value-bind (hex flag)
+	       (multiple-value-call #'xyz-to-hex
 		   (hex-to-xyz hex +bg-srgb-16+)
-		   :rgbspace +bg-srgb-16+)
-	       (declare (ignore flag))
-	       hex)))))
+		   +bg-srgb-16+)
+	     (declare (ignore flag))
+	     hex)))))
 	     
 (test test-lab/luv
   (dolist (xyy *xyy-set*)
@@ -129,22 +128,20 @@
 	 (is (nearly-equal 1d-4
 			   xyz
 			   (multiple-value-list
-			    (apply (rcurry foo-to-xyz +bg-srgb-16+)
-				   (subseq (multiple-value-list
-					    (apply (rcurry xyz-to-foo :rgbspace +bg-srgb-16+)
-						   xyz))
-					   0 3)))))))
+			    (multiple-value-call foo-to-xyz
+			      (apply (rcurry xyz-to-foo +bg-srgb-16+)
+				     xyz)
+			      +bg-srgb-16+))))))
   (loop for qrgb-to-foo in '(qrgb-to-hsv qrgb-to-hsl)
      for foo-to-qrgb in '(hsv-to-qrgb hsl-to-qrgb) do
        (dolist (rgbspace (list +bg-srgb-16+ +prophoto-16+))
 	 (dolist (qrgb *qrgb16-set*)
 	   (is (equal qrgb
-		      (subseq (multiple-value-list
-			       (multiple-value-call foo-to-qrgb
-				 (apply (rcurry qrgb-to-foo rgbspace)
-					qrgb)
-				 rgbspace))
-			      0 3)))))))
+		      (multiple-value-list
+		       (multiple-value-call foo-to-qrgb
+			 (apply (rcurry qrgb-to-foo rgbspace)
+				qrgb)
+			 :rgbspace rgbspace))))))))
 
 (test test-deltae
   (let ((*read-default-float-format* 'double-float))

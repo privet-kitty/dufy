@@ -4,7 +4,7 @@ Dufy - Color Library for Common Lisp
 Dufy is a library for an exact color manipulation and conversion in various color models, which supports the following color spaces:
 
 * Munsell color system
-* All kinds of RGB spaces: sRGB, Adobe RGB, etc. (User-defined RGB working space is available.)
+* RGB
 * XYZ
 * xyY
 * HSV
@@ -16,10 +16,11 @@ Dufy is a library for an exact color manipulation and conversion in various colo
 
 Dufy can deal with the following concepts:
 
-* Standard illuminant: C, D65, etc.
-* Observer (Color Matching Functions): CIE 1931 2° Standard Observer, CIE 1964 10°, etc.
-* Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIEDE2000, etc.
-* Chromatic adaptaion transform: Bradford, Von Kries, etc.
+* Standard illuminant: C, D65, etc. A new illuminant can be defined by white point or SPD.
+* RGB space: sRGB, Adobe RGB, scRGB(16), etc.  A new RGB space can be defined by primary coordinates, illuminant, method of gamma correction, bit per channel and other encoding characteristics.
+* Observer (Color Matching Functions): CIE 1931 2&deg; Standard Observer, CIE 1964 10&deg;. Other observer model can be defined by color matching data.
+* Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000.
+* Chromatic adaptaion transform: Bradford, Von Kries, etc. User-defined CAT is also available.
 
 
 # Dependencies
@@ -96,74 +97,81 @@ converter_tree
 converter_tree
 </details>
 
-The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns a list of numbers:
+The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns multiple numbers:
 
-    * (dufy:lab-to-xyz 48.26 -28.84 -8.475)  ; L*=48.26, a*=-28.84, b*=-8.475
-    => (0.11617539329731778d0 0.1699996724486797d0 0.23092502506058624d0)
+    * (dufy:lab-to-xyz 87.07 -78.15 -20.51)  ; L*=87.07, a*=-78.15, b*=-20.51
+    => 0.3731384408806708d0 ; X
+       0.701492216468595d0  ; Y
+       1.060034922742541d0  ; Z
+       
+    * (multiple-value-call #'dufy:xyz-to-qrgb
+        (dufy:lab-to-xyz 87.07 -78.15 -20.51))
+    => -169 ; R
+       255  ; G
+       255  ; B
 
-    * (apply #'dufy:xyz-to-qrgb *)
-    => (0 128 128)
-    => NIL
+    * (multiple-value-call #'dufy:xyz-to-qrgb
+        (dufy:lab-to-xyz 87.07 -78.15 -20.51)
+        :clamp t)
+    => 0    ; R
+       255  ; G
+       255  ; B
 
-In the above example of a conversion from CIELAB to RGB, `xyz-to-qrgb` returns two values. The second value is an out-of-gamut flag.
+In the second example, a conversion from CIELAB to quantized RGB, `xyz-to-qrgb` returns a negative R value, which means the color is out of gamut; it is clamped in the third example.
 
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601)
-    => (-169 255 255)
-    => T
-    ;; i.e. The input XYZ color is out of gamut,
-
-Out of which gamut, however? By default, `xyz-to-qrgb` (and other `-to-qrgb` converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
+Out of which gamut, however? By default, `xyz-to-qrgb` (and all other RGB converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
 
     * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+srgb+)  ; sRGB
-    => (-169 255 255)
-    => T 
+    => -169
+       255
+       255
 
     * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+adobe+) ; Adobe RGB
-    => (2 255 255)
-    => NIL
+    => 2
+       255
+       255
+    ;; In the Adobe RGB space the color is within gamut.
 
 Likewise most converters regard the implicit standard illuminant as D65. You can also specify it explicitly:
 
-    * (dufy:lab-to-xyz 48.26 -28.84 -8.475)                ; Illuminant D65 
-    * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:+illum-d65+) ; Illuminant D65
-    => (0.11617541639167948d0 0.16999970272400086d0 0.23092506326381615d0)
+    * (dufy:luv-to-xyz 100 0 0)                  ; Illuminant D65 
+    * (dufy:luv-to-xyz 100 0 0 dufy:+illum-d65+) ; Illuminant D65
+    => 0.9504285453771808d0
+       1.0d0
+       1.0889003707981282d0
+       ;; the white point of standard illuminant D65
 
-    * (dufy:lab-to-xyz 48.26 -28.84 -8.475 dufy:+illum-a+)   ; Illuminant A
-    => (0.13427074937083414d0 0.16999970272400086d0 0.07545998227535496d0)
+    * (dufy:luv-to-xyz 100 0 0 dufy:+illum-e+)   ; Illuminant E
+    => 0.9999999999999999d0
+       1.0d0
+       1.0000000000000004d0
 
-When you nest two or more converters, you may want to use higher-order functions like [alexandria:rcurry](https://common-lisp.net/project/alexandria/draft/alexandria.html#index-rcurry-61):
-
-    * (apply #'dufy:xyz-to-qrgb
-             (dufy:lab-to-xyz 87.0676 -78.1391 -20.5142))
-    => (-169 255 255)
-    => T
-
-    * (apply #'dufy:xyz-to-qrgb
-             (dufy:lab-to-xyz 87.0676 -78.1391 -20.5142)
-             :rgbspace dufy:+adobe+)
-    => GRAMMATICAL ERROR
-
-    * (apply (alexandria:rcurry #'dufy:xyz-to-qrgb :rgbspace dufy:+adobe+)
-             (dufy:lab-to-xyz 87.0676 -78.1391 -20.5142))
-    => (3 255 255)
-    => NIL
 
 ## Munsell Color System
-Dufy can handle Munsell color system in the same way as other color spaces:
+Dufy can handle the Munsell color system in the same way as other color spaces:
 
     * (dufy:munsell-to-xyz "3.2R 4.5/6.1")
-    => (0.19362651664295685d0 0.15142718526994225d0 0.12281280768620023d0)
+    => 0.19362651748394688d0
+       0.15142718526032797d0
+       0.12281280741243561d0
+       
     * (dufy:munsell-to-xyz "3.2R 4.5/86.1")
-    => (1.7829826193301206d0 0.13203741599941943d0 -0.029038360620048102d0)
+    => 1.7829826744317545d0
+       0.13203741531162577d0
+       -0.02903836122088697d0
 
 The converters are based on [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php). In the second example `munsell-to-xyz` extrapolate the colors far out of the data (and the MacAdam limits, of course), which is meaningless in many cases but will be necessary to process the boundary colors.
 
     * (dufy:munsell-to-mhvc "3.2R 4.5/6.1")
-    => (1.28 4.5 6.1)
+    => 1.28d0
+       4.5d0
+       6.1d0
     * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
-    => (0.19362651664295685d0 0.15142718526994225d0 0.12281280768620023d0)
+    => 0.19362651748394688d0
+       0.15142718526032797d0
+       0.12281280741243561d0
 
-`munsell` is the standard string notation of Munsell color. `mhvc` is its three-number specification, which will be easier to deal with in some cases. A hue number of `mhvc` corresponds to a hue string of `munsell` as follows:
+`munsell` is the standard string notation of Munsell color. `mhvc` is its three-number expression, which will be easier to deal with in some cases. A hue number of `mhvc` corresponds to a hue string of `munsell` as follows:
 
 | Hue in `mhvc` | Hue in `munsell` |
 | -------------------- | --------------------- | 
@@ -174,7 +182,7 @@ The converters are based on [Munsell renotation data](https://www.rit.edu/cos/co
 
 The hue of of `mhvc` is a circle group: i.e. hues outside the interval [0, 40] are acceptable:
 
-    * (dufy:mhvc-to-spec -400.0 4.5 6.1) ; the same as (0.0 4.5 6.1)
+    * (dufy:mhvc-to-munsell -400.0 4.5 6.1) ; the same as (0.0 4.5 6.1)
     => "0.00R 4.50/6.10"
     
 There are some more points to remember: First, since the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C, the converters like `mhvc-to-xyz` do the (Bradford) transformation from C to D65. If you want to use a direct converter with illuminant C, for e.g. accuracy or efficiency, the following converters are available under illuminant C: `munsell-to-lchab`, `lchab-to-munsell`, `mhvc-to-lchab`, `lchab-to-mhvc` `mhvc-to-xyz-illum-c`. 
@@ -184,7 +192,11 @@ Second, if you want to know the gamut of the Munsell renotation data, you can fi
     * (dufy:max-chroma 1.28 4.5)
     => 24
     * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
-    => (0.19362651667300654d0 0.1514271852669221d0 0.12281280847832986d0) ; interpolated, since 6.1 < 24
+    => 0.19362651667300654d0
+       0.1514271852669221d0
+       0.12281280847832986d0 ; interpolated, since 6.1 < 24
     * (dufy:mhvc-to-xyz 1.28 4.5 24.1)
-    => (0.378725146277375d0 0.14933867420177885d0 0.05430213863814263d0) ; extrapolated, since 24.1 > 24
-    
+    => 0.378725146277375d0
+       0.14933867420177885d0
+       0.05430213863814263d0 ; extrapolated, since 24.1 > 24
+       

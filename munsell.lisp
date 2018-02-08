@@ -303,31 +303,22 @@ the Illuminant C."
 ;;   (apply c-to-d65
 ;; 	 (apply #'xyy-to-xyz (mhvc-to-xyy hue40 value chroma))))
 
-(defun mhvc-to-lrgb (hue40 value chroma &key (rgbspace +srgb+) (threshold 1d-4))
-  "The standard illuminant is D65: that of RGBSPACE must also be D65.
-Note that boundary colors, e.g. pure white (N 10.0), could be judged
-as out-of-gamut by numerical error, if threshold is too small."
+(defun mhvc-to-lrgb (hue40 value chroma &optional (rgbspace +srgb+))
+  "The standard illuminant is D65: that of RGBSPACE must also be D65."
   (multiple-value-call #'xyz-to-lrgb
     (mhvc-to-xyz hue40 value chroma)
-    :rgbspace rgbspace
-    :threshold threshold))
+    rgbspace))
 
-
-(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (threshold 1d-4))
+(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp nil))
   "The standard illuminant is D65: that of RGBSPACE must also be D65."
-  (multiple-value-bind (qr qg qb out-of-gamut)
-      (multiple-value-call #'xyz-to-qrgb
-	(mhvc-to-xyz hue40 value chroma) :rgbspace rgbspace :threshold threshold)
-    ;(if (zerop chroma)
-    ;;	(values qr qg qb nil)
-	(values qr qg qb out-of-gamut)))
-;; )
-
+  (multiple-value-call #'xyz-to-qrgb
+    (mhvc-to-xyz hue40 value chroma)
+    :rgbspace rgbspace
+    :clamp clamp))
 
 (defun bench-mhvc-to-qrgb (&optional (num 300000))
   (time (dotimes (x num)
 	  (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
-
 
 (define-condition invalid-munsell-spec-error (simple-error)
   ((spec :initarg :spec
@@ -336,7 +327,6 @@ as out-of-gamut by numerical error, if threshold is too small."
   (:report (lambda (condition stream)
 	     (format stream "Invalid Munsell spec.: ~A"
 		     (cond-spec condition)))))
-
       
 (defun munsell-to-mhvc (munsellspec)
   "Usage Example:
@@ -409,12 +399,12 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (multiple-value-call #'xyz-to-xyy (munsell-to-xyz munsellspec)))
 
 
-(defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (threshold 0.001d0))
-  "Illuminant D65; the standard illuminant of RGBSPACE must also be D65.
-It returns multiple values: (QR QG QB), OUT-OF-GAMUT-P."
+(defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (clamp nil))
+  "Illuminant D65; the standard illuminant of RGBSPACE must also be D65."
   (multiple-value-call #'xyz-to-qrgb
     (munsell-to-xyz munsellspec)
-     :rgbspace rgbspace :threshold threshold))
+    :rgbspace rgbspace
+    :clamp clamp))
 
 
 (defun max-chroma-lchab (hue40 value &key (use-dark t))
@@ -564,4 +554,4 @@ equal to MAX-ITERATION.
 
 ;; doesn't converge:
 ;; LCH = 90.25015693115249d0 194.95626408656423d0 115.6958104971207d0
-;; (38754 63266 343) in ProPhoto-16
+;; (38754 63266 343) in ProPhoto, 16-bit

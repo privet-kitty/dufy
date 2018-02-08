@@ -277,19 +277,18 @@ http://www.color.org/chardata/rgb/scrgb-nl.xalter")
 http://www.color.org/ROMMRGB.pdf")		      
  
 
-(defun xyz-to-lrgb (x y z &key (rgbspace +srgb+) (threshold 1d-4))
-  "Returns multiple values: (LR LG LB), OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of LR, LG and LB is outside
-the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
+(defun lrgb-out-of-gamut-p (lr lg lb &key (rgbspace +srgb+) (threshold 1d-4))
+  "Returns true, if at least one of LR, LG and LB is outside the
+interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
   (let ((inf (- (rgbspace-lmin rgbspace) threshold))
 	(sup (+ (rgbspace-lmax rgbspace) threshold)))
-    (multiple-value-bind (lr lg lb)
-	(multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
-			  x y z)
-      (values lr lg lb
-	      (not (and  (<= inf lr sup)
-			 (<= inf lg sup)
-			 (<= inf lb sup)))))))
+    (not (and  (<= inf lr sup)
+	       (<= inf lg sup)
+	       (<= inf lb sup)))))
+
+(defun xyz-to-lrgb (x y z &optional (rgbspace +srgb+))
+  (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
+		    x y z))
 
 (defun lrgb-to-xyz (lr lg lb &optional (rgbspace +srgb+))
   (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
@@ -371,16 +370,19 @@ http://www.color.org/ROMMRGB.pdf")
 	    (funcall lin g)
 	    (funcall lin b))))
 
-(defun xyz-to-rgb (x y z &key (rgbspace +srgb+) (threshold 1d-4))
-  "Returns multiple values: (R G B), OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
-are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
-THRESHOLD]."
-  (multiple-value-bind (lr lg lb out-of-gamut)
-      (xyz-to-lrgb x y z :rgbspace rgbspace :threshold threshold)
-    (multiple-value-bind (r g b)
-	(lrgb-to-rgb lr lg lb rgbspace)
-      (values r g b out-of-gamut))))
+(defun rgb-out-of-gamut-p (r g b &key (rgbspace +srgb+) (threshold 1d-4))
+  "Returns true, if at least one of R, G and B is outside the interval
+[RGBSPACE-MIN - THRESHOLD, RGBSPACE-MAX + THRESHOLD]"
+  (let ((inf (- (rgbspace-min rgbspace) threshold))
+	(sup (+ (rgbspace-max rgbspace) threshold)))
+    (not (and (<= inf r sup)
+	      (<= inf g sup)
+	      (<= inf b sup)))))
+
+(defun xyz-to-rgb (x y z &optional (rgbspace +srgb+))
+  (multiple-value-call #'lrgb-to-rgb
+    (xyz-to-lrgb x y z rgbspace)
+    rgbspace))
 
 (defun rgb-to-xyz (r g b &optional (rgbspace +srgb+))
   (multiple-value-call #'lrgb-to-xyz
@@ -388,13 +390,20 @@ THRESHOLD]."
     rgbspace))
 
 
+(defun qrgb-out-of-gamut-p (qr qg qb &key (rgbspace +srgb+) (threshold 0))
+  (let ((inf (- threshold))
+	(sup (+ (rgbspace-qmax rgbspace) threshold)))
+    (not (and (<= inf qr sup)
+	      (<= inf qg sup)
+	      (<= inf qb sup)))))
+
 (defun rgb-to-qrgb (r g b &key (rgbspace +srgb+) (clamp nil))
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1], typically) to {0, 1,
 ..., RGBSPACE-QMAX} ({0, 1, ..., 255}, typically), though it accepts
 all the real values."
   (let ((quantizer (compose (the single-valued-function
 				 (if clamp
-				     (rcurry #'clamp 0d0 (rgbspace-qmax rgbspace))
+				     (rcurry #'clamp 0 (rgbspace-qmax rgbspace))
 				     #'identity))
 			    (rgbspace-quantizer rgbspace))))
     (values (funcall quantizer r) 
@@ -407,16 +416,11 @@ all the real values."
 	    (funcall dequantizer qg)
 	    (funcall dequantizer qb))))
 
-(defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (threshold 1d-4) (clamp nil))
-  "Returns multiple values: (QR QG QB), OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
-are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
-THRESHOLD]."
-  (multiple-value-bind (r g b out-of-gamut)
-      (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (multiple-value-bind (qr qg qb)
-	(rgb-to-qrgb r g b :rgbspace rgbspace :clamp clamp)
-      (values qr qg qb out-of-gamut))))
+(defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (clamp nil))
+  (multiple-value-call #'rgb-to-qrgb
+    (xyz-to-rgb x y z rgbspace)
+    :rgbspace rgbspace
+    :clamp clamp))
 
 (defun qrgb-to-xyz (qr qg qb &optional (rgbspace +srgb+))
   (multiple-value-call #'rgb-to-xyz
@@ -451,15 +455,11 @@ THRESHOLD]."
     (hex-to-qrgb hex rgbspace)
     rgbspace))
 
-(defun xyz-to-hex (x y z &key (rgbspace +srgb+) (threshold 1d-4))
-  "Returns multiple values: HEX, OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
-are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
-THRESHOLD]."
-  (multiple-value-bind (qr qg qb out-of-gamut)
-      (xyz-to-qrgb x y z :rgbspace rgbspace :threshold threshold)
-    (values (qrgb-to-hex qr qg qb rgbspace)
-	    out-of-gamut)))
+(defun xyz-to-hex (x y z &optional (rgbspace +srgb+))
+  (multiple-value-call #'qrgb-to-hex
+    (xyz-to-qrgb x y z :rgbspace rgbspace)
+    rgbspace))
+
 
 ;;;
 ;;; L*a*b*, L*u*v*, LCh
@@ -640,10 +640,11 @@ THRESHOLD]."
 	    ((= 4 h-prime-int) (values (+ base x) base (+ base c)))
 	    ((= 5 h-prime-int) (values (+ base c) base (+ base x)))))))
 	 
-(defun hsv-to-qrgb (hue sat val &optional (rgbspace +srgb+))
+(defun hsv-to-qrgb (hue sat val &key (rgbspace +srgb+) (clamp nil))
   (multiple-value-call #'rgb-to-qrgb
     (hsv-to-rgb hue sat val)
-    :rgbspace rgbspace))
+    :rgbspace rgbspace
+    :clamp clamp))
 
 (defun hsv-to-xyz (hue sat val &optional (rgbspace +srgb+))
   (multiple-value-call #'rgb-to-xyz
@@ -668,16 +669,9 @@ THRESHOLD]."
   (multiple-value-call #'rgb-to-hsv
     (qrgb-to-rgb qr qg qb rgbspace)))
 
-(defun xyz-to-hsv (x y z &key (rgbspace +srgb+) (threshold 1d-4))
-  "Returns multiple values: (H S V), OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of **linear** RGB values are
-outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
-THRESHOLD]."
-  (multiple-value-bind (r g b out-of-gamut)
-      (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (multiple-value-bind (h s v)
-	(rgb-to-hsv r g b)
-      (values h s v out-of-gamut))))
+(defun xyz-to-hsv (x y z &optional (rgbspace +srgb+))
+  (multiple-value-call #'rgb-to-hsv
+    (xyz-to-rgb x y z rgbspace)))
   
 
 (defun hsl-to-rgb (hue sat lum)
@@ -714,10 +708,11 @@ THRESHOLD]."
 				       (+ min (* delta (- 360d0 hue) #.(float 1/60 1d0)))))))))
  
 
-(defun hsl-to-qrgb (hue sat lum &optional (rgbspace +srgb+))
+(defun hsl-to-qrgb (hue sat lum &key (rgbspace +srgb+) (clamp nil))
   (multiple-value-call #'rgb-to-qrgb
     (hsl-to-rgb hue sat lum)
-    :rgbspace rgbspace))
+    :rgbspace rgbspace
+    :clamp clamp))
 
 (defun hsl-to-xyz (hue sat lum &optional (rgbspace +srgb+))
   (multiple-value-call #'rgb-to-xyz
@@ -746,13 +741,7 @@ THRESHOLD]."
     (qrgb-to-rgb qr qg qb rgbspace)))
 
 
-(defun xyz-to-hsl (x y z &key (rgbspace +srgb+) (threshold 1d-4))
-    "Returns multiple values: (H S L), OUT-OF-GAMUT-P.
-OUT-OF-GAMUT-P is true, if at least one of the **linear** RGB values
-are outside the interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX +
-THRESHOLD]."
-  (multiple-value-bind (r g b out-of-gamut)
-      (xyz-to-rgb x y z :rgbspace rgbspace :threshold threshold)
-    (multiple-value-bind (h s l)
-	(rgb-to-hsl r g b)
-      (values h s l out-of-gamut))))
+(defun xyz-to-hsl (x y z &optional (rgbspace +srgb+))
+  (multiple-value-call #'rgb-to-hsl
+    (xyz-to-rgb x y z rgbspace)))
+

@@ -196,16 +196,6 @@ f(x) = 0d0 otherwise.
 	    (* y factor)
 	    (* z factor))))
 
-;; (defun scale-lrgb-until-saturated (lr lg lb)
-;;   "LR, LG, LB are scaled so that one of them is saturated."
-;;   (let ((max (max lr lg lb)))
-;;     (if (<= max 0)
-;; 	(list lr lg lb)
-;; 	(let ((factor (/ max)))
-;; 	  (list (* lr factor)
-;; 		(* lg factor)
-;; 		(* lb factor))))))
-
 
 ;;; Standard Illuminant, XYZ, xyY
 ;;; The nominal range of Y is always [0, 1].
