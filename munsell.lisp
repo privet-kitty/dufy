@@ -542,7 +542,7 @@ equal to MAX-ITERATION.
 	    (when (= number max-iteration)
 	      (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
 
-(defun test-inverter2 (&optional (num-loop 100000) (rgbspace +srgb+))
+(defun test-inverter2 (&optional (num-loop 300000) (rgbspace +srgb+))
   "For devel."
   (let ((qmax+1 (1+ (rgbspace-qmax rgbspace)))
 	(cat-func (gen-cat-function (rgbspace-illuminant rgbspace) +illum-c+))

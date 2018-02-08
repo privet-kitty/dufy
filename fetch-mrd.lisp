@@ -146,7 +146,7 @@
 ;; The data with value=0 are substituted with the data with value=0.2.
 (defun get-xyy-from-dat (hue-num value chroma)
   (cond ((= chroma 0)
-	 (dufy::munsell-value-to-achromatic-xyy value))
+	 (multiple-value-list (dufy::munsell-value-to-achromatic-xyy value)))
 	((= value 0)
 	 (funcall #'(lambda (lst)
 		      (if (null lst)
@@ -180,8 +180,9 @@
 
 (defun get-lchab-from-dat (hue-num value chroma)
   (aif (get-xyy-from-dat hue-num value chroma)
-       (apply (alexandria:rcurry #'dufy:xyz-to-lchab dufy:+illum-c+)
-	      (apply #'dufy:xyy-to-xyz it))))
+       (multiple-value-list (multiple-value-call #'dufy:xyz-to-lchab
+			      (apply #'dufy:xyy-to-xyz it)
+			      dufy:+illum-c+))))
 
 (defun get-extrapolated-lchab-from-dat (hue-num value chroma)
   "CHROMA must be even."
@@ -221,9 +222,10 @@
 (defparameter large-negative-float -1d99)
 
 (defun xyy-to-lchab (x y largey)
-  (destructuring-bind (lstar cstarab hab)
-      (apply (alexandria:rcurry #'dufy:xyz-to-lchab dufy:+illum-c+)
-	     (dufy:xyy-to-xyz x y largey))
+  (multiple-value-bind (lstar cstarab hab)
+      (multiple-value-call #'dufy:xyz-to-lchab
+	(dufy:xyy-to-xyz x y largey)
+	dufy:+illum-c+)
     (list (alexandria:clamp lstar 0d0 100d0)
 	  cstarab
 	  hab)))
