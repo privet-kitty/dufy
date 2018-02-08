@@ -418,12 +418,12 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (if (<= (- x (floor x)) epsilon)
       (floor x)
       x))
-	   
-(defun rough-munsell-hue-to-hab (h)
-  (mod (* h 9) 360))
 
-(defun rough-munsell-chroma-to-cstarab (c)
-  (* c 5))
+;; (defun rough-munsell-hue-to-hab (h)
+;;   (mod (* h 9) 360))
+
+;; (defun rough-munsell-chroma-to-cstarab (c)
+;;   (* c 5))
 
 
 ;; used in INVERT-LCHAB-TO-MHVC
@@ -505,7 +505,6 @@ equal to MAX-ITERATION.
 				      :factor factor
 				      :threshold threshold))))
 
-
 (defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant C."
   (multiple-value-bind (h v c ite)
@@ -516,6 +515,27 @@ equal to MAX-ITERATION.
     (values (mhvc-to-munsell h v c digits)
 	    ite)))
 
+(defun xyz-to-mhvc (x y z &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+  "Illuminant D65. including Bradford transformation."
+  (multiple-value-call #'lchab-to-mhvc
+    (multiple-value-call #'xyz-to-lchab
+      (funcall d65-to-c x y z)
+      +illum-c+)
+    :max-iteration max-iteration
+    :factor factor
+    :threshold threshold))
+
+
+(defun xyz-to-munsell (x y z &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
+  "Illuminant D65. including Bradford transformation."
+  (multiple-value-bind (m h v ite)
+      (xyz-to-mhvc x y z
+		   :max-iteration max-iteration
+		   :factor factor
+		   :threshold threshold)
+    (values (mhvc-to-munsell m h v digits) ite)))
+
+  
 (defun test-inverter ()
   "For devel."
   (let ((max-iteration 300))
@@ -555,3 +575,20 @@ equal to MAX-ITERATION.
 ;; doesn't converge:
 ;; LCH = 90.25015693115249d0 194.95626408656423d0 115.6958104971207d0
 ;; (38754 63266 343) in ProPhoto, 16-bit
+
+(defun test-inverter3 (&optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((max-ite 200)
+	(sum 0))
+    (dotimes (qr 256)
+      (print qr)
+      (dotimes (qg 256)
+	(dotimes (qb 256)
+	  (let ((ite (nth-value 3 (multiple-value-call #'xyz-to-mhvc 
+				    (qrgb-to-xyz qr qg qb rgbspace)
+				    :threshold 1.0d-3))))
+	    (declare (fixnum ite))
+	    (when (= ite max-ite)
+	      (incf sum)
+	      (format t "(~a ~a ~a) ~A~%" qr qg qb ite))))))
+    (float (/ sum (* 256 256 256)) 1d0)))

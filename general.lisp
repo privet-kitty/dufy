@@ -108,6 +108,8 @@ THETA2] in a circle group."
   "Used instead of NIL")
 
 (defun invert-matrix33 (mat)
+  (declare (optimize (speed 3) (safety 1))
+	   (matrix33 mat))
   (let ((det (+ (* (aref mat 0 0) (aref mat 1 1) (aref mat 2 2))
 		(* (aref mat 1 0) (aref mat 2 1) (aref mat 0 2))
 		(* (aref mat 2 0) (aref mat 0 1) (aref mat 1 2))
@@ -135,6 +137,7 @@ THETA2] in a circle group."
 				  (* (aref mat 0 1) (aref mat 1 0))) det))
 	  invmat))
 
+(declaim (ftype (function * (values double-float double-float double-float)) multiply-mat-vec))
 (defun multiply-mat-vec (matrix x y z)
   (declare (optimize (speed 3) (safety 1))
   	   (matrix33 matrix))

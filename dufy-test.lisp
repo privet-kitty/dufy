@@ -150,6 +150,15 @@
 			   62.8187 -29.7946 -4.0864)
 		 1.2630))))
 
+(test test-munsell
+  (dolist (xyz *xyz-set*)
+    (is (nearly-equal 1d-4
+		      xyz
+		      (multiple-value-list
+		       (multiple-value-call #'munsell-to-xyz
+			 (nth-value 0 (apply (rcurry #'xyz-to-munsell :digits 6)
+					     xyz))))))))
+
 
 ;; (let ((*read-default-float-format* 'double-float))
 ;;   (test test-core

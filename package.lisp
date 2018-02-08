@@ -184,5 +184,7 @@
 	   :max-chroma
 	   :lchab-to-mhvc
 	   :lchab-to-munsell
+	   :xyz-to-mhvc
+	   :xyz-to-munsell
 	   :*maximum-chroma*
 ))

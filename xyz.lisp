@@ -5,23 +5,32 @@
 (in-package :dufy)
 
 (defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
-  "Returns a spectral power distribution
+  "Note: SPECTRUM-ARRAY must be (simple-array double-float *).
+
+Returns a spectral power distribution
 function, #'(lambda (wavelength-nm) ...), by linearly interpolating
-SPECTRUM-ARRAY which can have arbitrary length."
-  (let* ((size (- (length spectrum-array) 1)))
+SPECTRUM-ARRAY which can have arbitrary length.
+"
+  (declare (optimize (speed 3) (safety 1))
+	   ((simple-array double-float) spectrum-array))
+  (let* ((size (- (length spectrum-array) 1))
+	 (wl-begin-f (float wl-begin 1d0))
+	 (wl-end-f (float wl-end 1d0)))
     (if (= size (- wl-end wl-begin))
 	;; If SPECTRUM-ARRAY is defined just for each integer,
 	;; the spectrum function is simple:
-	#'(lambda (wavelength-nm)
+	#'(lambda (wl-nm)
 	    (multiple-value-bind (quot rem)
-		(floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+		(floor (- (clamp (float wl-nm 1d0) wl-begin-f wl-end-f)
+			  wl-begin-f))
 	      (lerp rem
 		    (aref spectrum-array quot)
 		    (aref spectrum-array (min (1+ quot) size)))))
 	(let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
 	       (/band (/ band)))
-	  #'(lambda (wavelength-nm)
-	      (let* ((wl$ (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+	  #'(lambda (wl-nm)
+	      (let* ((wl$ (- (clamp (float wl-nm 1d0) wl-begin-f wl-end-f)
+			     wl-begin-f))
 		     (frac (mod wl$ band))
 		     (coef (* frac /band))
 		     (idx (round (* (- wl$ frac) /band))))
@@ -127,11 +136,15 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 (defparameter +s2-arr+
        #.(make-array 54 :element-type 'double-float
 		     :initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0)))
+
+(declaim (type (function * double-float) +s0-func+ +s1-func+ +s2-func+))
 (defparameter +s0-func+ (gen-spectrum +s0-arr+ 300 830))
 (defparameter +s1-func+ (gen-spectrum +s1-arr+ 300 830))
 (defparameter +s2-func+ (gen-spectrum +s2-arr+ 300 830))
 
 (defun gen-illum-d-spectrum-array (temperature &optional (wl-begin 300) (wl-end 830))
+  (declare (optimize (speed 3) (safety 1))
+	   (fixnum wl-begin wl-end))
   (labels ((calc-xd (temp)
 	     (let ((/temp (/ temp)))
 	       (if (<= temp 7000d0)
@@ -154,10 +167,11 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		    (* m2 (funcall +s2-func+ wl)))))
       arr)))
 
-(defun gen-illum-d-spectrum (temperature &optional (wl-begin 300) (wl-end 830))
-  "Generates the spectrum of the illuminant series D for a given temperature."
-  (gen-spectrum (gen-illum-d-spectrum-array temperature wl-begin wl-end)
-	   wl-begin wl-end))
+(defun gen-illum-d-spectrum (temperature)
+  "Generates the spectrum of the illuminant series D for a given
+temperature."
+  (gen-spectrum (gen-illum-d-spectrum-array temperature 300 830)
+		300 830))
 
 				 
 (defun spectrum-sum (spectrum &key (wl-begin 300) (wl-end 830) (band 1))
@@ -228,8 +242,11 @@ The return values are not normalized."
   "Another version of spectrum-to-xyz: only the return value
 of (illuminant-spectrum illuminant) and observer are necessary in
 spectrum-to-xyz."
-  (let ((x 0) (y 0) (z 0) (max-y 0)
+  (declare (optimize (speed 3) (safety 1))
+	   ((function * double-float) spectrum illum-spectrum))
+  (let ((x 0d0) (y 0d0) (z 0d0) (max-y 0d0)
 	(arr (observer-cmf-arr observer)))
+    (declare (double-float x y z max-y))
     (loop for wl from 360 to 830 do
 	 (let ((p (funcall illum-spectrum wl))
 	       (reflec (funcall spectrum wl))
@@ -247,10 +264,11 @@ spectrum-to-xyz."
 ;; 	 (spectrum-to-xyz spectrum :illuminant illuminant :observer observer)))
 
 
-(defun calc-to-spectrum-matrix (illum-spectrum observer)
-  (let ((mat (make-array '(3 3)
-			 :element-type 'double-float
-			 :initial-element 0d0)))
+(let ((mat (make-array '(3 3)
+		       :element-type 'double-float
+		       :initial-element 0d0)))
+  (defun calc-to-spectrum-matrix (illum-spectrum observer)
+    (declare (optimize (speed 3) (safety 1)))
     (multiple-value-bind (a00 a10 a20)
 	(spectrum-to-xyz-raw (observer-cmf-x observer) illum-spectrum observer)
       (multiple-value-bind (a01 a11 a21)
@@ -342,10 +360,12 @@ proper white point is automatically calculated."
 (defparameter +illum-a+
   (make-illuminant 0.44757d0 0.40745d0
 		   #'(lambda (wl)
-		       (* 100d0
-			  (expt (/ 560d0 wl) 5)
-			  (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
-			     (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0))))))
+		       (declare (optimize (speed 3) (safety 1)))
+		       (let ((wl (float wl 1d0)))
+			 (* 100d0
+			    (expt (/ 560d0 wl) 5)
+			    (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
+			       (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0)))))))
 			  
 (defparameter +illum-b+ (make-illuminant 0.34842d0 0.35161d0)) ; no spd
 
@@ -420,6 +440,7 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 (defun xyz-to-lms (x y z &key (illuminant nil) (cat +bradford+))
   "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
+  (declare (optimize (speed 3) (safety 1)))
   (if illuminant
       (let* ((mat (cat-matrix cat))
 	     (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
@@ -440,8 +461,9 @@ the transform is virtually equivalent to that of illuminant E. "
 	    
 
 (defun lms-to-xyz (l m s &key (illuminant nil) (cat +bradford+))
-   "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
+  "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
+  (declare (optimize (speed 3) (safety 1)))
   (if illuminant
       (let* ((mat (cat-matrix cat))
 	     (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
@@ -463,6 +485,7 @@ the transform is virtually equivalent to that of illuminant E. "
 (defun calc-cat-matrix  (from-illuminant to-illuminant &optional (cat +bradford+))
   "Returns a 3*3 chromatic adaptation matrix between FROM-ILLUMINANT
 and TO-ILLUMINANT in XYZ space."
+  (declare (optimize (speed 3) (safety 1)))
   (let ((from-white-x (illuminant-x from-illuminant))
 	(from-white-y (illuminant-y from-illuminant))
 	(from-white-z (illuminant-z from-illuminant))
@@ -505,8 +528,8 @@ and TO-ILLUMINANT in XYZ space."
 	(let ((matrix2 (make-array '(3 3) :element-type 'double-float)))
 	  (dotimes (i 3)
 	    (dotimes (j 3)
-	      (do ((sum 0 (+ sum (* (aref inv-tmatrix i k)
-				    (aref matrix1 k j))))
+	      (do ((sum 0d0 (+ sum (* (aref inv-tmatrix i k)
+				      (aref matrix1 k j))))
 		   (k 0 (1+ k)))
 		  ((= k 3) 
 		   (setf (aref matrix2 i j) sum)))))
