@@ -302,10 +302,12 @@ are nil, it is just a copier."
       (if illuminant
 	  (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace) illuminant)))
 	    (labels ((get-new-xy (r g b)
-		       (subseq (apply #'xyz-to-xyy
-				      (apply ca-func
-					     (lrgb-to-xyz r g b rgbspace)))
-			       0 2)))
+		       (multiple-value-bind (small-x small-y y)
+			   (multiple-value-call #'xyz-to-xyy
+			     (multiple-value-call ca-func
+			       (lrgb-to-xyz r g b rgbspace)))
+			 (declare (ignore y))
+			 (list small-x small-y))))
 	      (append (get-new-xy 1 0 0)
 		      (get-new-xy 0 1 0)
 		      (get-new-xy 0 0 1))))
@@ -442,13 +444,15 @@ all the real values."
 	    (logand (ash hex minus-bpc) qmax)
 	    (logand hex qmax))))
 
-;; (defun hex-to-rgb (hex)
-;;   (apply #'qrgb-to-rgb
-;; 	 (hex-to-qrgb hex)))
+(defun hex-to-rgb (hex &optional (rgbspace +srgb+))
+  (multiple-value-call #'qrgb-to-rgb
+    (hex-to-qrgb hex rgbspace)
+    rgbspace))
 
-;; (defun rgb-to-hex (r g b)
-;;   (apply #'qrgb-to-hex
-;; 	 (rgb-to-qrgb r g b)))
+(defun rgb-to-hex (r g b &optional (rgbspace +srgb+))
+  (multiple-value-call #'qrgb-to-hex
+    (rgb-to-qrgb r g b :rgbspace rgbspace)
+    rgbspace))
 
 (defun hex-to-xyz (hex &optional (rgbspace +srgb+))
   (multiple-value-call #'qrgb-to-xyz

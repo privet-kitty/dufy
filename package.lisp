@@ -131,8 +131,8 @@
 	   :qrgb-to-xyz
 	   :qrgb-to-hex
 	   :hex-to-qrgb
-	   ;; :rgb-to-hex
-	   ;; :hex-to-rgb
+	   :rgb-to-hex
+	   :hex-to-rgb
 	   :xyz-to-hex
 	   :hex-to-xyz
 	   :two-pi

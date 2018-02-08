@@ -94,14 +94,17 @@
 	     (multiple-value-list
 	      (hex-to-qrgb (qrgb-to-hex 0 5001 65535 +bg-srgb-16+)
 			   +bg-srgb-16+))))
-  (dolist (hex '(#x000011112222 #xeeeeabcdffff))
+  (dolist (hex '(#x000011112222 #x5678abcdffff))
     (is (= hex
-	   (multiple-value-bind (hex flag)
-	       (multiple-value-call #'xyz-to-hex
-		   (hex-to-xyz hex +bg-srgb-16+)
-		   +bg-srgb-16+)
-	     (declare (ignore flag))
-	     hex)))))
+	   (multiple-value-call #'xyz-to-hex
+	     (hex-to-xyz hex +bg-srgb-16+)
+	     +bg-srgb-16+)
+	   hex))
+    (is (= hex
+	   (multiple-value-call #'rgb-to-hex
+	     (hex-to-rgb hex +bg-srgb-16+)
+	     +bg-srgb-16+)
+	   hex))))
 	     
 (test test-lab/luv
   (dolist (xyy *xyy-set*)
