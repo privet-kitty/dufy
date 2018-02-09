@@ -3,7 +3,21 @@
 ;;;
 
 (in-package :dufy)
+    
+(defun xyy-to-xyz (small-x small-y y)
+  (if (zerop small-y)
+      (values 0d0 y 0d0)
+      (values (/ (* small-x y) small-y) 
+	      y
+	      (/ (* (- 1d0 small-x small-y) y) small-y))))
 
+
+(defun xyz-to-xyy (x y z)
+  (let ((sum (+ x y z)))
+    (if (= sum 0)
+	(values 0d0 0d0 y)
+	(values (/ x sum) (/ y sum) y))))
+  
 (defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
   "Note: SPECTRUM-ARRAY must be (simple-array double-float *).
 
@@ -26,7 +40,7 @@ SPECTRUM-ARRAY which can have arbitrary length.
 	      (lerp rem
 		    (aref spectrum-array quot)
 		    (aref spectrum-array (min (1+ quot) size)))))
-	(let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
+	(let* ((band (/ (- wl-end-f wl-begin-f) size))
 	       (/band (/ band)))
 	  #'(lambda (wl-nm)
 	      (let* ((wl$ (- (clamp (float wl-nm 1d0) wl-begin-f wl-end-f)
@@ -59,20 +73,24 @@ SPECTRUM-ARRAY which can have arbitrary length.
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
   "Defines an observer based on CMF arrays, which must
 be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
+  (declare (optimize (speed 3) (safety 1)))
   (labels ((gen-cmf-1 (arr num &optional (wl-begin 360) (wl-end 830))
 	     ;; verbose, almost equivalent to GEN-SPECTRUM
-	     (let* ((size (- (array-dimension arr 0) 1)))
+	     (declare ((simple-array double-float (* 3)) arr))
+	     (let* ((size (- (array-dimension arr 0) 1))
+		    (wl-begin-f (float wl-begin 1d0))
+		    (wl-end-f (float wl-end 1d0)))
 	       (if (= size (- wl-end wl-begin))
-		   #'(lambda (wavelength-nm)
+		   #'(lambda (wl)
 		       (multiple-value-bind (quot rem)
-			   (floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+			   (floor (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
 			 (lerp rem
 			       (aref arr quot num)
 			       (aref arr (min (1+ quot) size) num))))
-		   (let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
+		   (let* ((band (/ (- wl-end-f wl-begin-f) size))
 			  (/band (/ band)))
-		     #'(lambda (wavelength-nm)
-			 (let* ((wl$ (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+		     #'(lambda (wl)
+			 (let* ((wl$ (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
 				(idx (round (* (- wl$ frac) /band))))
@@ -80,36 +98,39 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 				 (aref arr idx num)
 				 (aref arr (min (+ idx 1) size) num))))))))
 	   (gen-cmf-3 (arr &optional (wl-begin 360) (wl-end 830))
-	     (let* ((size (- (array-dimension arr 0) 1)))
+	     (declare ((simple-array double-float (* 3)) arr))
+	     (let* ((size (- (array-dimension arr 0) 1))
+		    (wl-begin-f (float wl-begin 1d0))
+		    (wl-end-f (float wl-end 1d0)))
 	       (if (= size (- wl-end wl-begin))
-		   #'(lambda (wavelength-nm)
+		   #'(lambda (wl)
 		       (multiple-value-bind (quot rem)
-			   (floor (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
-			 (list (lerp rem
-				     (aref arr quot 0)
-				     (aref arr (min (1+ quot) size) 0))
-			       (lerp rem
-				     (aref arr quot 1)
-				     (aref arr (min (1+ quot) size) 1))
-			       (lerp rem
-				     (aref arr quot 2)
-				     (aref arr (min (1+ quot) size) 2)))))
-		   (let* ((band (float (/ (- wl-end wl-begin) size) 1d0))
+			   (floor (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
+			 (values (lerp rem
+				       (aref arr quot 0)
+				       (aref arr (min (1+ quot) size) 0))
+				 (lerp rem
+				       (aref arr quot 1)
+				       (aref arr (min (1+ quot) size) 1))
+				 (lerp rem
+				       (aref arr quot 2)
+				       (aref arr (min (1+ quot) size) 2)))))
+		   (let* ((band (/ (- wl-end-f wl-begin-f) size))
 			  (/band (/ band)))
-		     #'(lambda (wavelength-nm)
-			 (let* ((wl$ (- (clamp wavelength-nm wl-begin wl-end) wl-begin))
+		     #'(lambda (wl)
+			 (let* ((wl$ (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
 				(idx (round (* (- wl$ frac) /band))))
-			   (list (lerp coef
-				       (aref arr idx 0)
-				       (aref arr (min (+ idx 1) size) 0))
-				 (lerp coef
-				       (aref arr idx 1)
-				       (aref arr (min (+ idx 1) size) 1))
-				 (lerp coef
-				       (aref arr idx 2)
-				       (aref arr (min (+ idx 1) size) 2))))))))))
+			   (values (lerp coef
+					 (aref arr idx 0)
+					 (aref arr (min (+ idx 1) size) 0))
+				   (lerp coef
+					 (aref arr idx 1)
+					 (aref arr (min (+ idx 1) size) 1))
+				   (lerp coef
+					 (aref arr idx 2)
+					 (aref arr (min (+ idx 1) size) 2))))))))))
     ($make-observer
      :begin-wl begin-wl
      :end-wl end-wl
@@ -301,21 +322,6 @@ many."
 		   (* fac-y (funcall (observer-cmf-y observer) wl))
 		   (* fac-z (funcall (observer-cmf-z observer) wl)))))))))
     
-    
-(defun xyy-to-xyz (small-x small-y y)
-  (if (zerop small-y)
-      (values 0d0 y 0d0)
-      (values (/ (* small-x y) small-y) 
-	      y
-	      (/ (* (- 1d0 small-x small-y) y) small-y))))
-
-
-(defun xyz-to-xyy (x y z)
-  (let ((sum (+ x y z)))
-    (if (= sum 0)
-	(values 0d0 0d0 y)
-	(values (/ x sum) (/ y sum) y))))
-  
 	    
 (defun make-illuminant (small-x small-y &optional (spectrum nil) (observer +obs-cie1931+))
   "Defines an illuminant based on a white point. No error occurs, even

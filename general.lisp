@@ -3,7 +3,7 @@
 
 (in-package :dufy)
 
-(define-constant TWO-PI (+ PI PI))
+(define-constant TWO-PI (float (+ PI PI) 1d0))
 
 (deftype single-valued-function () '(function * (values t &optional)))
 (deftype matrix33 () '(simple-array double-float (3 3)))
@@ -35,6 +35,11 @@
 ;;;
 
 
+(declaim (inline subtract-with-mod
+		 circular-nearer
+		 circular-clamp
+		 circular-lerp
+		 ))
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
   "(X - Y) mod DIVISOR."
   (mod (- x y) divisor))

@@ -104,6 +104,7 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 
 
 (defun make-rgbspace (xr yr xg yg xb yb &key (illuminant +illum-d65+) (lmin 0d0) (lmax 1d0) (linearizer #'identity) (delinearizer #'identity) (bit-per-channel 8) (quantizer nil) (dequantizer nil) (force-normal nil))
+  (declare (optimize (speed 3) (safety 1)))
   (let ((coordinates
 	 (make-array '(3 3)
 		     :element-type 'double-float

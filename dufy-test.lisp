@@ -82,7 +82,7 @@
 		       (multiple-value-call #'rgb-to-xyz
 			 (apply (rcurry #'xyz-to-rgb +scrgb-nl+) xyz)
 			 +scrgb-nl+)))))
-  (dolist (rgbspace (list +bg-srgb-16+ +prophoto-16+))
+  (dolist (rgbspace (list +bg-srgb-16+ (copy-rgbspace +pal/secam+ :illuminant +illum-a+ :bit-per-channel 21)))
     (dolist (qrgb *qrgb16-set*)
       (is (equal qrgb
 		 (multiple-value-list

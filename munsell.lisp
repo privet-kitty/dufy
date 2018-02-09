@@ -42,7 +42,8 @@
 	       (max-chroma-integer-case-dark hue2 dark-val1)
 	       (max-chroma-integer-case-dark hue2 dark-val2))))))
 
-    
+(declaim (inline munsel-value-to-y
+		 munsell-value-to-lstar))
 (defun munsell-value-to-y (v)
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
 formula is based on ASTM D1535-08e1:"
@@ -50,7 +51,7 @@ formula is based on ASTM D1535-08e1:"
 
 (defun munsell-value-to-lstar (v)
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
-  (- (* 116 (function-f (munsell-value-to-y v))) 16))
+  (- (* 116d0 (function-f (munsell-value-to-y v))) 16d0))
 
   
 ;; (defun munsell-value-to-achromatic-qrgb (v)
@@ -95,7 +96,7 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 (defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
   (y-to-munsell-value (second (qrgb-to-xyz r g b rgbspace))))
 
-  
+
 (defun mhvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
   (declare (optimize (speed 3) (safety 0))
@@ -132,10 +133,10 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	    (if (= hab1 hab2)
 		(values lstar cstarab1 hab1)
 		(let* ((hab (the double-float (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
-		       (cstarab (+ (* cstarab1 (/ (mod (- hab2 hab) 360d0)
-						  (mod (- hab2 hab1) 360d0)))
-				   (* cstarab2 (/ (mod (- hab hab1) 360d0)
-						  (mod (- hab2 hab1) 360d0))))))
+		       (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
+						  (subtract-with-mod hab2 hab1 360d0)))
+				   (* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
+						  (subtract-with-mod hab2 hab1 360d0))))))
 		  (values lstar cstarab hab))))))))
 
 
@@ -277,9 +278,8 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 ;;   (apply #'lchab-to-lab (mhvc-to-lchab hue40 value chroma)))
 
 (defun mhvc-to-xyz-illum-c (hue40 value chroma)
-  "Illuminant C. It doen't cause an approximation error by chromatic
-adaptation, since the Munsell Renotation Data is measured under the
-Illuminant C."
+  "Illuminant C. (Munsell Renotation Data is measured under the
+Illuminant C.)"
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'lchab-to-xyz
     (mhvc-to-lchab hue40 value chroma)
@@ -287,9 +287,8 @@ Illuminant C."
   
 				   
 (defun mhvc-to-xyz (hue40 value chroma)
-  "Illuminant D65. It causes an approximation error by Bradford
-transformation, since the Munsell Renotation Data is measured under
-the Illuminant C."
+  "Illuminant D65. It causes an error by Bradford transformation,
+since the Munsell Renotation Data is measured under the Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call c-to-d65
     (mhvc-to-xyz-illum-c hue40 value chroma)))
@@ -298,10 +297,6 @@ the Illuminant C."
   "Illuminant D65."
   (multiple-value-call #'xyz-to-xyy
     (mhvc-to-xyz hue40 value chroma)))
-
-;; (defun mhvc-to-xyz (hue40 value chroma)
-;;   (apply c-to-d65
-;; 	 (apply #'xyy-to-xyz (mhvc-to-xyy hue40 value chroma))))
 
 (defun mhvc-to-lrgb (hue40 value chroma &optional (rgbspace +srgb+))
   "The standard illuminant is D65: that of RGBSPACE must also be D65."
@@ -452,10 +447,9 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 ;; used in INVERT-LCHAB-TO-MHVC
 (defun invert-mhvc-to-lchab-with-init (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
-  (declare (optimize (speed 3) (safety 1)))
-  (let ((cstarab (float cstarab 1d0))
-	(hab (float hab 1d0))
-	(factor (float factor 1d0))
+  (declare (optimize (speed 3) (safety 1))
+	   (double-float lstar cstarab hab))
+  (let ((factor (float factor 1d0))
 	(threshold (float threshold 1d0))
 	(tmp-hue40 (float init-hue40 1d0))
 	(v (lstar-to-munsell-value lstar))

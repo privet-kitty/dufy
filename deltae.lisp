@@ -2,7 +2,8 @@
 
 ;; define delta-E functions for L*a*b*, xyz and qrgb
 (defmacro defdeltae (name args &body body)
-  "Only &key arguments are allowed in sub-args."
+  "Only &key arguments are allowed in sub-args. The following symbols
+cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
   (labels ((extract (lst) ; extract sub-args
 	     (reduce #'append
 		     (mapcar #'(lambda (pair)

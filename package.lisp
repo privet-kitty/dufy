@@ -121,12 +121,15 @@
 	   :nearly<=
 	   :xyz-to-lrgb
 	   :lrgb-to-xyz
+	   :lrgb-out-of-gamut-p
 	   :rgb-to-lrgb
 	   :lrgb-to-rgb
+	   :rgb-out-of-gamut-p
 	   :xyz-to-rgb
 	   :rgb-to-xyz
 	   :rgb-to-qrgb
 	   :qrgb-to-rgb
+	   :qrgb-out-of-gamut-p
 	   :xyz-to-qrgb
 	   :qrgb-to-xyz
 	   :qrgb-to-hex
