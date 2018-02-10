@@ -7,6 +7,11 @@
 (require :dufy)
 (require :alexandria)
 
+(defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
+(defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :src)))
+(defparameter dat-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
+
+
 (defparameter dat-url "http://www.rit-mcsl.org/MunsellRenotation/all.dat")
 (defparameter dat-txt (babel:octets-to-string (drakma:http-request dat-url) :encoding :ascii))
 
@@ -311,9 +316,8 @@
     (terpri stream)))
 
 
-(defparameter base-path *load-pathname*)
 (defun main (obj-name)
-  (let ((obj-path (merge-pathnames obj-name base-path)))
+  (let ((obj-path (merge-pathnames obj-name src-dir-path)))
     (with-open-file (out obj-path
 			 :direction :output
 			 :if-exists :supersede)

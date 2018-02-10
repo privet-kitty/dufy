@@ -1,13 +1,12 @@
 ;;; This is a script file which generates fundamental data and saves them as a .lisp file.
 
-(require :alexandria)
+(asdf:load-system :alexandria)
 
 
 (defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
-(defparameter src-dir-path base-dir-path)
-(defparameter dat-dir-name "dat")
-(defparameter dat-dir-path (merge-pathnames (make-pathname :directory `(:relative ,dat-dir-name))
-					    base-dir-path))
+(defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :src)))
+;; (defparameter dat-dir-path (merge-pathnames (make-pathname :directory `(:relative ,dat-dir-name))
+(defparameter dat-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
 (defparameter obj-name "fundamental-data.lisp")
 (defparameter obj-path (merge-pathnames (pathname obj-name) src-dir-path))
 
