@@ -7,11 +7,17 @@
 (defparameter c-to-d65
   (gen-cat-function +illum-c+ +illum-d65+))
 
+(eval-when (:compile-toplevel)
+  (defparameter *bit-positive-fixnum* #.(floor (log most-positive-fixnum 2))))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *maximum-chroma* #.(float (expt 2 32) 1d0)
-		"The largest chroma which the converters accepts. It
-		is less than MOST-POSITIVE-DOUBLE-FLOAT because of
-		efficiency."))
+  (defparameter *maximum-chroma*
+    #+(and sbcl 64-bit) #.(float (expt 2 (- *bit-positive-fixnum* 10)) 1d0)
+    #-(or sbcl 64-bit)  most-positive-double-float
+    "The largest chroma which the converters accepts. It is less than
+    MOST-POSITIVE-DOUBLE-FLOAT because of efficiency: e.g. in
+    SBCL (64-bit) it is desirable that a float F
+    fulfills (typep (round F) '(SIGNED-BYTE 64)"))
 
 
 (defmacro max-chroma-integer-case (hue40 value)
@@ -23,24 +29,26 @@
 (declaim (ftype (function * (integer 0 50)) max-chroma))
 (defun max-chroma (hue40 value &key (use-dark t))
   "Returns the largest chroma in the Munsell renotation data."
-  (let* ((hue (mod hue40 40d0))
-	 (hue1 (floor hue))
-	 (hue2 (mod (ceiling hue) 40)))
-    (if (or (>= value 1)
-	    (not use-dark))
-	(let ((val1 (floor value))
-	      (val2 (ceiling value)))
-	  (min (max-chroma-integer-case hue1 val1)
-	       (max-chroma-integer-case hue1 val2)
-	       (max-chroma-integer-case hue2 val1)
-	       (max-chroma-integer-case hue2 val2)))
-	(let* ((dark-value (* value 5d0))
-	       (dark-val1 (floor dark-value))
-	       (dark-val2 (ceiling dark-value)))
-	  (min (max-chroma-integer-case-dark hue1 dark-val1)
-	       (max-chroma-integer-case-dark hue1 dark-val2)
-	       (max-chroma-integer-case-dark hue2 dark-val1)
-	       (max-chroma-integer-case-dark hue2 dark-val2))))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((hue40 (float hue40 1d0)) (value (float value 1d0)))
+    (let* ((hue (mod hue40 40d0))
+	   (hue1 (floor hue))
+	   (hue2 (mod (ceiling hue) 40)))
+      (if (or (>= value 1)
+	      (not use-dark))
+	  (let ((val1 (floor value))
+		(val2 (ceiling value)))
+	    (min (aref max-chroma-arr hue1 val1)
+		 (aref max-chroma-arr hue1 val2)
+		 (aref max-chroma-arr hue2 val1)
+		 (aref max-chroma-arr hue2 val2)))
+	  (let* ((dark-value (* value 5d0))
+		 (dark-val1 (floor dark-value))
+		 (dark-val2 (ceiling dark-value)))
+	    (min (aref max-chroma-arr-dark hue1 dark-val1)
+		 (aref max-chroma-arr-dark hue1 dark-val2)
+		 (aref max-chroma-arr-dark hue2 dark-val1)
+		 (aref max-chroma-arr-dark hue2 dark-val2)))))))
 
 (declaim (inline munsel-value-to-y
 		 munsell-value-to-lstar))
@@ -97,6 +105,10 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
   (y-to-munsell-value (second (qrgb-to-xyz r g b rgbspace))))
 
 
+(declaim (ftype (function * (values double-float double-float double-float))
+		mhvc-to-lchab-simplest-case
+		mhvc-to-lchab-value-chroma-integer-case
+		mhvc-to-lchab-value-integer-case))
 (defun mhvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
   (declare (optimize (speed 3) (safety 0))
@@ -114,7 +126,6 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	  (values (aref arr hue40 tmp-value 25 0)
 		  (* cstarab factor)
 		  (aref arr hue40 tmp-value 25 2))))))
-
 
 (defun mhvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
@@ -236,46 +247,6 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
     (if (>= value 1d0)
 	(mhvc-to-lchab-general-case d-hue d-value (* d-chroma 0.5d0) nil)
 	(mhvc-to-lchab-general-case d-hue (* d-value 5d0) (* d-chroma 0.5d0) t))))
-
-;; (defun compare-munsell-converter (mc)
-;;   (let ((deltaes nil)
-;; 	(max-deltae 0)
-;; 	(outlier nil)
-;; 	(number-within-gamut 0))
-;;     (dotimes (x mc)
-;;       (let* ((hue40 (random 40d0))
-;; 	     (value (+ 0.2d0 (random 9.8d0)))
-;; 	     (chroma (random (coerce (max-chroma hue40 value) 'double-float))))
-;; 	(let* ((lab1 (apply (rcurry #'xyy-to-lab illum-c)
-;; 			    (mhvc-to-xyy hue40 value chroma)))
-;; 	       (lab2 (apply #'lchab-to-lab
-;; 			    (mhvc-to-lchab hue40 value chroma)))
-;; 	       (deltae (apply #'deltae (append lab1 lab2))))
-;; 	  (unless (nth-value 1 (mhvc-to-lrgb hue40 value chroma :threshold 0))
-;; 	    (incf number-within-gamut)
-;; 	    (when (> deltae max-deltae)
-;; 	      (setf max-deltae deltae)
-;; 	      (setf outlier (list hue40 value chroma)))
-;; 	    (push deltae deltaes)))))
-;;     (format t "Processed colors within sRGB(d65) gamut = ~A~%" number-within-gamut)
-;;     (format t "Mean Delta E = ~A~%" (funcall #'mean deltaes))
-;;     (format t "Maximum Delta E = ~A~%" (apply #'max deltaes))
-;;     (format t "Outlier (H, V, C) = ~A~%" outlier)))
-
-;; (dufy::compare-munsell-converter 100000)
-;; =>
-;; Processed colors within sRGB(d65) gamut = 48480
-;; Mean Delta E = 0.35641873193747986d0
-;; Maximum Delta E = 4.67977844149827d0
-;; Outlier (H, V, C) = (15.07830806002132d0 1.4835458770925156d0
-;;                      5.06906007523528d0)
-
-;; (defun mhvc-to-lab (hue40 value chroma)
-;;   (apply #'xyy-to-lab (mhvc-to-xyy hue40 value chroma)))
-
-;; Illuminant C
-;; (defun mhvc-to-lab (hue40 value chroma)
-;;   (apply #'lchab-to-lab (mhvc-to-lchab hue40 value chroma)))
 
 (defun mhvc-to-xyz-illum-c (hue40 value chroma)
   "Illuminant C. (Munsell Renotation Data is measured under the
@@ -546,13 +517,18 @@ equal to MAX-ITERATION.
 	    (when (= number max-iteration)
 	      (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
 
-(defun test-inverter2 (&optional (num-loop 300000) (rgbspace +srgb+))
+(defun test-inverter2 (&optional (num-loop 10000) (profile nil) (rgbspace +srgb+))
   "For devel."
+  #+sbcl(when profile (sb-profile:profile "DUFY"))
+  #-sbcl(declare (ignore profile))
   (let ((qmax+1 (1+ (rgbspace-qmax rgbspace)))
 	(cat-func (gen-cat-function (rgbspace-illuminant rgbspace) +illum-c+))
 	(sum 0)
 	(max-ite 300))
-    (dotimes (x num-loop (float (/ sum num-loop) 1d0))
+    (dotimes (x num-loop (prog1 (float (/ sum num-loop) 1d0)
+			   #+sbcl(when profile
+				   (sb-profile:report :print-no-call-list nil)
+				   (sb-profile:unprofile "DUFY"))))
       (let ((qr (random qmax+1)) (qg (random qmax+1)) (qb (random qmax+1)))
 	(multiple-value-bind (lstar cstarab hab)
 	    (multiple-value-call #'xyz-to-lchab

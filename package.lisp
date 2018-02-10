@@ -191,3 +191,21 @@
 	   :xyz-to-munsell
 	   :*maximum-chroma*
 ))
+
+
+
+;; (declaim (inline
+;; 	  ;; general.lisp
+;; 	  subtract-with-mod
+;; 	  circular-nearer
+;; 	  circular-clamp
+;; 	  circular-lerp
+;; 	  circular-lerp-loose
+
+;; 	  ;; dufy.lisp
+;; 	  lchab-to-lab
+;; 	  lab-to-lchab
+
+;; 	  ;; munsell.lisp
+;; 	  munsel-value-to-y
+;; 	  munsell-value-to-lstar))

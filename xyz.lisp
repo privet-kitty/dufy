@@ -164,8 +164,9 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 (defparameter +s2-func+ (gen-spectrum +s2-arr+ 300 830))
 
 (defun gen-illum-d-spectrum-array (temperature &optional (wl-begin 300) (wl-end 830))
-  (declare (optimize (speed 3) (safety 1))
-	   (fixnum wl-begin wl-end))
+  (declare (optimize (speed 3) (safety 1)))
+  (check-type wl-begin fixnum)
+  (check-type wl-end fixnum)
   (labels ((calc-xd (temp)
 	     (let ((/temp (/ temp)))
 	       (if (<= temp 7000d0)
@@ -564,6 +565,6 @@ and TO-ILLUMINANT in XYZ space."
 (defun normalize-xyz (x y z)
   "Normalizes Y to 1."
   (let ((/y (/ y)))
-    (list (* /y x)
-	  1d0
-	  (* /y z))))
+    (values (* /y x)
+	    1d0
+	    (* /y z))))

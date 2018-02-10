@@ -1,61 +1,6 @@
 (in-package :dufy)
 
 ;;;
-;;; Quotization model (currently not used)
-;;;
-
-(defstruct (quantization (:constructor $make-quantization))
-  "Definition of quantization method of RGB"
-  (normal t :type boolean) ;; t, if the range of dequantized value is [0, 1].
-  (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
-  (quantizer #'(lambda (x) (round (* 255d0 x))) :type function)
-  (dequantizer #'(lambda (n) (* n #.(/ 255d0))) :type function)
-  ;; nominal range of gamma-corrected values
-  (nominal-min 0d0 :type double-float)
-  (nominal-max 1d0 :type double-float)
-  (quantized-max 255 :type (integer 0 #.most-positive-fixnum)))
-
-(defun make-quantization (&optional (bit-per-channel 8)
-			    (min 0d0)
-			    (max 1d0)
-			    (quantizer nil)
-			    (dequantizer nil))
-  (let* ((quantized-max (- (expt 2 bit-per-channel) 1))
-	 (quantized-max-float (float quantized-max 1d0))
-	 (/quantized-max-float (/ quantized-max-float))
-	 (normal (if (and (= min 0d0) (max 1d0)) t nil))
-	 (len (- max min)))
-    ($make-quantization
-     :normal normal
-     :bit-per-channel bit-per-channel
-     :quantized-max quantized-max
-     :nominal-min (float min 1d0)
-     :nominal-max (float max 1d0)
-     :quantizer (or quantizer
-		    (if normal
-			#'(lambda (x) (round (* quantized-max-float x)))
-			#'(lambda (x) (round (lerp (/ (- x min) len)
-						   0 quantized-max-float)))))
-     :dequantizer (or dequantizer
-		      #'(lambda (n) (+ min (* len n /quantized-max-float)))))))
-
-;; Standard quantization methods  [0, 1] and {0, 1, ..., 2^bit-per-channel -1}
-(defparameter +qtz-8bit-normal+ (make-quantization 8)
-  "Quantization between [0, 1] and {0, 1, ..., #xFF}")
-(defparameter +qtz-12bit-normal+ (make-quantization 12)
-  "Quantization between [0, 1] and {0, 1, ..., #xFFF}")
-(defparameter +qtz-16bit-normal+ (make-quantization 16)
-  "Quantization between [0, 1] and {0, 1, ..., #xFFFF}")
-
-(defparameter +qtz-16bit-scrgb+
-  (make-quantization 16 -0.5d0 7.4999d0
-		     #'(lambda (x) (round (+ (* 8192d0 x) 4096d0)))
-		     #'(lambda (n) (* (- n 4096) #.(/ 8192d0))))
-  "Quantization method in scRGB, IEC 61966-2-2:2003
-http://www.color.org/chardata/rgb/scrgb.xalter")
-
-
-;;;
 ;;; RGB Color Space
 ;;;
 
@@ -413,11 +358,18 @@ all the real values."
 	    (funcall quantizer g)
 	    (funcall quantizer b))))
 
+;; (defun rgb-to-qrgb (r g b &key (rgbspace +srgb+) (clamp nil))
+;;   (declare (ignore rgbspace clamp))
+;;   (values (round (* r 255d0))
+;; 	  (round (* g 255d0))
+;; 	  (round (* b 255d0))))
+
 (defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
   (let ((dequantizer (rgbspace-dequantizer rgbspace)))
     (values (funcall dequantizer qr)
 	    (funcall dequantizer qg)
 	    (funcall dequantizer qb))))
+
 
 (defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (clamp nil))
   (multiple-value-call #'rgb-to-qrgb
@@ -525,19 +477,24 @@ all the real values."
   (multiple-value-call #'xyz-to-xyy
     (lab-to-xyz lstar astar bstar illuminant)))
 
-(define-constant CONST-TWO-PI/360 (/ TWO-PI 360))
-(define-constant CONST-360/TWO-PI (/ 360 TWO-PI))
+(define-constant +TWO-PI/360+ (/ TWO-PI 360))
+(define-constant +360/TWO-PI+ (/ 360 TWO-PI))
 
+;; (declaim (inline lchab-to-lab lab-to-lchab))
 (defun lab-to-lchab (lstar astar bstar)
-  (values lstar
-	  (sqrt (+ (* astar astar) (* bstar bstar)))
-	  (mod (* (atan bstar astar) CONST-360/TWO-PI) 360d0)))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((astar (float astar 1d0)) (bstar (float bstar 1d0)))
+    (values lstar
+	    (sqrt (+ (* astar astar) (* bstar bstar)))
+	    (mod (* (atan bstar astar) +360/TWO-PI+) 360d0))))
 
 (defun lchab-to-lab (lstar cstarab hab)
-  (let ((hue-two-pi (* hab CONST-TWO-PI/360)))
-    (values lstar
-	    (* cstarab (cos hue-two-pi))
-	    (* cstarab (sin hue-two-pi)))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((cstarab (float cstarab 1d0)) (hab (float hab 1d0)))
+    (let ((hue-two-pi (* hab +TWO-PI/360+)))
+      (values lstar
+	      (* cstarab (cos hue-two-pi))
+	      (* cstarab (sin hue-two-pi))))))
 
 (defun xyz-to-lchab (x y z &optional (illuminant +illum-d65+))
   (multiple-value-call #'lab-to-lchab (xyz-to-lab x y z illuminant)))
@@ -605,10 +562,10 @@ all the real values."
 (defun luv-to-lchuv (lstar ustar vstar)
   (values lstar
 	  (sqrt (+ (* ustar ustar) (* vstar vstar)))
-	  (mod (* (atan vstar ustar) CONST-360/TWO-PI) 360d0)))
+	  (mod (* (atan vstar ustar) +360/TWO-PI+) 360d0)))
 
 (defun lchuv-to-luv (lstar cstaruv huv)
-  (let ((hue-two-pi (* huv CONST-TWO-PI/360)))
+  (let ((hue-two-pi (* huv +TWO-PI/360+)))
     (values lstar (* cstaruv (cos hue-two-pi)) (* cstaruv (sin hue-two-pi)))))
 
 (defun xyz-to-lchuv (x y z &optional (illuminant +illum-d65+))
