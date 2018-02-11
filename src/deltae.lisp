@@ -16,17 +16,23 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 	   (qrgb-name (intern (format nil "QRGB-~A" name) :dufy))
 	   (xyz-name (intern (format nil "XYZ-~A" name) :dufy)))
       `(progn
+	 (declaim (inline ,name))
 	 (defun ,name (,@main-args ,@sub-args-with-key)
 	   ,@body)
+	 (declaim (inline ,xyz-name))
 	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
+	   (declare (optimize (speed 3) (safety 1)))
 	   (multiple-value-call #',name
-	     (xyz-to-lab x1 y1 z1 illuminant)
-	     (xyz-to-lab x2 y2 z2 illuminant)
+	     (xyz-to-lab (float x1 1d0) (float y1 1d0) (float z1 1d0) illuminant)
+	     (xyz-to-lab (float x2 1d0) (float y2 1d0) (float z2 1d0) illuminant)
 	     ,@(extract sub-args)))
-	 (defun ,qrgb-name (r1 g1 b1 r2 g2 b2 &key ,@sub-args (rgbspace +srgb+))
+	 (declaim (inline ,qrgb-name))
+	 (defun ,qrgb-name (qr1 qg1 qb1 qr2 qg2 qb2 &key ,@sub-args (rgbspace +srgb+))
+	   (declare (optimize (speed 3) (safety 1))
+		    (integer qr1 qg1 qb1 qr2 qg2 qb2))
 	   (multiple-value-call #',xyz-name
-	     (qrgb-to-xyz r1 g1 b1 rgbspace)
-	     (qrgb-to-xyz r2 g2 b2 rgbspace)
+	     (qrgb-to-xyz qr1 qg1 qb1 rgbspace)
+	     (qrgb-to-xyz qr2 qg2 qb2 rgbspace)
 	     ,@(extract sub-args)
 	     :illuminant (rgbspace-illuminant rgbspace)))))))
 

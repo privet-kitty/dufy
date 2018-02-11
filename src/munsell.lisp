@@ -11,6 +11,7 @@
   (defparameter *bit-positive-fixnum* #.(floor (log most-positive-fixnum 2))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (declaim (double-float *maximum-chroma*))
   (defparameter *maximum-chroma*
     #+(and sbcl 64-bit) #.(float (expt 2 (- *bit-positive-fixnum* 10)) 1d0)
     #-(or sbcl 64-bit)  most-positive-double-float
@@ -102,13 +103,14 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	     (* r (aref y-to-munsell-value-arr y2)))))))
 
 (defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
-  (y-to-munsell-value (second (qrgb-to-xyz r g b rgbspace))))
+  (y-to-munsell-value (nth-value 1 (qrgb-to-xyz r g b rgbspace))))
 
 
-(declaim (ftype (function * (values double-float double-float double-float))
+(declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float))
 		mhvc-to-lchab-simplest-case
 		mhvc-to-lchab-value-chroma-integer-case
 		mhvc-to-lchab-value-integer-case))
+
 (defun mhvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
   (declare (optimize (speed 3) (safety 0))
@@ -140,10 +142,11 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	  (multiple-value-bind (disused cstarab2 hab2)
 	      (mhvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
 	    (declare (ignore disused)
-		     (double-float lstar cstarab1 hab1 cstarab2 hab2))
+		     ((double-float 0d0 360d0) hab1 hab2))
 	    (if (= hab1 hab2)
 		(values lstar cstarab1 hab1)
-		(let* ((hab (the double-float (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
+		(let* ((hab (the (double-float 0d0 360d0)
+				 (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
 		       (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
 						  (subtract-with-mod hab2 hab1 360d0)))
 				   (* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
@@ -207,10 +210,6 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 		    (lab-to-lchab lstar astar bstar)))))))))
 
 
-(defun bench-mhvc-to-lchab (&optional (num 300000))
-  (time (dotimes (x num)
-	  (mhvc-to-lchab (random 40d0) (random 10d0) (random 50d0)))))
-
 (define-condition invalid-mhvc-error (simple-error)
   ((value :initarg :value
 	  :initform 0d0
@@ -238,31 +237,34 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
   (or (< value 0) (> value 10)
       (< chroma 0) (> chroma *maximum-chroma*)))
 
+(declaim (inline mhvc-to-lchab))
 (defun mhvc-to-lchab (hue40 value chroma)
   "Note: The Standard Illuminant is C."
+  (declare (optimize (speed 3) (safety 1)))
   (let ((d-hue (mod (float hue40 1d0) 40d0))
-	(d-value (float (clamp value 0d0 10d0) 1d0))
-	(d-chroma (float (clamp chroma 0d0 *maximum-chroma*) 1d0)))
+	(d-value (clamp (float value 1d0) 0d0 10d0))
+	(d-chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
     ;; (format t "~A ~A ~A" d-hue (* d-value 5) (/ d-chroma 2))
-    (if (>= value 1d0)
+    (if (>= d-value 1d0)
 	(mhvc-to-lchab-general-case d-hue d-value (* d-chroma 0.5d0) nil)
 	(mhvc-to-lchab-general-case d-hue (* d-value 5d0) (* d-chroma 0.5d0) t))))
 
+(declaim (inline mhvc-to-xyz-illum-c))
 (defun mhvc-to-xyz-illum-c (hue40 value chroma)
   "Illuminant C. (Munsell Renotation Data is measured under the
 Illuminant C.)"
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'lchab-to-xyz
-    (mhvc-to-lchab hue40 value chroma)
+    (mhvc-to-lchab (float hue40 1d0) (float value 1d0) (float chroma 1d0))
     +illum-c+))
-  
-				   
+
+(declaim (inline mhvc-to-xyz))
 (defun mhvc-to-xyz (hue40 value chroma)
   "Illuminant D65. It causes an error by Bradford transformation,
 since the Munsell Renotation Data is measured under the Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call c-to-d65
-    (mhvc-to-xyz-illum-c hue40 value chroma)))
+    (mhvc-to-xyz-illum-c (float hue40 1d0) (float value 1d0) (float chroma 1d0))))
 
 (defun mhvc-to-xyy (hue40 value chroma)
   "Illuminant D65."
@@ -275,8 +277,10 @@ since the Munsell Renotation Data is measured under the Illuminant C."
     (mhvc-to-xyz hue40 value chroma)
     rgbspace))
 
+(declaim (inline mhvc-to-qrgb))
 (defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp nil))
   "The standard illuminant is D65: that of RGBSPACE must also be D65."
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'xyz-to-qrgb
     (mhvc-to-xyz hue40 value chroma)
     :rgbspace rgbspace

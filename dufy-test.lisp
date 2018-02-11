@@ -18,7 +18,8 @@
 
 (defparameter *qrgb16-set*
   '((65535 65534 65533) (0 1000 2000) (-1000 6000 70000)))
-  
+
+
 (defparameter *illum-d55-10*
   (make-illuminant-by-spd (gen-illum-d-spectrum #.(* 5500 (/ 1.43880d0 1.438))) +obs-cie1964+))
 
@@ -82,7 +83,7 @@
 		       (multiple-value-call #'rgb-to-xyz
 			 (apply (rcurry #'xyz-to-rgb +scrgb-nl+) xyz)
 			 +scrgb-nl+)))))
-  (dolist (rgbspace (list +bg-srgb-16+ (copy-rgbspace +pal/secam+ :illuminant +illum-a+ :bit-per-channel 21)))
+  (dolist (rgbspace (list +bg-srgb-16+ +scrgb-nl+ (copy-rgbspace +scrgb-16+ :illuminant +illum-a+ :bit-per-channel 21)))
     (dolist (qrgb *qrgb16-set*)
       (is (equal qrgb
 		 (multiple-value-list

@@ -143,7 +143,8 @@ THETA2] in a circle group."
 				  (* (aref mat 0 1) (aref mat 1 0))) det))
 	  invmat))
 
-(declaim (ftype (function * (values double-float double-float double-float)) multiply-mat-vec))
+(declaim (ftype (function * (values double-float double-float double-float)) multiply-mat-vec)
+	 (inline multiply-mat-vec))
 (defun multiply-mat-vec (matrix x y z)
   (declare (optimize (speed 3) (safety 1))
   	   (matrix33 matrix))

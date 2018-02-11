@@ -1,4 +1,5 @@
 (cl:in-package :cl-user)
+(declaim (optimize (compilation-speed 0)))
 
 (defpackage :dufy
   (:use :common-lisp :alexandria)
@@ -71,10 +72,9 @@
 	   :+adobe+ :+adobe-16+
 	   :+ntsc1953+ :+pal/secam+
 	   :+prophoto+ :+prophoto-12+ :+prophoto-16+
+	   :+wide-gamut+
 	   :make-rgbspace
 	   :copy-rgbspace
-	   :rgbspace-linearizer
-	   :rgbspace-delinearizer
 	   :rgbspace-illuminant
 	   :rgbspace-xr
 	   :rgbspace-yr
@@ -115,8 +115,8 @@
 	   :xyz-to-lchuv
 	   :lchuv-to-xyz
 
-	   ;; :delinearize
-	   ;; :linearize
+	   :delinearize
+	   :linearize
 	   :nearly=
 	   :nearly<=
 	   :xyz-to-lrgb
@@ -209,3 +209,5 @@
 ;; 	  ;; munsell.lisp
 ;; 	  munsel-value-to-y
 ;; 	  munsell-value-to-lstar))
+
+
