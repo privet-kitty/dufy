@@ -25,7 +25,7 @@
 (defstruct (rgbspace (:constructor $make-rgbspace)
 		     (:copier nil))
   "Structure of RGB space, including encoding characteristics"
-  ;; primary coordinates
+    ;; primary coordinates
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
   (xb 0d0 :type double-float) (yb 0d0 :type double-float)
@@ -37,8 +37,8 @@
   ;; nominal range of linear values
   (lmin 0d0 :type double-float)
   (lmax 1d0 :type double-float)
-  (linearizer (rcurry #'float 1d0) :type function)
-  (delinearizer (rcurry #'float 1d0) :type function)
+  (linearizer (rcurry #'float 1d0) :type (function * double-float))
+  (delinearizer (rcurry #'float 1d0) :type (function * double-float))
 
   ;; nominal range of gamma-corrected values
   (min 0d0 :type double-float)
@@ -48,8 +48,8 @@
   ;; quantization
   (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
   (qmax 255 :type (integer 1 #.most-positive-fixnum)) ; maximum of quantized values
-  (quantizer #'(lambda (x) (round (* 255d0 x))) :type function)
-  (dequantizer #'(lambda (n) (* n #.(/ 255d0))) :type function))
+  (quantizer #'(lambda (x) (round (* 255d0 x))) :type (function * integer))
+  (dequantizer #'(lambda (n) (* n #.(/ 255d0))) :type (function * double-float)))
 
 
 
@@ -58,7 +58,7 @@
   "LINEARIZER and DELINEARIZER must be (FUNCTION * DOUBLE-FLOAT)."
   (declare (optimize (speed 3) (safety 1))
 	   (double-float xr yr xg yg xb yb)
-	   (function linearizer delinearizer))
+	   ((function * double-float) linearizer delinearizer))
   (let ((coordinates
 	 (make-array '(3 3)
 		     :element-type 'double-float
@@ -82,8 +82,8 @@
 						  (list (* sr (aref coordinates 2 0))
 							(* sg (aref coordinates 2 1))
 							(* sb (aref coordinates 2 2))))))
-	     (min (if force-normal 0d0 (float (funcall delinearizer lmin) 1d0)))
-	     (max (if force-normal 1d0 (float (funcall delinearizer lmax) 1d0)))
+	     (min (if force-normal 0d0 (funcall delinearizer lmin)))
+	     (max (if force-normal 1d0 (funcall delinearizer lmax)))
 	     (normal (if (and (= min 0d0) (= max 1d0))
 			 t nil))
 	     (qmax (- (expt 2 bit-per-channel) 1))
@@ -104,14 +104,18 @@
 			:bit-per-channel bit-per-channel
 			:qmax qmax
 			:quantizer (if normal
-				       #'(lambda (x) (round (* qmax-float (float x 1d0))))
-				       #'(lambda (x) (round (lerp (/ (- (float x 1d0)
-									min)
-								     len)
-								  0 qmax-float))))
-			:dequantizer #'(lambda (n) (+ min (* len
-							     (float n 1d0)
-							     /qmax-float))))))))
+				       #'(lambda (x)
+					   (declare (double-float x))
+					   (round (* qmax-float x)))
+				       #'(lambda (x)
+					   (declare (double-float x))
+					   (round (lerp (/ (- x
+							      min)
+							   len)
+							0 qmax-float))))
+			:dequantizer #'(lambda (n)
+					 (declare (integer n))
+					 (+ min (* len n /qmax-float))))))))
 
 (defvar +srgb+)
 (declaim (inline xyz-to-lrgb))
@@ -351,7 +355,6 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 	    (funcall delin (float lb 1d0)))))
 
 (declaim (inline rgb-to-lrgb))
-(declaim (ftype (function * (values double-float double-float double-float)) rgb-to-lrgb))
 (defun rgb-to-lrgb (r g b &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((lin (rgbspace-linearizer rgbspace)))
@@ -404,9 +407,9 @@ all the real values."
 				     (rcurry #'clamp 0 (rgbspace-qmax rgbspace))
 				     #'identity))
 			    (rgbspace-quantizer rgbspace))))
-    (values (funcall quantizer r) 
-	    (funcall quantizer g)
-	    (funcall quantizer b))))
+    (values (funcall quantizer (float r 1d0)) 
+	    (funcall quantizer (float g 1d0))
+	    (funcall quantizer (float b 1d0)))))
 
 ;; (defun rgb-to-qrgb (r g b &key (rgbspace +srgb+) (clamp nil))
 ;;   (declare (ignore rgbspace clamp))
@@ -414,9 +417,11 @@ all the real values."
 ;; 	  (round (* g 255d0))
 ;; 	  (round (* b 255d0))))
 
-(declaim (ftype (function * (values double-float double-float double-float)) qrgb-to-rgb))
+
+(declaim (inline qrgb-to-rgb))
 (defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
+  (declare (optimize (speed 3) (safety 1))
+	   (integer qr qg qb))
   (let ((dequantizer (rgbspace-dequantizer rgbspace)))
     (values (funcall dequantizer qr)
 	    (funcall dequantizer qg)
@@ -432,7 +437,8 @@ all the real values."
 
 (declaim (inline qrgb-to-xyz))
 (defun qrgb-to-xyz (qr qg qb &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
+  (declare (optimize (speed 3) (safety 1))
+	   (integer qr qg qb))
   (multiple-value-call #'rgb-to-xyz
     (qrgb-to-rgb qr qg qb rgbspace)
     rgbspace))
@@ -447,7 +453,10 @@ all the real values."
        (ash (clamp qg 0 qmax) bpc)
        (clamp qb 0 qmax))))
 
+(declaim (inline hex-to-qrgb))
 (defun hex-to-qrgb (hex &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1))
+	   (integer hex))
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
 	(qmax (rgbspace-qmax rgbspace)))
     (values (logand (ash hex (+ minus-bpc minus-bpc)) qmax)
@@ -464,7 +473,10 @@ all the real values."
     (rgb-to-qrgb r g b :rgbspace rgbspace)
     rgbspace))
 
+(declaim (inline hex-to-xyz))
 (defun hex-to-xyz (hex &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1))
+	   (integer hex))
   (multiple-value-call #'qrgb-to-xyz
     (hex-to-qrgb hex rgbspace)
     rgbspace))

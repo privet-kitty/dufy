@@ -40,18 +40,12 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 ;; CIE76
 (defdeltae deltae (l1 a1 b1 l2 a2 b2)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((l1 (float l1 1d0))
-	(a1 (float a1 1d0))
-	(b1 (float b1 1d0))
-	(l2 (float l2 1d0))
-	(a2 (float a2 1d0))
-	(b2 (float b2 1d0)))
-    (let ((deltal (- l1 l2))
-	  (deltaa (- a1 a2))
-	  (deltab (- b1 b2)))
-      (sqrt (+ (* deltal deltal)
-	       (* deltaa deltaa)
-	       (* deltab deltab))))))
+  (let ((deltal (- (float l1 1d0) (float l2 1d0)))
+	(deltaa (- (float a1 1d0) (float a2 1d0)))
+	(deltab (- (float b1 1d0) (float b2 1d0))))
+    (sqrt (+ (* deltal deltal)
+	     (* deltaa deltaa)
+	     (* deltab deltab)))))
 
 
 

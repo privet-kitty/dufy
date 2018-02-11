@@ -109,7 +109,9 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 (declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float))
 		mhvc-to-lchab-simplest-case
 		mhvc-to-lchab-value-chroma-integer-case
-		mhvc-to-lchab-value-integer-case))
+		mhvc-to-lchab-value-integer-case
+		mhvc-to-lchab-general-case
+		mhvc-to-lchab))
 
 (defun mhvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
@@ -420,6 +422,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 
 
 ;; used in INVERT-LCHAB-TO-MHVC
+(declaim (inline invert-mhvc-to-lchab-with-init))
 (defun invert-mhvc-to-lchab-with-init (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
   (declare (optimize (speed 3) (safety 1))
@@ -433,8 +436,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
     (dotimes (i max-iteration (values (mod tmp-hue40 40) v tmp-c max-iteration))
       (multiple-value-bind (disused tmp-cstarab tmp-hab)
 	  (mhvc-to-lchab tmp-hue40 v tmp-c)
-	(declare (ignore disused)
-		 (double-float tmp-cstarab tmp-hab))
+	(declare (ignore disused))
 	(let* ((delta-cstarab (- cstarab tmp-cstarab))
 	       (delta-hab (circular-delta hab tmp-hab))
 	       (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
@@ -462,6 +464,8 @@ values are as follows:
 In other words: The inversion has failed, if the second value is
 equal to MAX-ITERATION.
 "
+  (declare (optimize (speed 3) (safety 1))
+	   (fixnum max-iteration))
   (let ((lstar (float lstar 1d0))
 	(cstarab (float cstarab 1d0))
 	(hab (float hab 1d0)))

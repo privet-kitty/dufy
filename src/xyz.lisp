@@ -545,7 +545,7 @@ and TO-ILLUMINANT in XYZ space."
 	  matrix2)))))
 
 
-(declaim (ftype (function * function) gen-cat-function))
+(declaim (ftype (function * (function * (values double-float double-float double-float))) gen-cat-function))
 (defun gen-cat-function (from-illuminant to-illuminant &optional (tmatrix +bradford+))
   "Returns a chromatic adaptation function on XYZ space:
 > (funcall (gen-cat-function +illum-d65+ +illum-e+) 0.9504d0 1.0d0 1.0889d0)
