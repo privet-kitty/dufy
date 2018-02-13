@@ -7,13 +7,16 @@
 (defparameter c-to-d65
   (load-time-value (gen-cat-function +illum-c+ +illum-d65+) t))
 
+(declaim (inline c-to-d65))
+(def-cat-function c-to-d65 +illum-c+ +illum-d65+ +bradford+)
+
 (eval-when (:compile-toplevel)
-  (defparameter *bit-positive-fixnum* #.(floor (log most-positive-fixnum 2))))
+  (defparameter *bit-most-positive-fixnum* #.(floor (log most-positive-fixnum 2))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (declaim (double-float *maximum-chroma*))
   (defparameter *maximum-chroma*
-    #+(and sbcl 64-bit) #.(float (expt 2 (- *bit-positive-fixnum* 10)) 1d0)
+    #+(and sbcl 64-bit) #.(float (expt 2 (- *bit-most-positive-fixnum* 10)) 1d0)
     #-(or sbcl 64-bit)  most-positive-double-float
     "The largest chroma which the converters accepts. It is less than
     MOST-POSITIVE-DOUBLE-FLOAT because of efficiency: e.g. in
@@ -281,7 +284,7 @@ Illuminant C.)"
   "Illuminant D65. It causes an error by Bradford transformation,
 since the Munsell Renotation Data is measured under the Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call c-to-d65
+  (multiple-value-call #'c-to-d65
     (mhvc-to-xyz-illum-c (float hue40 1d0) (float value 1d0) (float chroma 1d0))))
 
 (defun mhvc-to-xyy (hue40 value chroma)

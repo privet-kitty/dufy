@@ -556,6 +556,28 @@ and TO-ILLUMINANT in XYZ space."
     #'(lambda (x y z)
 	(multiply-mat-vec mat x y z))))
 
+;; (defmacro def-cat-function (name from-illuminant to-illuminant &optional (tmatrix +bradford+))
+;;   (let ((mat (gensym)))
+;;     `(let ((,mat (calc-cat-matrix ,from-illuminant ,to-illuminant ,tmatrix)))
+;;        (declare (type matrix33 ,mat))
+;;        (defun ,name (x y z)
+;; 	 (declare (optimize (speed 3) (safety 1)))
+;; 	 (multiply-mat-vec ,mat x y z)))))
+
+(defmacro def-cat-function (name from-illuminant to-illuminant &optional (tmatrix +bradford+))
+  (let ((mat-name (intern (format nil "+~A-MAT+" name) :dufy)))
+    `(progn
+       (defparameter ,mat-name
+	 (load-time-value
+	  (calc-cat-matrix ,from-illuminant ,to-illuminant ,tmatrix)
+	  t))	 
+       (declaim (type matrix33 ,mat-name))
+       (defun ,name (x y z)
+	 (declare (optimize (speed 3) (safety 1)))
+	 (multiply-mat-vec ,mat-name x y z)))))
+
+;; (print (macroexpand '(def-cat-function c-to-d65 +illum-c+ +illum-d65+ +cat02+)))
+
 ;; (declaim (ftype (function * function) gen-cat-function-xyy))
 ;; (defun gen-cat-function-xyy (from-illuminant to-illuminant &optional (tmatrix +bradford+))
 ;;   "Returns a chromatic adaptation function of xyY values: #'(lambda (SMALL-X SMALL-Y Y) ...)"
