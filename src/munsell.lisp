@@ -1,11 +1,11 @@
 (in-package :dufy)
 
 ;; The bradford transformations between D65 and C are frequently used here.
-(declaim (type function d65-to-c c-to-d65))
+(declaim (type (function * (values double-float double-float double-float)) d65-to-c c-to-d65))
 (defparameter d65-to-c
-  (gen-cat-function +illum-d65+ +illum-c+))
+  (load-time-value (gen-cat-function +illum-d65+ +illum-c+) t))
 (defparameter c-to-d65
-  (gen-cat-function +illum-c+ +illum-d65+))
+  (load-time-value (gen-cat-function +illum-c+ +illum-d65+) t))
 
 (eval-when (:compile-toplevel)
   (defparameter *bit-positive-fixnum* #.(floor (log most-positive-fixnum 2))))
@@ -21,17 +21,12 @@
     fulfills (typep (round F) '(SIGNED-BYTE 64)"))
 
 
-(defmacro max-chroma-integer-case (hue40 value)
-  `(aref max-chroma-arr ,hue40 ,value))
-
-(defmacro max-chroma-integer-case-dark (hue40 dark-value)
-  `(aref max-chroma-arr-dark ,hue40 ,dark-value))
-
 (declaim (ftype (function * (integer 0 50)) max-chroma))
 (defun max-chroma (hue40 value &key (use-dark t))
   "Returns the largest chroma in the Munsell renotation data."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((hue40 (float hue40 1d0)) (value (float value 1d0)))
+  (let ((hue40 (float hue40 1d0))
+	(value (float value 1d0)))
     (let* ((hue (mod hue40 40d0))
 	   (hue1 (floor hue))
 	   (hue2 (mod (ceiling hue) 40)))
@@ -53,10 +48,13 @@
 
 (declaim (inline munsel-value-to-y
 		 munsell-value-to-lstar))
+(declaim (ftype (function * double-float) munsell-value-to-y))
 (defun munsell-value-to-y (v)
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
 formula is based on ASTM D1535-08e1:"
-  (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((v (float v 1d0)))
+    (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
 
 (defun munsell-value-to-lstar (v)
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
@@ -90,10 +88,14 @@ to munsell-value-to-achromatic-xyy"
 		    0.975d0)
 		 0d0 1d0)))
 
+(declaim (inline y-to-munsell-value))
 (defun y-to-munsell-value (y)
   "Interpolates the inversion table of MUNSELL-VALUE-TO-Y linearly,
-whose band width is 10^-3. The nominal range of Y is [0, 1]."
-  (let* ((y1000 (* (clamp y 0 1) 1000))
+whose band width is 10^-3. The
+error, (abs (- (y (munsell-value-to-y (y-to-munsell-value y))))), is
+smaller than 10^-5."
+  (declare (optimize (speed 3) (safety 1)))
+  (let* ((y1000 (* (clamp (float y 1d0) 0d0 1d0) 1000))
 	 (y1 (floor y1000))
 	 (y2 (ceiling y1000)))
     (if (= y1 y2)
@@ -101,6 +103,20 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	(let ((r (- y1000 y1)))
 	  (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
 	     (* r (aref y-to-munsell-value-arr y2)))))))
+
+(defun test-value-to-y (&optional (num 100000000))
+  "Checks error of y-to-munsell-value"
+  (declare (optimize (speed 3) (safety 1))
+	   (fixnum num))
+  (let ((max-error 0d0)
+	(worst-y 0d0))
+    (dotimes (n num (values max-error worst-y))
+      (let* ((y (random 1d0))
+	     (delta (abs (- (munsell-value-to-y (y-to-munsell-value y)) y))))
+	(when (>= delta max-error)
+	  ;;(format t "y=~A delta=~A~%" y delta)
+	  (setf worst-y y
+		max-error delta))))))
 
 (defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
   (y-to-munsell-value (nth-value 1 (qrgb-to-xyz r g b rgbspace))))
@@ -193,7 +209,7 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 	  ;; If the given color is so dark that it is out of MRD, we
 	  ;; use the fact that the chroma and hue of LCh(ab)
 	  ;; corresponds roughly to that of Munsell.
-	  (if (= tmp-val1 0)
+	  (if (zerop tmp-val1)
 	      (multiple-value-bind (disused cstarab hab)
 		  (mhvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
 		(declare (ignore disused))
@@ -205,10 +221,10 @@ whose band width is 10^-3. The nominal range of Y is [0, 1]."
 		    (multiple-value-call #'lchab-to-lab
 		      (mhvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
 		  (declare (double-float lstar lstar1 astar1 bstar1 lstar2 astar2 bstar2))
-		  (let* ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
-				   (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
-			 (bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
-				   (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
+		  (let ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
+				  (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
+			(bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
+				  (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
 		    (lab-to-lchab lstar astar bstar)))))))))
 
 
