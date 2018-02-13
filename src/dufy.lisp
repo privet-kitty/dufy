@@ -37,6 +37,7 @@
   ;; nominal range of linear values
   (lmin 0d0 :type double-float)
   (lmax 1d0 :type double-float)
+  (llen 1d0 :type double-float)
   (linearizer (rcurry #'float 1d0) :type (function * double-float))
   (delinearizer (rcurry #'float 1d0) :type (function * double-float))
 
@@ -62,9 +63,10 @@
   (let ((coordinates
 	 (make-array '(3 3)
 		     :element-type 'double-float
-		     :initial-contents (list (list xr xg xb)
-					     (list yr yg yb)
-					     (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
+		     :initial-contents
+		     (list (list xr xg xb)
+			   (list yr yg yb)
+			   (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
     (multiple-value-bind (sr sg sb)
 	(multiply-mat-vec (invert-matrix33 coordinates)
 			  (illuminant-x illuminant)
@@ -73,15 +75,16 @@
       (let* ((mat
 	      (make-array '(3 3)
 			  :element-type 'double-float
-			  :initial-contents (list (list (* sr (aref coordinates 0 0))
-							(* sg (aref coordinates 0 1))
-							(* sb (aref coordinates 0 2)))
-						  (list (* sr (aref coordinates 1 0))
-							(* sg (aref coordinates 1 1))
-							(* sb (aref coordinates 1 2)))
-						  (list (* sr (aref coordinates 2 0))
-							(* sg (aref coordinates 2 1))
-							(* sb (aref coordinates 2 2))))))
+			  :initial-contents
+			  (list (list (* sr (aref coordinates 0 0))
+				      (* sg (aref coordinates 0 1))
+				      (* sb (aref coordinates 0 2)))
+				(list (* sr (aref coordinates 1 0))
+				      (* sg (aref coordinates 1 1))
+				      (* sb (aref coordinates 1 2)))
+				(list (* sr (aref coordinates 2 0))
+				      (* sg (aref coordinates 2 1))
+				      (* sb (aref coordinates 2 2))))))
 	     (min (if force-normal 0d0 (funcall delinearizer lmin)))
 	     (max (if force-normal 1d0 (funcall delinearizer lmax)))
 	     (normal (if (and (= min 0d0) (= max 1d0))
@@ -98,6 +101,7 @@
 			:from-xyz-matrix (invert-matrix33 mat)
 			:lmin lmin
 			:lmax lmax
+			:llen (- lmax lmin)
 			:min min
 			:max max
 			:normal normal
@@ -121,14 +125,26 @@
 (declaim (inline xyz-to-lrgb))
 (defun xyz-to-lrgb (x y z &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
-		    (float x 1d0) (float y 1d0) (float z 1d0)))
+  (let ((lmin (rgbspace-lmin rgbspace))
+	(llen (rgbspace-llen rgbspace)))
+    (multiple-value-call #'(lambda (lr lg lb)
+			     (values (+ (* lr llen) lmin)
+				     (+ (* lg llen) lmin)
+				     (+ (* lb llen) lmin)))
+      (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
+			(float x 1d0)
+			(float y 1d0)
+			(float z 1d0)))))
 
 (declaim (inline lrgb-to-xyz))
 (defun lrgb-to-xyz (lr lg lb &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
-		    (float lr 1d0) (float lg 1d0) (float lb 1d0)))
+  (let ((lmin (rgbspace-lmin rgbspace))
+	(llen (rgbspace-llen rgbspace)))
+    (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
+		      (/ (- (float lr 1d0) lmin) llen)
+		      (/ (- (float lg 1d0) lmin) llen)
+		      (/ (- (float lb 1d0) lmin) llen))))
 
 
 (defun copy-rgbspace (rgbspace &key (illuminant nil) (bit-per-channel nil))
@@ -486,7 +502,6 @@ all the real values."
     (xyz-to-qrgb x y z :rgbspace rgbspace)
     rgbspace))
 
-
 ;;;
 ;;; L*a*b*, L*u*v*, LCh
 ;;;
@@ -598,6 +613,7 @@ all the real values."
     (values (/ (* 4d0 x) denom)
 	    (/ (* 9d0 y) denom))))
 
+(declaim (inline xyz-to-luv))
 (defun xyz-to-luv (x y z &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
@@ -630,17 +646,24 @@ all the real values."
 	(values (* y (/ (* 9d0 uprime) (* 4d0 vprime)))
 		y
 		(* y (/ (- 12d0 (* 3d0 uprime) (* 20d0 vprime)) (* 4d0 vprime))))))))
-	    
+
+(declaim (inline luv-to-lchuv))
 (defun luv-to-lchuv (lstar ustar vstar)
-  (values lstar
-	  (sqrt (+ (* ustar ustar) (* vstar vstar)))
-	  (mod (* (atan vstar ustar) +360/TWO-PI+) 360d0)))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((lstar (float lstar 1d0))
+	(ustar (float ustar 1d0))
+	(vstar (float vstar 1d0)))
+    (values lstar
+	    (sqrt (+ (* ustar ustar) (* vstar vstar)))
+	    (mod (* (atan vstar ustar) +360/TWO-PI+) 360d0))))
 
 (defun lchuv-to-luv (lstar cstaruv huv)
   (let ((hue-two-pi (* huv +TWO-PI/360+)))
     (values lstar (* cstaruv (cos hue-two-pi)) (* cstaruv (sin hue-two-pi)))))
 
+(declaim (inline xyz-to-lchuv))
 (defun xyz-to-lchuv (x y z &optional (illuminant +illum-d65+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'luv-to-lchuv (xyz-to-luv x y z illuminant)))
 
 (defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant +illum-d65+))
@@ -648,6 +671,17 @@ all the real values."
     (lchuv-to-luv lstar cstaruv huv)
     illuminant))
 
+
+(let ((d65-to-c (gen-cat-function +illum-c+ +illum-d65+)))
+  (defun bench-hex-to-lchuv (&optional (num 1000000))
+    (declare (optimize (speed 3) (safety 1))
+	     (fixnum num))
+    (simple-time
+     (dotimes (x num)
+       (multiple-value-call #'xyz-to-lchuv
+	 (multiple-value-call d65-to-c
+	   (hex-to-xyz (random #.(expt 2 48)) +bg-srgb-16+))
+	 +illum-c+)))))
 
 ;;;
 ;;; HSV/HSL

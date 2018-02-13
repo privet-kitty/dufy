@@ -551,6 +551,7 @@ and TO-ILLUMINANT in XYZ space."
 > (funcall (gen-cat-function +illum-d65+ +illum-e+) 0.9504d0 1.0d0 1.0889d0)
 => (0.9999700272441295d0 0.999998887365445d0 0.9999997282885571d0)
 "
+  (declare (optimize (speed 3) (safety 1)))
   (let ((mat (calc-cat-matrix from-illuminant to-illuminant tmatrix)))
     #'(lambda (x y z)
 	(multiply-mat-vec mat x y z))))

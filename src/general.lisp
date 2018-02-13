@@ -30,6 +30,16 @@
   "Used instead of NIL.")
 
 
+;;; For development
+
+(defmacro simple-time (&body body)
+  (let ((start (gensym)))
+    `(let ((,start (get-internal-run-time)))
+       ,@body
+       (/ (float (- (get-internal-run-time) ,start) 1d0)
+	  internal-time-units-per-second))))
+
+
 ;;;
 ;;; Some arithmetic in a circle group
 ;;;
