@@ -3,7 +3,10 @@
 
 (in-package :dufy)
 
-(define-constant TWO-PI (+ PI PI))
+(define-constant TWO-PI (float (+ PI PI) 1d0))
+
+(deftype single-valued-function () '(function * (values t &optional)))
+(deftype matrix33 () '(simple-array double-float (3 3)))
 
 (defun nearly= (threshold number &rest more-numbers)
   (if (null more-numbers)
@@ -23,7 +26,8 @@
       (and (<= (- number (car (the cons more-numbers))) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
-(defparameter *empty-function* ())
+(defun empty-function ()
+  "Used instead of NIL.")
 
 
 ;;;
@@ -31,6 +35,12 @@
 ;;;
 
 
+(declaim (inline subtract-with-mod
+		 circular-nearer
+		 circular-clamp
+		 circular-lerp
+		 circular-lerp-loose
+		 ))
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
   "(X - Y) mod DIVISOR."
   (mod (- x y) divisor))
@@ -99,7 +109,13 @@ THETA2] in a circle group."
   (make-array '(3 3) :element-type 'double-float
 	      :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 
+(defparameter +empty-matrix+
+  (make-array '(3 3) :element-type 'double-float)
+  "Used instead of NIL")
+
 (defun invert-matrix33 (mat)
+  (declare (optimize (speed 3) (safety 1))
+	   (matrix33 mat))
   (let ((det (+ (* (aref mat 0 0) (aref mat 1 1) (aref mat 2 2))
 		(* (aref mat 1 0) (aref mat 2 1) (aref mat 0 2))
 		(* (aref mat 2 0) (aref mat 0 1) (aref mat 1 2))
@@ -127,13 +143,18 @@ THETA2] in a circle group."
 				  (* (aref mat 0 1) (aref mat 1 0))) det))
 	  invmat))
 
-(defun multiply-matrix-and-vec (matrix x y z)
-  (list (+ (* x (aref matrix 0 0))
-	   (* y (aref matrix 0 1))
-	   (* z (aref matrix 0 2)))
-	(+ (* x (aref matrix 1 0))
-	   (* y (aref matrix 1 1))
-	   (* z (aref matrix 1 2)))
-	(+ (* x (aref matrix 2 0))
-	   (* y (aref matrix 2 1))
-	   (* z (aref matrix 2 2)))))
+(declaim (ftype (function * (values double-float double-float double-float)) multiply-mat-vec)
+	 (inline multiply-mat-vec))
+(defun multiply-mat-vec (matrix x y z)
+  (declare (optimize (speed 3) (safety 1))
+  	   (matrix33 matrix))
+  (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
+    (values (+ (* x (aref matrix 0 0))
+	       (* y (aref matrix 0 1))
+	       (* z (aref matrix 0 2)))
+	    (+ (* x (aref matrix 1 0))
+	       (* y (aref matrix 1 1))
+	       (* z (aref matrix 1 2)))
+	    (+ (* x (aref matrix 2 0))
+	       (* y (aref matrix 2 1))
+	       (* z (aref matrix 2 2))))))

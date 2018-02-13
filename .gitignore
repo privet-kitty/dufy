@@ -2,5 +2,7 @@
 *.dat
 *.bak
 *.fasl
+*.mat
+.Rhistory
 \#*#
 doc/

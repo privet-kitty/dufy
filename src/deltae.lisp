@@ -2,7 +2,8 @@
 
 ;; define delta-E functions for L*a*b*, xyz and qrgb
 (defmacro defdeltae (name args &body body)
-  "Only &key arguments are allowed in sub-args."
+  "Only &key arguments are allowed in sub-args. The following symbols
+cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
   (labels ((extract (lst) ; extract sub-args
 	     (reduce #'append
 		     (mapcar #'(lambda (pair)
@@ -15,43 +16,36 @@
 	   (qrgb-name (intern (format nil "QRGB-~A" name) :dufy))
 	   (xyz-name (intern (format nil "XYZ-~A" name) :dufy)))
       `(progn
+	 (declaim (inline ,name))
 	 (defun ,name (,@main-args ,@sub-args-with-key)
 	   ,@body)
+	 (declaim (inline ,xyz-name))
 	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
-	   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-	     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-	       (,name l1 a1 b1 l2 a2 b2 ,@(extract sub-args)))))
-	 (defun ,qrgb-name (r1 g1 b1 r2 g2 b2 &key ,@sub-args (rgbspace +srgb+))
-	   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
-	     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
-	       (,xyz-name x1 y1 z1 x2 y2 z2 ,@(extract sub-args) :illuminant (rgbspace-illuminant rgbspace)))))))))
+	   (declare (optimize (speed 3) (safety 1)))
+	   (multiple-value-call #',name
+	     (xyz-to-lab (float x1 1d0) (float y1 1d0) (float z1 1d0) illuminant)
+	     (xyz-to-lab (float x2 1d0) (float y2 1d0) (float z2 1d0) illuminant)
+	     ,@(extract sub-args)))
+	 (declaim (inline ,qrgb-name))
+	 (defun ,qrgb-name (qr1 qg1 qb1 qr2 qg2 qb2 &key ,@sub-args (rgbspace +srgb+))
+	   (declare (optimize (speed 3) (safety 1))
+		    (integer qr1 qg1 qb1 qr2 qg2 qb2))
+	   (multiple-value-call #',xyz-name
+	     (qrgb-to-xyz qr1 qg1 qb1 rgbspace)
+	     (qrgb-to-xyz qr2 qg2 qb2 rgbspace)
+	     ,@(extract sub-args)
+	     :illuminant (rgbspace-illuminant rgbspace)))))))
 
 
 ;; CIE76
 (defdeltae deltae (l1 a1 b1 l2 a2 b2)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((l1 (float l1 1d0))
-	(a1 (float a1 1d0))
-	(b1 (float b1 1d0))
-	(l2 (float l2 1d0))
-	(a2 (float a2 1d0))
-	(b2 (float b2 1d0)))
-    (let ((deltal (- l1 l2))
-	  (deltaa (- a1 a2))
-	  (deltab (- b1 b2)))
-      (sqrt (+ (* deltal deltal)
-	       (* deltaa deltaa)
-	       (* deltab deltab))))))
-
-;; (defun xyz-deltae (x1 y1 z1 x2 y2 z2 &key (illuminant +illum-d65+))
-;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-;;       (deltae l1 a1 b1 l2 a2 b2))))
-
-;; (defun qrgb-deltae (r1 g1 b1 r2 g2 b2 &key (rgbspace +srgb+))
-;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
-;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
-;;       (xyz-deltae x1 y1 z1 x2 y2 z2 :illuminant (rgbspace-illuminant rgbspace)))))
+  (let ((deltal (- (float l1 1d0) (float l2 1d0)))
+	(deltaa (- (float a1 1d0) (float a2 1d0)))
+	(deltab (- (float b1 1d0) (float b2 1d0))))
+    (sqrt (+ (* deltal deltal)
+	     (* deltaa deltaa)
+	     (* deltab deltab)))))
 
 
 
@@ -88,19 +82,6 @@
 	      (sqrt (+ (* term1 term1)
 		       (* term2 term2)
 		       (* term3 term3))))))))))
-
-
-;; (defun xyz-deltae94 (x1 y1 z1 x2 y2 z2 &key (illuminant +illum-d65+) (application :graphic-arts))
-;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-;;       (deltae94 l1 a1 b1 l2 a2 b2 :application application))))
-
-;; (defun qrgb-deltae94 (r1 g1 b1 r2 g2 b2 &key (rgbspace +srgb+) (application :graphic-arts))
-;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
-;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
-;;       (xyz-deltae94 x1 y1 z1 x2 y2 z2
-;; 		    :illuminant (rgbspace-illuminant rgbspace)
-;; 		    :application application))))
 
 
 ;; CIEDE2000
@@ -176,13 +157,8 @@
 			 (* varSH varSH))
 		      (* varRT (/ deltaCprime varSC) (/ deltalargeHprime varSH)))))))))
 
-;; (defun xyz-deltae00 (x1 y1 z1 x2 y2 z2 &key (illuminant +illum-d65+))
-;;   (destructuring-bind (l1 a1 b1) (xyz-to-lab x1 y1 z1 illuminant)
-;;     (destructuring-bind (l2 a2 b2) (xyz-to-lab x2 y2 z2 illuminant)
-;;       (deltae00 l1 a1 b1 l2 a2 b2))))
-
-;; (defun qrgb-deltae00 (r1 g1 b1 r2 g2 b2 &key (rgbspace +srgb+))
-;;   (destructuring-bind (x1 y1 z1) (qrgb-to-xyz r1 g1 b1 rgbspace)
-;;     (destructuring-bind (x2 y2 z2) (qrgb-to-xyz r2 g2 b2 rgbspace)
-;;       (xyz-deltae00 x1 y1 z1 x2 y2 z2
-;; 		    :illuminant (rgbspace-illuminant rgbspace)))))
+(defun bench-deltae00 (&optional (num 1000000))
+  (time (dotimes (x num)
+	  (qrgb-deltae00 (random 65536) (random 65536) (random 65536)
+			 (random 65536) (random 65536) (random 65536)
+			 :rgbspace +bg-srgb-16+))))

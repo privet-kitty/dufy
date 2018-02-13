@@ -1,10 +1,16 @@
 (cl:in-package :cl-user)
+(declaim (optimize (compilation-speed 0)))
 
 (defpackage :dufy
   (:use :common-lisp :alexandria)
   (:export :nearyly=
 	   :nearly<=
 	   :nearly-equal
+	   :circular-nearer
+	   :circular-clamp
+	   :circular-lerp
+	   :circular-member
+	   
 
 	   ;; xyz.lisp
 	   :gen-spectrum
@@ -31,17 +37,18 @@
 	   :xyy-to-xyz
 	   :xyz-to-xyy
 	   :illuminant
+	   :illuminant-small-x
+	   :illuminant-small-y
 	   :illuminant-x
 	   :illuminant-y
-	   :illuminant-largex
-	   :illuminant-largey
-	   :illuminant-largez
+	   :illuminant-z
 	   :illuminant-spectrum
+	   :illuminant-observer
+	   :illuminant-has-spectrum
 	   :make-illuminant
 	   :make-illuminant-by-spd
 	   :+illum-a+ :+illum-e+
 	   :+illum-c+ :+illum-d50+ :+illum-d65+
-	   :calc-cat-matrix
 	   :gen-cat-function
 
 	   :cat
@@ -64,11 +71,10 @@
 	   :+scrgb-16+ :+scrgb-nl+
 	   :+adobe+ :+adobe-16+
 	   :+ntsc1953+ :+pal/secam+
-	   :+prophoto+ :+prophoto-12+ :prophoto-16+
+	   :+prophoto+ :+prophoto-12+ :+prophoto-16+
+	   :+wide-gamut+
 	   :make-rgbspace
 	   :copy-rgbspace
-	   :rgbspace-linearizer
-	   :rgbspace-delinearizer
 	   :rgbspace-illuminant
 	   :rgbspace-xr
 	   :rgbspace-yr
@@ -84,6 +90,7 @@
 	   :rgbspace-bit-per-channel
 	   :rgbspace-min
 	   :rgbspace-max
+	   :rgbspace-qmax
 	   :rgbspace-quantizer
 	   :rgbspace-dequantizer
 	   :gen-linearizer
@@ -114,18 +121,21 @@
 	   :nearly<=
 	   :xyz-to-lrgb
 	   :lrgb-to-xyz
+	   :lrgb-out-of-gamut-p
 	   :rgb-to-lrgb
 	   :lrgb-to-rgb
+	   :rgb-out-of-gamut-p
 	   :xyz-to-rgb
 	   :rgb-to-xyz
 	   :rgb-to-qrgb
 	   :qrgb-to-rgb
+	   :qrgb-out-of-gamut-p
 	   :xyz-to-qrgb
 	   :qrgb-to-xyz
 	   :qrgb-to-hex
 	   :hex-to-qrgb
-	   ;; :rgb-to-hex
-	   ;; :hex-to-rgb
+	   :rgb-to-hex
+	   :hex-to-rgb
 	   :xyz-to-hex
 	   :hex-to-xyz
 	   :two-pi
@@ -160,7 +170,6 @@
 	   ;; munsell.lisp
 	   :munsell-value-to-y
 	   :y-to-munsell-value
-	   :qrgb-to-munsell-value
 	   :mhvc-out-of-mrd-p
 	   :mhvc-to-xyy
 	   :mhvc-to-xyz
@@ -178,5 +187,27 @@
 	   :max-chroma
 	   :lchab-to-mhvc
 	   :lchab-to-munsell
+	   :xyz-to-mhvc
+	   :xyz-to-munsell
 	   :*maximum-chroma*
 ))
+
+
+
+;; (declaim (inline
+;; 	  ;; general.lisp
+;; 	  subtract-with-mod
+;; 	  circular-nearer
+;; 	  circular-clamp
+;; 	  circular-lerp
+;; 	  circular-lerp-loose
+
+;; 	  ;; dufy.lisp
+;; 	  lchab-to-lab
+;; 	  lab-to-lchab
+
+;; 	  ;; munsell.lisp
+;; 	  munsel-value-to-y
+;; 	  munsell-value-to-lstar))
+
+
