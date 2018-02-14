@@ -556,15 +556,8 @@ and TO-ILLUMINANT in XYZ space."
     #'(lambda (x y z)
 	(multiply-mat-vec mat x y z))))
 
-;; (defmacro def-cat-function (name from-illuminant to-illuminant &optional (tmatrix +bradford+))
-;;   (let ((mat (gensym)))
-;;     `(let ((,mat (calc-cat-matrix ,from-illuminant ,to-illuminant ,tmatrix)))
-;;        (declare (type matrix33 ,mat))
-;;        (defun ,name (x y z)
-;; 	 (declare (optimize (speed 3) (safety 1)))
-;; 	 (multiply-mat-vec ,mat x y z)))))
-
 (defmacro def-cat-function (name from-illuminant to-illuminant &optional (tmatrix +bradford+))
+  "Macro version of GEN-CAT-FUNCTION."
   (let ((mat-name (intern (format nil "+~A-MAT+" name) :dufy)))
     `(progn
        (defparameter ,mat-name
@@ -574,7 +567,7 @@ and TO-ILLUMINANT in XYZ space."
        (declaim (type matrix33 ,mat-name))
        (defun ,name (x y z)
 	 (declare (optimize (speed 3) (safety 1)))
-	 (multiply-mat-vec ,mat-name x y z)))))
+	 (multiply-mat-vec ,mat-name (float x 1d0) (float y 1d0) (float z 1d0))))))
 
 ;; (print (macroexpand '(def-cat-function c-to-d65 +illum-c+ +illum-d65+ +cat02+)))
 

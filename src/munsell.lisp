@@ -1,14 +1,12 @@
 (in-package :dufy)
 
 ;; The bradford transformations between D65 and C are frequently used here.
-(declaim (type (function * (values double-float double-float double-float)) d65-to-c c-to-d65))
-(defparameter d65-to-c
-  (load-time-value (gen-cat-function +illum-d65+ +illum-c+) t))
-(defparameter c-to-d65
-  (load-time-value (gen-cat-function +illum-c+ +illum-d65+) t))
-
+(declaim (ftype (function * (values double-float double-float double-float)) d65-to-c c-to-d65))
 (declaim (inline c-to-d65))
 (def-cat-function c-to-d65 +illum-c+ +illum-d65+ +bradford+)
+
+(declaim (inline d65-to-c))
+(def-cat-function d65-to-c +illum-d65+ +illum-c+ +bradford+)
 
 (eval-when (:compile-toplevel)
   (defparameter *bit-most-positive-fixnum* #.(floor (log most-positive-fixnum 2))))
@@ -285,7 +283,9 @@ Illuminant C.)"
 since the Munsell Renotation Data is measured under the Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'c-to-d65
-    (mhvc-to-xyz-illum-c (float hue40 1d0) (float value 1d0) (float chroma 1d0))))
+    (mhvc-to-xyz-illum-c (float hue40 1d0)
+			 (float value 1d0)
+			 (float chroma 1d0))))
 
 (defun mhvc-to-xyy (hue40 value chroma)
   "Illuminant D65."
@@ -417,6 +417,11 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 ;;   (* c 5))
 
 
+(declaim (inline lstar-to-munsell-value))
+(defun lstar-to-munsell-value (lstar)
+  (declare (optimize (speed 3) (safety 1)))
+  (y-to-munsell-value (lstar-to-y (float lstar 1d0))))
+
 ;; used in INVERT-LCHAB-TO-MHVC
 (defun rough-lchab-to-mhvc (lstar cstarab hab)
   (declare (optimize (speed 3) (safety 0))
@@ -424,10 +429,6 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (values (* hab #.(float 40/360 1d0))
 	  (lstar-to-munsell-value lstar)
 	  (* cstarab #.(/ 5.5d0))))
-
-(defun lstar-to-munsell-value (lstar)
-  (y-to-munsell-value (lstar-to-y lstar)))
-
 
 ;; used in INVERT-LCHAB-TO-MHVC
 (declaim (ftype (function * double-float) circular-delta))
@@ -444,14 +445,13 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 (declaim (inline invert-mhvc-to-lchab-with-init))
 (defun invert-mhvc-to-lchab-with-init (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
-  (declare (optimize (speed 3) (safety 1))
-	   (double-float lstar cstarab hab))
-  (let ((factor (float factor 1d0))
-	(threshold (float threshold 1d0))
-	(tmp-hue40 (float init-hue40 1d0))
+  (declare (optimize (speed 3) (safety 0))
+	   (double-float lstar cstarab hab factor threshold)
+	   (fixnum max-iteration))
+  (let ((tmp-hue40 init-hue40)
 	(v (lstar-to-munsell-value lstar))
-	(tmp-c (float init-chroma 1d0)))
-    (declare (double-float tmp-hue40))
+	(tmp-c init-chroma))
+    (declare (double-float tmp-hue40 tmp-c v))
     (dotimes (i max-iteration (values (mod tmp-hue40 40) v tmp-c max-iteration))
       (multiple-value-bind (disused tmp-cstarab tmp-hab)
 	  (mhvc-to-lchab tmp-hue40 v tmp-c)
@@ -494,8 +494,8 @@ equal to MAX-ITERATION.
       (invert-mhvc-to-lchab-with-init lstar cstarab hab
 				      init-h init-c
 				      :max-iteration max-iteration
-				      :factor factor
-				      :threshold threshold))))
+				      :factor (float factor 1d0)
+				      :threshold (float threshold 1d0)))))
 
 (defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant C."
@@ -511,7 +511,7 @@ equal to MAX-ITERATION.
   "Illuminant D65. including Bradford transformation."
   (multiple-value-call #'lchab-to-mhvc
     (multiple-value-call #'xyz-to-lchab
-      (funcall d65-to-c x y z)
+      (d65-to-c x y z)
       +illum-c+)
     :max-iteration max-iteration
     :factor factor

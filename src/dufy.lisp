@@ -44,14 +44,15 @@
   ;; nominal range of gamma-corrected values
   (min 0d0 :type double-float)
   (max 1d0 :type double-float)
+  (len 1d0 :type double-float)
   (normal t :type boolean) ; t, if min = 0d0 and max = 1d0
 
   ;; quantization
   (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
-  (qmax 255 :type (integer 1 #.most-positive-fixnum)) ; maximum of quantized values
-  (quantizer #'(lambda (x) (round (* 255d0 x))) :type (function * integer))
-  (dequantizer #'(lambda (n) (* n #.(/ 255d0))) :type (function * double-float)))
-
+  (qmax 255 :type (integer 1 #.most-positive-fixnum) :read-only t) ; maximum of quantized values
+  (qmax-float 255d0 :type double-float)
+  (len/qmax-float (float 1/255 1d0) :type double-float)
+  (qmax-float/len 255d0 :type double-float))
 
 
 
@@ -91,7 +92,6 @@
 			 t nil))
 	     (qmax (- (expt 2 bit-per-channel) 1))
 	     (qmax-float (float qmax 1d0))
-	     (/qmax-float (/ qmax-float))
 	     (len (- max min)))
 	($make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
 			:illuminant illuminant
@@ -104,22 +104,13 @@
 			:llen (- lmax lmin)
 			:min min
 			:max max
+			:len len
 			:normal normal
 			:bit-per-channel bit-per-channel
 			:qmax qmax
-			:quantizer (if normal
-				       #'(lambda (x)
-					   (declare (double-float x))
-					   (round (* qmax-float x)))
-				       #'(lambda (x)
-					   (declare (double-float x))
-					   (round (lerp (/ (- x
-							      min)
-							   len)
-							0 qmax-float))))
-			:dequantizer #'(lambda (n)
-					 (declare (integer n))
-					 (+ min (* len n /qmax-float))))))))
+			:qmax-float qmax-float
+			:qmax-float/len (/ qmax-float len)
+			:len/qmax-float (/ len qmax-float))))))
 
 (defvar +srgb+)
 (declaim (inline xyz-to-lrgb))
@@ -418,30 +409,35 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 ..., RGBSPACE-QMAX} ({0, 1, ..., 255}, typically), though it accepts
 all the real values."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((quantizer (compose (the single-valued-function
-				 (if clamp
-				     (rcurry #'clamp 0 (rgbspace-qmax rgbspace))
-				     #'identity))
-			    (rgbspace-quantizer rgbspace))))
-    (values (funcall quantizer (float r 1d0)) 
-	    (funcall quantizer (float g 1d0))
-	    (funcall quantizer (float b 1d0)))))
+  (let ((min (rgbspace-min rgbspace))
+	(qmax-float/len (rgbspace-qmax-float/len rgbspace))
+	(clamper (if clamp
+		     (the function (rcurry #'clamp 0 (rgbspace-qmax rgbspace)))
+		     #'identity)))
+    (values (funcall clamper (round (* (- (float r 1d0) min) qmax-float/len)))
+	    (funcall clamper (round (* (- (float g 1d0) min) qmax-float/len)))
+	    (funcall clamper (round (* (- (float b 1d0) min) qmax-float/len))))))   
 
-;; (defun rgb-to-qrgb (r g b &key (rgbspace +srgb+) (clamp nil))
-;;   (declare (ignore rgbspace clamp))
-;;   (values (round (* r 255d0))
-;; 	  (round (* g 255d0))
-;; 	  (round (* b 255d0))))
 
+;; (declaim (inline qrgb-to-rgb))
+;; (defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1))
+;;            (integer qr qg qb))
+;;   (let ((dequantizer (rgbspace-dequantizer rgbspace)))
+;;     (values (funcall dequantizer qr)
+;; 	    (funcall dequantizer qg)
+;; 	    (funcall dequantizer qb))))
 
 (declaim (inline qrgb-to-rgb))
 (defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer qr qg qb))
-  (let ((dequantizer (rgbspace-dequantizer rgbspace)))
-    (values (funcall dequantizer qr)
-	    (funcall dequantizer qg)
-	    (funcall dequantizer qb))))
+  (let ((min (rgbspace-min rgbspace))
+	(len/qmax-float (rgbspace-len/qmax-float rgbspace)))
+    (values (+ min (* qr len/qmax-float))
+	    (+ min (* qg len/qmax-float))
+	    (+ min (* qb len/qmax-float)))))
+
 
 (declaim (inline xyz-to-qrgb))
 (defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (clamp nil))
@@ -497,9 +493,11 @@ all the real values."
     (hex-to-qrgb hex rgbspace)
     rgbspace))
 
+(declaim (inline xyz-to-hex))
 (defun xyz-to-hex (x y z &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'qrgb-to-hex
-    (xyz-to-qrgb x y z :rgbspace rgbspace)
+    (xyz-to-qrgb (float x 1d0) (float y 1d0) (float z 1d0) :rgbspace rgbspace)
     rgbspace))
 
 ;;;
@@ -545,10 +543,10 @@ all the real values."
 		(* (illuminant-z illuminant) fz fz fz)
 		(* (- fz #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29) (illuminant-z illuminant))))))
 
+(declaim (inline lstar-to-y))
 (defun lstar-to-y (lstar)
-  (declare (optimize (speed 3) (safety 1))
-	   (real lstar))
-  (let* ((fy (* (+ lstar 16d0) #.(float 1/116 1d0))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let* ((fy (* (+ (float lstar 1d0) 16d0) #.(float 1/116 1d0))))
     (if (> fy #.(float 6/29 1d0))
 	(* fy fy fy)
 	(* (- fy #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29)))))
@@ -629,6 +627,7 @@ all the real values."
 		  (* 13d0 lstar (- uprime urprime))
 		  (* 13d0 lstar (- vprime vrprime))))))))
 
+(declaim (inline luv-to-xyz))
 (defun luv-to-xyz (lstar ustar vstar &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((lstar (float lstar 1d0)) (ustar (float ustar 1d0)) (vstar (float vstar 1d0)))
@@ -657,22 +656,29 @@ all the real values."
 	    (sqrt (+ (* ustar ustar) (* vstar vstar)))
 	    (mod (* (atan vstar ustar) +360/TWO-PI+) 360d0))))
 
+(declaim (inline lchuv-to-luv))
 (defun lchuv-to-luv (lstar cstaruv huv)
-  (let ((hue-two-pi (* huv +TWO-PI/360+)))
-    (values lstar (* cstaruv (cos hue-two-pi)) (* cstaruv (sin hue-two-pi)))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((cstaruv (float cstaruv 1d0)))
+    (let ((hue-two-pi (* (float huv 1d0) +TWO-PI/360+)))
+      (values lstar
+	      (* cstaruv (cos hue-two-pi))
+	      (* cstaruv (sin hue-two-pi))))))
 
 (declaim (inline xyz-to-lchuv))
 (defun xyz-to-lchuv (x y z &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'luv-to-lchuv (xyz-to-luv x y z illuminant)))
 
+(declaim (inline lchuv-to-xyz))
 (defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant +illum-d65+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'luv-to-xyz
-    (lchuv-to-luv lstar cstaruv huv)
+    (lchuv-to-luv (float lstar 1d0) (float cstaruv 1d0) (float huv 1d0))
     illuminant))
 
 
-(let ((d65-to-c (gen-cat-function +illum-c+ +illum-d65+)))
+(let ((d65-to-c (gen-cat-function +illum-d65+ +illum-c+)))
   (defun bench-hex-to-lchuv (&optional (num 1000000))
     (declare (optimize (speed 3) (safety 1))
 	     (fixnum num))
@@ -682,6 +688,20 @@ all the real values."
 	 (multiple-value-call d65-to-c
 	   (hex-to-xyz (random #.(expt 2 48)) +bg-srgb-16+))
 	 +illum-c+)))))
+
+(let ((c-to-d65 (gen-cat-function +illum-c+ +illum-d65+)))
+  (defun bench-lchuv-to-hex (&optional (num 1000000))
+    (declare (optimize (speed 3) (safety 1))
+	     (fixnum num))
+    (simple-time
+      (dotimes (x num)
+	(multiple-value-call #'xyz-to-hex
+	  (multiple-value-call c-to-d65
+	    (lchuv-to-xyz (random 100d0)
+			  (+ -100d0 (random 200d0))
+			  (+ -100d0 (random 200d0))
+			  +illum-c+))
+	  +bg-srgb-16+)))))
 
 ;;;
 ;;; HSV/HSL
