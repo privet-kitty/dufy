@@ -158,6 +158,7 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 		      (* varRT (/ deltaCprime varSC) (/ deltalargeHprime varSH)))))))))
 
 (defun bench-deltae00 (&optional (num 1000000))
+  (declare (optimize (speed 3) (safety 1)))
   (time (dotimes (x num)
 	  (qrgb-deltae00 (random 65536) (random 65536) (random 65536)
 			 (random 65536) (random 65536) (random 65536)

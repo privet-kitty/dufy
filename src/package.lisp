@@ -102,12 +102,12 @@
 	   :lstar-to-y
 	   :lab-to-lchab
 	   :lchab-to-lab
-	   :xyy-to-lab
-	   :lab-to-xyy
+	   ;; :xyy-to-lab
+	   ;; :lab-to-xyy
 	   :xyz-to-lchab
-	   :xyy-to-lchab
+	   ;; :xyy-to-lchab
 	   :lchab-to-xyz
-	   :lchab-to-xyy
+	   ;; :lchab-to-xyy
 
 	   :xyz-to-luv
 	   :luv-to-xyz

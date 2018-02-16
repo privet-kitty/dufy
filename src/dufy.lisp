@@ -286,12 +286,16 @@ http://www.color.org/chardata/rgb/scrgb-nl.xalter")
   (make-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
 		:illuminant +illum-c+
 		:linearizer (gen-linearizer 2.2d0)
-		:delinearizer (gen-delinearizer 2.2d0)))
+		:delinearizer (gen-delinearizer 2.2d0))
+  "NTSC RGB, Rec. ITU-R BT.470-6, System M, 8-bit per channel.
+http://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.470-6-199811-S!!PDF-E.pdf")
 
 (defparameter +pal/secam+
   (make-rgbspace 0.64d0 0.33d0 0.29d0 0.60d0 0.15d0 0.06d0
 		:linearizer (gen-linearizer 2.8d0)
-		:delinearizer (gen-delinearizer 2.8d0)))
+		:delinearizer (gen-delinearizer 2.8d0))
+  "PAL/SECAM RGB, Rec. ITU-R BT.470-6, 8-bit per channel.
+http://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.470-6-199811-S!!PDF-E.pdf")
 
 (defun linearize-prophoto (x)
   (declare (optimize (speed 3) (safety 1))
@@ -329,13 +333,6 @@ http://www.color.org/ROMMRGB.pdf")
   "Prophoto RGB (also known as ROMM RGB), 16-bit per channel,
 http://www.color.org/ROMMRGB.pdf")
 
-;; (defparameter +srgbd50+
-;;   (copy-rgbspace +srgb+ :illuminant +illum-d50+))
-
-;; (defparameter +adobed50+
-;;   (copy-rgbspace +adobe+ :illuminant +illum-d50+))
-
-
 (defun lrgb-out-of-gamut-p (lr lg lb &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns true, if at least one of LR, LG and LB is outside the
 interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
@@ -372,11 +369,13 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 (defun rgb-out-of-gamut-p (r g b &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns true, if at least one of R, G and B is outside the interval
 [RGBSPACE-MIN - THRESHOLD, RGBSPACE-MAX + THRESHOLD]"
-  (let ((inf (- (rgbspace-min rgbspace) threshold))
-	(sup (+ (rgbspace-max rgbspace) threshold)))
-    (not (and (<= inf r sup)
-	      (<= inf g sup)
-	      (<= inf b sup)))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((threshold (float threshold 1d0)))
+    (let ((inf (- (rgbspace-min rgbspace) threshold))
+	  (sup (+ (rgbspace-max rgbspace) threshold)))
+      (not (and (<= inf r sup)
+		(<= inf g sup)
+		(<= inf b sup))))))
 
 (declaim (inline xyz-to-rgb))
 (defun xyz-to-rgb (x y z &optional (rgbspace +srgb+))
@@ -418,15 +417,6 @@ all the real values."
 	    (funcall clamper (round (* (- (float g 1d0) min) qmax-float/len)))
 	    (funcall clamper (round (* (- (float b 1d0) min) qmax-float/len))))))   
 
-
-;; (declaim (inline qrgb-to-rgb))
-;; (defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
-;;   (declare (optimize (speed 3) (safety 1))
-;;            (integer qr qg qb))
-;;   (let ((dequantizer (rgbspace-dequantizer rgbspace)))
-;;     (values (funcall dequantizer qr)
-;; 	    (funcall dequantizer qg)
-;; 	    (funcall dequantizer qb))))
 
 (declaim (inline qrgb-to-rgb))
 (defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
@@ -475,12 +465,16 @@ all the real values."
 	    (logand (ash hex minus-bpc) qmax)
 	    (logand hex qmax))))
 
+(declaim (inline hex-to-rgb))
 (defun hex-to-rgb (hex &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'qrgb-to-rgb
     (hex-to-qrgb hex rgbspace)
     rgbspace))
 
+(declaim (inline rgb-to-hex))
 (defun rgb-to-hex (r g b &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'qrgb-to-hex
     (rgb-to-qrgb r g b :rgbspace rgbspace)
     rgbspace))
@@ -551,6 +545,7 @@ all the real values."
 	(* fy fy fy)
 	(* (- fy #.(float 16/116 1d0)) #.(* 3d0 6/29 6/29)))))
 
+(declaim (inline y-to-lstar))
 (defun y-to-lstar (y)
   (declare (optimize (speed 3) (safety 1))
 	   (real y))
@@ -580,12 +575,16 @@ all the real values."
 	      (* cstarab (cos hue-two-pi))
 	      (* cstarab (sin hue-two-pi))))))
 
+(declaim (inline xyz-to-lchab))
 (defun xyz-to-lchab (x y z &optional (illuminant +illum-d65+))
-  (multiple-value-call #'lab-to-lchab (xyz-to-lab x y z illuminant)))
+  (declare (optimize (speed 3) (safety 1)))
+  (multiple-value-call #'lab-to-lchab
+    (xyz-to-lab (float x 1d0) (float y 1d0) (float z 1d0) illuminant)))
 
 (defun xyy-to-lchab (small-x small-y y &optional (illuminant +illum-d65+))
   (multiple-value-call #'lab-to-lchab (xyy-to-lab small-x small-y y illuminant)))
 
+(declaim (inline lchab-to-xyz))
 (defun lchab-to-xyz (lstar cstarab hab &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'lab-to-xyz
@@ -597,16 +596,20 @@ all the real values."
     (lchab-to-xyz lstar cstarab hab illuminant)) )
 
 
-(declaim (ftype (function (double-float double-float) (values double-float double-float)) calc-uvprime))
+;; (declaim (ftype (function (double-float double-float) (values double-float double-float)) calc-uvprime))
+(declaim (inline calc-uvprime))
 (defun calc-uvprime (x y)
-  (declare (optimize (speed 3) (safety 0)))
+  (declare (optimize (speed 3) (safety 0))
+	   (double-float x y))
   (let ((denom (+ (* -2d0 x) (* 12d0 y) 3d0)))
     (values (/ (* 4d0 x) denom)
 	    (/ (* 9d0 y) denom))))
 
-(declaim (ftype (function (double-float double-float double-float) (values double-float double-float)) calc-uvprime-from-xyz))
+;; (declaim (ftype (function (double-float double-float double-float) (values double-float double-float)) calc-uvprime-from-xyz))
+(declaim (inline calc-uvprime-from-xyz))
 (defun calc-uvprime-from-xyz (x y z)
-  (declare (optimize (speed 3) (safety 0)))
+  (declare (optimize (speed 3) (safety 0))
+	   (double-float x y z))
   (let ((denom (+ x (* 15d0 y) (* 3d0 z))))
     (values (/ (* 4d0 x) denom)
 	    (/ (* 9d0 y) denom))))
@@ -708,6 +711,7 @@ all the real values."
 ;;;
 
 
+(declaim (inline hsv-to-rgb))
 (defun hsv-to-rgb (hue sat val)
   "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0,
 1]; all the real values outside the interval are also acceptable."
@@ -727,18 +731,23 @@ all the real values."
 	    ((= 3 h-prime-int) (values base (+ base x) (+ base c)))
 	    ((= 4 h-prime-int) (values (+ base x) base (+ base c)))
 	    ((= 5 h-prime-int) (values (+ base c) base (+ base x)))))))
-	 
+
+(declaim (inline hsv-to-qrgb))
 (defun hsv-to-qrgb (hue sat val &key (rgbspace +srgb+) (clamp nil))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-qrgb
     (hsv-to-rgb hue sat val)
     :rgbspace rgbspace
     :clamp clamp))
 
+(declaim (inline hsv-to-xyz))
 (defun hsv-to-xyz (hue sat val &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-xyz
     (hsv-to-rgb hue sat val)
     rgbspace))
 
+(declaim (inline rgb-to-hsv))
 (defun rgb-to-hsv (r g b)
   (declare (optimize (speed 3) (safety 1)))
   (let ((r (float r 1d0)) (g (float g 1d0)) (b (float b 1d0)))
@@ -752,16 +761,22 @@ all the real values."
 		    ((= minrgb r) (+ (* 60d0 (/ (- b g) (- maxrgb minrgb))) 180d0))
 		    ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
       (values h s maxrgb))))
-	 
+
+(declaim (inline qrgb-to-hsv))
 (defun qrgb-to-hsv (qr qg qb &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1))
+	   (integer qr qg qb))
   (multiple-value-call #'rgb-to-hsv
     (qrgb-to-rgb qr qg qb rgbspace)))
 
+(declaim (inline xyz-to-hsv))
 (defun xyz-to-hsv (x y z &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-hsv
     (xyz-to-rgb x y z rgbspace)))
   
 
+(declaim (inline hsl-to-rgb))
 (defun hsl-to-rgb (hue sat lum)
   "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0,
 1]; all the real values outside the interval are also acceptable."
@@ -774,7 +789,7 @@ all the real values."
 	   (min (- lum tmp))
 	   (delta (- max min))
 	   (h-prime (* (mod hue 360d0) #.(float 1/60 1d0)))
-	   (h-prime-int (floor h-prime)))
+	   (h-prime-int (floor (the (double-float 0d0 6d0) h-prime))))
       (cond ((= sat 0d0) (values max max max))
 	    ((= 0 h-prime-int) (values max
 				       (+ min (* delta hue #.(float 1/60 1d0)))
@@ -796,17 +811,22 @@ all the real values."
 				       (+ min (* delta (- 360d0 hue) #.(float 1/60 1d0)))))))))
  
 
+(declaim (inline hsl-to-qrgb))
 (defun hsl-to-qrgb (hue sat lum &key (rgbspace +srgb+) (clamp nil))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-qrgb
     (hsl-to-rgb hue sat lum)
     :rgbspace rgbspace
     :clamp clamp))
 
+(declaim (inline hsl-to-xyz))
 (defun hsl-to-xyz (hue sat lum &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-xyz
     (hsl-to-rgb hue sat lum)
     rgbspace))
 
+(declaim (inline rgb-to-hsl))
 (defun rgb-to-hsl (r g b)
   (declare (optimize (speed 3) (safety 1)))
   (let ((r (float r 1d0)) (g (float g 1d0)) (b (float b 1d0)))
@@ -824,12 +844,16 @@ all the real values."
 		(* 0.5d0 (+ max min)))))))
 	  
 
+(declaim (inline qrgb-to-hsl))
 (defun qrgb-to-hsl (qr qg qb &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-hsl
     (qrgb-to-rgb qr qg qb rgbspace)))
 
 
+(declaim (inline xyz-to-hsl))
 (defun xyz-to-hsl (x y z &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-hsl
     (xyz-to-rgb x y z rgbspace)))
 

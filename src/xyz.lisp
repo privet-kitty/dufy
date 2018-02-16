@@ -3,30 +3,41 @@
 ;;;
 
 (in-package :dufy)
-    
+
+;; The nominal range of Y is always [0, 1], though all real values are
+;; accepted.
+(declaim (inline xyy-to-xyz))
 (defun xyy-to-xyz (small-x small-y y)
-  (if (zerop small-y)
-      (values 0d0 y 0d0)
-      (values (/ (* small-x y) small-y) 
-	      y
-	      (/ (* (- 1d0 small-x small-y) y) small-y))))
+  "xyY to XYZ."
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((small-x (float small-x 1d0))
+	(small-y (float small-y 1d0))
+	(y (float y 1d0)))
+    (if (zerop small-y)
+	(values 0d0 y 0d0)
+	(values (/ (* small-x y) small-y) 
+		y
+		(/ (* (- 1d0 small-x small-y) y) small-y)))))
 
-
+(declaim (inline xyz-to-xyy))
 (defun xyz-to-xyy (x y z)
-  (let ((sum (+ x y z)))
-    (if (= sum 0)
-	(values 0d0 0d0 y)
-	(values (/ x sum) (/ y sum) y))))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
+    "XYZ to xyY."
+    (let ((sum (+ x y z)))
+      (if (= sum 0)
+	  (values 0d0 0d0 y)
+	  (values (/ x sum) (/ y sum) y)))))
   
 (defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
-  "Note: SPECTRUM-ARRAY must be (simple-array double-float *).
+  "Note: SPECTRUM-ARRAY must be (SIMPLE-ARRAY DOUBLE-FLOAT (*)).
 
 Returns a spectral power distribution
 function, #'(lambda (wavelength-nm) ...), by linearly interpolating
-SPECTRUM-ARRAY which can have arbitrary length.
+SPECTRUM-ARRAY which can have arbitrary length. The FTYPE of returned
+function is (FUNCTION REAL DOUBLE-FLOAT).
 "
-  (declare (optimize (speed 3) (safety 1))
-	   ((simple-array double-float) spectrum-array))
+  (declare ((simple-array double-float) spectrum-array))
   (let* ((size (- (length spectrum-array) 1))
 	 (wl-begin-f (float wl-begin 1d0))
 	 (wl-end-f (float wl-end 1d0)))
@@ -34,6 +45,7 @@ SPECTRUM-ARRAY which can have arbitrary length.
 	;; If SPECTRUM-ARRAY is defined just for each integer,
 	;; the spectrum function is simple:
 	#'(lambda (wl-nm)
+	    (declare (optimize (speed 3) (safety 1)))
 	    (multiple-value-bind (quot rem)
 		(floor (- (clamp (float wl-nm 1d0) wl-begin-f wl-end-f)
 			  wl-begin-f))
@@ -43,6 +55,7 @@ SPECTRUM-ARRAY which can have arbitrary length.
 	(let* ((band (/ (- wl-end-f wl-begin-f) size))
 	       (/band (/ band)))
 	  #'(lambda (wl-nm)
+	      (declare (optimize (speed 3) (safety 1)))
 	      (let* ((wl$ (- (clamp (float wl-nm 1d0) wl-begin-f wl-end-f)
 			     wl-begin-f))
 		     (frac (mod wl$ band))
@@ -62,7 +75,7 @@ SPECTRUM-ARRAY which can have arbitrary length.
   (begin-wl 360 :type (integer 0))
   (end-wl 830 :type (integer 0))
   (cmf-arr (make-array '(471 3) :element-type 'double-float)
-	   :type (simple-array double-float))
+	   :type (simple-array double-float (* 3)))
   ;; Functions based on cmf-arr
   (cmf-x #'empty-function :type function)
   (cmf-y #'empty-function :type function)
@@ -73,7 +86,6 @@ SPECTRUM-ARRAY which can have arbitrary length.
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
   "Defines an observer based on CMF arrays, which must
 be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
-  (declare (optimize (speed 3) (safety 1)))
   (labels ((gen-cmf-1 (arr num &optional (wl-begin 360) (wl-end 830))
 	     ;; verbose, almost equivalent to GEN-SPECTRUM
 	     (declare ((simple-array double-float (* 3)) arr))
@@ -82,6 +94,7 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		    (wl-end-f (float wl-end 1d0)))
 	       (if (= size (- wl-end wl-begin))
 		   #'(lambda (wl)
+		       (declare (optimize (speed 3) (safety 1)))
 		       (multiple-value-bind (quot rem)
 			   (floor (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
 			 (lerp rem
@@ -90,6 +103,7 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		   (let* ((band (/ (- wl-end-f wl-begin-f) size))
 			  (/band (/ band)))
 		     #'(lambda (wl)
+			 (declare (optimize (speed 3) (safety 1)))
 			 (let* ((wl$ (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
@@ -104,6 +118,7 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		    (wl-end-f (float wl-end 1d0)))
 	       (if (= size (- wl-end wl-begin))
 		   #'(lambda (wl)
+		       (declare (optimize (speed 3) (safety 1)))
 		       (multiple-value-bind (quot rem)
 			   (floor (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
 			 (values (lerp rem
@@ -118,6 +133,7 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		   (let* ((band (/ (- wl-end-f wl-begin-f) size))
 			  (/band (/ band)))
 		     #'(lambda (wl)
+			 (declare (optimize (speed 3) (safety 1)))
 			 (let* ((wl$ (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
@@ -151,12 +167,14 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 (defparameter +s0-arr+
   #.(make-array 54 :element-type 'double-float
 		:initial-contents '(0.04d0 6d0 29.6d0 55.3d0 57.3d0 61.8d0 61.5d0 68.8d0 63.4d0 65.8d0 94.8d0 104.8d0 105.9d0 96.8d0 113.9d0 125.6d0 125.5d0 121.3d0 121.3d0 113.5d0 113.1d0 110.8d0 106.5d0 108.8d0 105.3d0 104.4d0 100d0 96d0 95.1d0 89.1d0 90.5d0 90.3d0 88.4d0 84d0 85.1d0 81.9d0 82.6d0 84.9d0 81.3d0 71.9d0 74.3d0 76.4d0 63.3d0 71.7d0 77d0 65.2d0 47.7d0 68.6d0 65d0 66d0 61d0 53.3d0 58.9d0 61.9d0)))
+
 (defparameter +s1-arr+
   #.(make-array 54 :element-type 'double-float
 		:initial-contents '(0.02d0 4.5d0 22.4d0 42d0 40.6d0 41.6d0 38d0 42.4d0 38.5d0 35d0 43.4d0 46.3d0 43.9d0 37.1d0 36.7d0 35.9d0 32.6d0 27.9d0 24.3d0 20.1d0 16.2d0 13.2d0 8.6d0 6.1d0 4.2d0 1.9d0 0d0 -1.6d0 -3.5d0 -3.5d0 -5.8d0 -7.2d0 -8.6d0 -9.5d0 -10.9d0 -10.7d0 -12d0 -14d0 -13.6d0 -12d0 -13.3d0 -12.9d0 -10.6d0 -11.6d0 -12.2d0 -10.2d0 -7.8d0 -11.2d0 -10.4d0 -10.6d0 -9.7d0 -8.3d0 -9.3d0 -9.8d0)))
+
 (defparameter +s2-arr+
-       #.(make-array 54 :element-type 'double-float
-		     :initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0)))
+  #.(make-array 54 :element-type 'double-float
+		:initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0)))
 
 (declaim (type (function * double-float) +s0-func+ +s1-func+ +s2-func+))
 (defparameter +s0-func+ (gen-spectrum +s0-arr+ 300 830))
@@ -200,14 +218,17 @@ temperature."
   (loop for wl from wl-begin to wl-end by band
      sum (funcall spectrum wl)))
 
-
-(defun bb-spectrum (wavelength-nm &optional (temperature 5000))
-  "Spectrum function of a blackbody. It is not normalized."
-  (let ((wlm (* wavelength-nm 1d-9)))
+(declaim (inline bb-spectrum))
+(defun bb-spectrum (wavelength-nm &optional (temperature 5000d0))
+  "Spectrum function of a blackbody, which is not normalized."
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((wlm (* (float wavelength-nm 1d0) 1d-9)))
+    (check-type wlm (double-float 0d0))
     (/ (* 3.74183d-16 (expt wlm -5d0))
-       (- (exp (/ 1.4388d-2 (* wlm temperature))) 1d0))))
+       (- (exp (/ 1.4388d-2 (* wlm (float temperature 1d0)))) 1d0))))
 
-(defun optimal-spectrum (wavelength-nm &optional (wl1 300) (wl2 830))
+(declaim (inline optimal-spectrum))
+(defun optimal-spectrum (wavelength-nm &optional (wl1 300d0) (wl2 830d0))
   "Spectrum function of optimal colors:
 In the case wl1 <= wl2:
 f(x) = 1d0 if wl1 <= x <= wl2,
@@ -216,12 +237,17 @@ In the case wl1 > wl2:
 f(x) = 1d0 if x <=wl2 or wl1 <= x,
 f(x) = 0d0 otherwise.
 "
-  (if (<= wl1 wl2)
-      (if (<= wl1 wavelength-nm wl2) 1d0 0d0)
-      (if (or (<= wavelength-nm wl2) (<= wl1 wavelength-nm)) 1d0 0d0)))
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((wl (float wavelength-nm 1d0))
+	(wl1 (float wl1 1d0))
+	(wl2 (float wl2 1d0)))
+    (if (<= wl1 wl2)
+	(if (<= wl1 wl wl2) 1d0 0d0)
+	(if (or (<= wl wl2) (<= wl1 wl)) 1d0 0d0))))
 
 (defun flat-spectrum (wavelength-nm)
   "(constantly 1d0)"
+  (declare (optimize (speed 3) (safety 1)))
   (declare (ignore wavelength-nm))
   1d0)
     
@@ -253,16 +279,16 @@ f(x) = 0d0 otherwise.
   "Computes XYZ values from SPECTRUM in reflective and transmissive
 case. The function SPECTRUM must be defined at least in [360, 830].
 The return values are not normalized."
-  (when (eq #'empty-function (illuminant-spectrum illuminant))
-    (let ((*print-array* nil))
-      (error (make-condition 'no-spd-error :illuminant illuminant))))
-  (spectrum-to-xyz-raw spectrum
-		       (illuminant-spectrum illuminant)
-		       (illuminant-observer illuminant)))
+  (if (eq #'empty-function (illuminant-spectrum illuminant))
+      (let ((*print-array* nil))
+	(error (make-condition 'no-spd-error :illuminant illuminant)))
+      (spectrum-to-xyz-raw spectrum
+			   (illuminant-spectrum illuminant)
+			   (illuminant-observer illuminant))))
 
 (defun spectrum-to-xyz-raw (spectrum illum-spectrum observer)
   "Another version of spectrum-to-xyz: only the return value
-of (illuminant-spectrum illuminant) and observer are necessary in
+of (illuminant-spectrum illuminant) and observer are used in
 spectrum-to-xyz."
   (declare (optimize (speed 3) (safety 1))
 	   ((function * double-float) spectrum illum-spectrum))
@@ -342,7 +368,7 @@ if the given (small-x, small-y) and SPD contradicts to each other."
 
 (defun make-illuminant-by-spd (spectrum &optional (observer +obs-cie1931+))
   "Defines an illuminant based on a spectral power distribution. The
-proper white point is automatically calculated."
+white point is automatically calculated."
   (multiple-value-bind (x y z)
       (spectrum-to-xyz-raw #'flat-spectrum spectrum observer)
     (multiple-value-bind (small-x small-y disused)
@@ -370,6 +396,7 @@ proper white point is automatically calculated."
 		   #'(lambda (wl)
 		       (declare (optimize (speed 3) (safety 1)))
 		       (let ((wl (float wl 1d0)))
+			 (check-type wl (double-float 0d0))
 			 (* 100d0
 			    (expt (/ 560d0 wl) 5)
 			    (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
@@ -377,9 +404,10 @@ proper white point is automatically calculated."
 			  
 (defparameter +illum-b+ (make-illuminant 0.34842d0 0.35161d0)) ; no spd
 
-(defparameter +illum-c-arr+ #.(make-array 107
-					  :element-type 'double-float
-					  :initial-contents '(0.0d0 0.0d0 0.0d0 0.0d0 0.0d0 0.20d0 0.40d0 1.55d0 2.70d0 4.85d0 7.00d0 9.95d0 12.90d0 17.20d0 21.40d0 27.5d0 33.00d0 39.92d0 47.40d0 55.17d0 63.30d0 71.81d0 80.60d0 89.53d0 98.10d0 105.80d0 112.40d0 117.75d0 121.50d0 123.45d0 124.00d0 123.60d0 123.10d0 123.30d0 123.80d0 124.09d0 123.90d0 122.92d0 120.70d0 116.90d0 112.10d0 106.98d0 102.30d0 98.81d0 96.90d0 96.78d0 98.00d0 99.94d0 102.10d0 103.95d0 105.20d0 105.67d0 105.30d0 104.11d0 102.30d0 100.15d0 97.80d0 95.43d0 93.20d0 91.22d0 89.70d0 88.83d0 88.40d0 88.19d0 88.10d0 88.06d0 88.00d0 87.86d0 87.80d0 87.99d0 88.20d0 88.20d0 87.90d0 87.22d0 86.30d0 85.30d0 84.00d0 82.21d0 80.20d0 78.24d0 76.30d0 74.36d0 72.40d0 70.40d0 68.30d0 66.30d0 64.40d0 62.80d0 61.50d0 60.20d0 59.20d0 58.50d0 58.10d0 58.00d0 58.20d0 58.50d0 59.10d0 78.91d0 79.55d0 76.48d0 73.40d0 68.66d0 63.92d0 67.35d0 70.78d0 72.61d0 74.44d0)))
+(defparameter +illum-c-arr+
+  #.(make-array 107
+		:element-type 'double-float
+		:initial-contents '(0.0d0 0.0d0 0.0d0 0.0d0 0.0d0 0.20d0 0.40d0 1.55d0 2.70d0 4.85d0 7.00d0 9.95d0 12.90d0 17.20d0 21.40d0 27.5d0 33.00d0 39.92d0 47.40d0 55.17d0 63.30d0 71.81d0 80.60d0 89.53d0 98.10d0 105.80d0 112.40d0 117.75d0 121.50d0 123.45d0 124.00d0 123.60d0 123.10d0 123.30d0 123.80d0 124.09d0 123.90d0 122.92d0 120.70d0 116.90d0 112.10d0 106.98d0 102.30d0 98.81d0 96.90d0 96.78d0 98.00d0 99.94d0 102.10d0 103.95d0 105.20d0 105.67d0 105.30d0 104.11d0 102.30d0 100.15d0 97.80d0 95.43d0 93.20d0 91.22d0 89.70d0 88.83d0 88.40d0 88.19d0 88.10d0 88.06d0 88.00d0 87.86d0 87.80d0 87.99d0 88.20d0 88.20d0 87.90d0 87.22d0 86.30d0 85.30d0 84.00d0 82.21d0 80.20d0 78.24d0 76.30d0 74.36d0 72.40d0 70.40d0 68.30d0 66.30d0 64.40d0 62.80d0 61.50d0 60.20d0 59.20d0 58.50d0 58.10d0 58.00d0 58.20d0 58.50d0 59.10d0 78.91d0 79.55d0 76.48d0 73.40d0 68.66d0 63.92d0 67.35d0 70.78d0 72.61d0 74.44d0)))
 (defparameter +illum-c+ (make-illuminant 0.31006d0 0.31616d0
 					 (gen-spectrum +illum-c-arr+ 300 830)))
 
@@ -446,49 +474,53 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 	      (0.0030d0 0.0136d0 0.9834d0))))
 
 
+(declaim (inline xyz-to-lms))
 (defun xyz-to-lms (x y z &key (illuminant nil) (cat +bradford+))
   "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
-  (if illuminant
-      (let* ((mat (cat-matrix cat))
-	     (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
-			  (aref mat 0 1)
-			  (* (illuminant-z illuminant) (aref mat 0 2))))
-	     (factor-m (+ (* (illuminant-x illuminant) (aref mat 1 0))
-			  (aref mat 1 1)
-			  (* (illuminant-z illuminant) (aref mat 1 2))))
-	     (factor-s (+ (* (illuminant-x illuminant) (aref mat 2 0))
-			  (aref mat 2 1)
-			  (* (illuminant-z illuminant) (aref mat 2 2)))))
-	(multiple-value-bind (l m s)
-	    (multiply-mat-vec mat x y z)
-	  (values (/ l factor-l)
-		  (/ m factor-m)
-		  (/ s factor-s))))
-      (multiply-mat-vec (cat-matrix cat) x y z)))
+  (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
+    (if illuminant
+	(let* ((mat (cat-matrix cat))
+	       (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
+			    (aref mat 0 1)
+			    (* (illuminant-z illuminant) (aref mat 0 2))))
+	       (factor-m (+ (* (illuminant-x illuminant) (aref mat 1 0))
+			    (aref mat 1 1)
+			    (* (illuminant-z illuminant) (aref mat 1 2))))
+	       (factor-s (+ (* (illuminant-x illuminant) (aref mat 2 0))
+			    (aref mat 2 1)
+			    (* (illuminant-z illuminant) (aref mat 2 2)))))
+	  (multiple-value-bind (l m s)
+	      (multiply-mat-vec mat x y z)
+	    (values (/ l factor-l)
+		    (/ m factor-m)
+		    (/ s factor-s))))
+	(multiply-mat-vec (cat-matrix cat) x y z))))
 	    
 
+(declaim (inline lms-to-xyz))
 (defun lms-to-xyz (l m s &key (illuminant nil) (cat +bradford+))
   "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
-  (if illuminant
-      (let* ((mat (cat-matrix cat))
-	     (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
-			  (aref mat 0 1)
-			  (* (illuminant-z illuminant) (aref mat 0 2))))
-	     (factor-m (+ (* (illuminant-x illuminant) (aref mat 1 0))
-			  (aref mat 1 1)
-			  (* (illuminant-z illuminant) (aref mat 1 2))))
-	     (factor-s (+ (* (illuminant-x illuminant) (aref mat 2 0))
-			  (aref mat 2 1)
-			  (* (illuminant-z illuminant) (aref mat 2 2)))))
-	(multiply-mat-vec (cat-inv-matrix cat)
-			  (* l factor-l)
-			  (* m factor-m)
-			  (* s factor-s)))
-      (multiply-mat-vec (cat-inv-matrix cat) l m s)))
+  (let ((l (float l 1d0)) (m (float m 1d0)) (s (float s 1d0)))
+    (if illuminant
+	(let* ((mat (cat-matrix cat))
+	       (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
+			    (aref mat 0 1)
+			    (* (illuminant-z illuminant) (aref mat 0 2))))
+	       (factor-m (+ (* (illuminant-x illuminant) (aref mat 1 0))
+			    (aref mat 1 1)
+			    (* (illuminant-z illuminant) (aref mat 1 2))))
+	       (factor-s (+ (* (illuminant-x illuminant) (aref mat 2 0))
+			    (aref mat 2 1)
+			    (* (illuminant-z illuminant) (aref mat 2 2)))))
+	  (multiply-mat-vec (cat-inv-matrix cat)
+			    (* l factor-l)
+			    (* m factor-m)
+			    (* s factor-s)))
+	(multiply-mat-vec (cat-inv-matrix cat) l m s))))
   
 
 (defun calc-cat-matrix  (from-illuminant to-illuminant &optional (cat +bradford+))

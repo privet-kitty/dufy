@@ -112,8 +112,8 @@
     (is (nearly-equal 1d-4
 		      xyy
 		      (multiple-value-list
-		       (multiple-value-call #'lchab-to-xyy
-			 (apply (rcurry #'xyy-to-lchab *illum-d55-10*)
+		       (multiple-value-call #'dufy::lchab-to-xyy
+			 (apply (rcurry #'dufy::xyy-to-lchab *illum-d55-10*)
 				xyy)
 			 *illum-d55-10*)))))
   (dolist (xyz *xyz-set*)
