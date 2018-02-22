@@ -274,12 +274,24 @@ f(x) = 0d0 otherwise.
   ;; used for xyz-to-spectrum conversion
   (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
 
+(declaim (inline illuminant-no-spd-p))
+(defun illuminant-no-spd-p (illuminant)
+  (eq #'empty-function (illuminant-spectrum illuminant)))
+
+(define-condition no-spd-error (simple-error)
+  ((illuminant :initarg :illuminant
+	       :initform nil
+	       :accessor cond-illuminant))
+  (:report (lambda (condition stream)
+	     (format stream "The illuminant has no spectrum: ~A"
+		     (cond-illuminant condition)))))
+
 (defvar +illum-e+) ;; to avoid WARNING
 (defun spectrum-to-xyz (spectrum &optional (illuminant +illum-e+))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
 case. The function SPECTRUM must be defined at least in [360, 830].
 The return values are not normalized."
-  (if (eq #'empty-function (illuminant-spectrum illuminant))
+  (if (illuminant-no-spd-p illuminant)
       (let ((*print-array* nil))
 	(error (make-condition 'no-spd-error :illuminant illuminant)))
       (spectrum-to-xyz-raw spectrum
@@ -338,17 +350,16 @@ spectrum-to-xyz."
 (defun xyz-to-spectrum (x y z &optional (illuminant +illum-e+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among
 many."
-  (let ((mat (illuminant-to-spectrum-matrix illuminant)))
-    (if (eq mat +empty-matrix+)
-	(let ((*print-array* nil))
-	  (error (make-condition 'no-spd-error :illuminant illuminant)))
-	(let ((observer (illuminant-observer illuminant)))
-	  (multiple-value-bind (fac-x fac-y fac-z)
-	      (multiply-mat-vec (illuminant-to-spectrum-matrix illuminant) x y z)
-	    #'(lambda (wl)
-		(+ (* fac-x (funcall (observer-cmf-x observer) wl))
-		   (* fac-y (funcall (observer-cmf-y observer) wl))
-		   (* fac-z (funcall (observer-cmf-z observer) wl)))))))))
+  (if (illuminant-no-spd-p illuminant)
+      (let ((*print-array* nil))
+	(error (make-condition 'no-spd-error :illuminant illuminant)))
+      (let ((observer (illuminant-observer illuminant)))
+	(multiple-value-bind (fac-x fac-y fac-z)
+	    (multiply-mat-vec (illuminant-to-spectrum-matrix illuminant) x y z)
+	  #'(lambda (wl)
+	      (+ (* fac-x (funcall (observer-cmf-x observer) wl))
+		 (* fac-y (funcall (observer-cmf-y observer) wl))
+		 (* fac-z (funcall (observer-cmf-z observer) wl))))))))
     
 	    
 (defun make-illuminant (small-x small-y &optional (spectrum nil) (observer +obs-cie1931+))
@@ -382,14 +393,6 @@ white point is automatically calculated."
 			:spectrum (or spectrum #'flat-spectrum)
 			:observer observer
 			:to-spectrum-matrix (calc-to-spectrum-matrix spectrum observer)))))
-
-(define-condition no-spd-error (simple-error)
-  ((illuminant :initarg :illuminant
-	       :initform nil
-	       :accessor cond-illuminant))
-  (:report (lambda (condition stream)
-	     (format stream "The illuminant has no spectrum: ~A"
-		     (cond-illuminant condition)))))
 
 (defparameter +illum-a+
   (make-illuminant 0.44757d0 0.40745d0

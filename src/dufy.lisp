@@ -113,6 +113,7 @@
 			:len/qmax-float (/ len qmax-float))))))
 
 (defvar +srgb+)
+
 (declaim (inline xyz-to-lrgb))
 (defun xyz-to-lrgb (x y z &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
