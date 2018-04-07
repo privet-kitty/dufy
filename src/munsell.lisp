@@ -1,3 +1,7 @@
+;;;
+;;; Munsell Color System
+;;;
+
 (in-package :dufy)
 
 ;; The bradford transformations between D65 and C are frequently used here.
@@ -70,15 +74,6 @@ formula is based on ASTM D1535-08e1:"
 (defun munsell-value-to-achromatic-xyy (v)
   "Illuminant C."
   (values 0.31006d0 0.31616d0 (munsell-value-to-y v)))
-
-;; (defun munsell-value-to-achromatic-lchab (v)
-;;   "Illuminant C"
-;;   (apply #'lab-to-lchab
-;; 	 (apply (rcurry #'xyz-to-lab +illum-c+)
-;; 		(xyy-to-xyz 0.31006d0
-;; 			    0.31616d0
-;; 			    (munsell-value-to-y v)))))
-
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
   "For devel. Another version of munsell-value-to-achromatic-xyy based
@@ -410,13 +405,6 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
       (floor x)
       x))
 
-;; (defun rough-munsell-hue-to-hab (h)
-;;   (mod (* h 9) 360))
-
-;; (defun rough-munsell-chroma-to-cstarab (c)
-;;   (* c 5))
-
-
 (declaim (inline lstar-to-munsell-value))
 (defun lstar-to-munsell-value (lstar)
   (declare (optimize (speed 3) (safety 1)))
@@ -574,6 +562,7 @@ equal to MAX-ITERATION.
 ;; (38754 63266 343) in ProPhoto, 16-bit
 
 (defun test-inverter3 (&optional (rgbspace +srgb+))
+  "For devel."
   (declare (optimize (speed 3) (safety 1)))
   (let ((max-ite 200)
 	(sum 0))
