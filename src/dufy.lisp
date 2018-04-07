@@ -495,6 +495,8 @@ all the real values."
     (xyz-to-qrgb (float x 1d0) (float y 1d0) (float z 1d0) :rgbspace rgbspace)
     rgbspace))
 
+
+
 ;;;
 ;;; L*a*b*, L*u*v*, LCh
 ;;;
@@ -707,10 +709,11 @@ all the real values."
 			  +illum-c+))
 	  +bg-srgb-16+)))))
 
+
+
 ;;;
 ;;; HSV/HSL
 ;;;
-
 
 (declaim (inline hsv-to-rgb))
 (defun hsv-to-rgb (hue sat val)
@@ -779,7 +782,7 @@ all the real values."
 
 (declaim (inline hsl-to-rgb))
 (defun hsl-to-rgb (hue sat lum)
-  "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0,
+  "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0,
 1]; all the real values outside the interval are also acceptable."
   (declare (optimize (speed 3) (safety 1)))
   (let ((hue (float hue 1d0))

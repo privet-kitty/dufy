@@ -21,14 +21,17 @@
 
 (declaim (inline xyz-to-xyy))
 (defun xyz-to-xyy (x y z)
+  "XYZ to xyY."
   (declare (optimize (speed 3) (safety 1)))
   (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
-    "XYZ to xyY."
     (let ((sum (+ x y z)))
       (if (= sum 0)
 	  (values 0d0 0d0 y)
 	  (values (/ x sum) (/ y sum) y)))))
-  
+
+
+;; In dufy, a spectrum is just a function whose returned type is
+;; DOUBLE-FLOAT.
 (defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
   "Note: SPECTRUM-ARRAY must be (SIMPLE-ARRAY DOUBLE-FLOAT (*)).
 
@@ -71,7 +74,7 @@ function is (FUNCTION REAL DOUBLE-FLOAT).
 ;;;
 
 (defstruct (observer (:constructor $make-observer))
-  "Structure of color matching functions."
+  "OBSERVER is a structure of color matching functions."
   (begin-wl 360 :type (integer 0))
   (end-wl 830 :type (integer 0))
   (cmf-arr (make-array '(471 3) :element-type 'double-float)
@@ -154,15 +157,14 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
      :cmf-x (gen-cmf-1 cmf-arr 0 begin-wl end-wl)
      :cmf-y (gen-cmf-1 cmf-arr 1 begin-wl end-wl)
      :cmf-z (gen-cmf-1 cmf-arr 2 begin-wl end-wl)
-     :cmf (gen-cmf-3 cmf-arr
-		     begin-wl end-wl))))
+     :cmf (gen-cmf-3 cmf-arr begin-wl end-wl))))
 
 (defparameter +obs-cie1931+ (make-observer cmf-arr-cie1931))
 (defparameter +obs-cie1964+ (make-observer cmf-arr-cie1964))
 
 
 
-;; s0, s1, s2
+;; s0, s1, s2 for illuminant series D
 ;; http://www.rit.edu/cos/colorscience/rc_useful_data.php
 (defparameter +s0-arr+
   #.(make-array 54 :element-type 'double-float
@@ -424,8 +426,10 @@ white point is automatically calculated."
 
 
 
-
+;;;
 ;;; LMS, chromatic adaptation
+;;;
+
 (defstruct (cat (:constructor $make-cat))
   "Model of chromatic adaptation transformation. Currently only linear
 models are available."
@@ -603,21 +607,3 @@ and TO-ILLUMINANT in XYZ space."
        (defun ,name (x y z)
 	 (declare (optimize (speed 3) (safety 1)))
 	 (multiply-mat-vec ,mat-name (float x 1d0) (float y 1d0) (float z 1d0))))))
-
-;; (print (macroexpand '(def-cat-function c-to-d65 +illum-c+ +illum-d65+ +cat02+)))
-
-;; (declaim (ftype (function * function) gen-cat-function-xyy))
-;; (defun gen-cat-function-xyy (from-illuminant to-illuminant &optional (tmatrix +bradford+))
-;;   "Returns a chromatic adaptation function of xyY values: #'(lambda (SMALL-X SMALL-Y Y) ...)"
-;;   (let ((ca-func (gen-cat-function from-illuminant to-illuminant tmatrix)))
-;;     #'(lambda (small-x small-y y)
-;; 	(apply #'xyz-to-xyy
-;; 	       (apply ca-func
-;; 		      (xyy-to-xyz small-x small-y y))))))
-
-(defun normalize-xyz (x y z)
-  "Normalizes Y to 1."
-  (let ((/y (/ y)))
-    (values (* /y x)
-	    1d0
-	    (* /y z))))
