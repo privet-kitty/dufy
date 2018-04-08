@@ -144,7 +144,7 @@ Likewise most converters regard the implicit standard illuminant as D65. You can
     => 0.9504285453771808d0
        1.0d0
        1.0889003707981282d0
-       ;; the white point of standard illuminant D65
+    ;; the white point of standard illuminant D65
 
     * (dufy:luv-to-xyz 100 0 0 dufy:+illum-e+)   ; Illuminant E
     => 0.9999999999999999d0
@@ -171,6 +171,7 @@ The converters are based on [Munsell renotation data](https://www.rit.edu/cos/co
     => 1.28d0
        4.5d0
        6.1d0
+       
     * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
     => 0.19362651748394688d0
        0.15142718526032797d0
