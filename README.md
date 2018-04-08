@@ -130,7 +130,12 @@ Out of which gamut, however? By default, `xyz-to-qrgb` (and all other RGB conver
     => 2
        255
        255
-    ;; In the Adobe RGB space the color is within gamut.
+       
+    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+bg-srgb-10+) ; bg-sRGB (10 bit)
+    => 47
+       893
+       893
+    ;; In the Adobe RGB space and bg-sRGB space the color is within gamut.
 
 Likewise most converters regard the implicit standard illuminant as D65. You can also specify it explicitly:
 
