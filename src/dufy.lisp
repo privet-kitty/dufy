@@ -117,26 +117,18 @@
 (declaim (inline xyz-to-lrgb))
 (defun xyz-to-lrgb (x y z &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (let ((lmin (rgbspace-lmin rgbspace))
-	(llen (rgbspace-llen rgbspace)))
-    (multiple-value-call #'(lambda (lr lg lb)
-			     (values (+ (* lr llen) lmin)
-				     (+ (* lg llen) lmin)
-				     (+ (* lb llen) lmin)))
-      (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
-			(float x 1d0)
-			(float y 1d0)
-			(float z 1d0)))))
+  (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
+		    (float x 1d0)
+		    (float y 1d0)
+		    (float z 1d0)))
 
 (declaim (inline lrgb-to-xyz))
 (defun lrgb-to-xyz (lr lg lb &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (let ((lmin (rgbspace-lmin rgbspace))
-	(llen (rgbspace-llen rgbspace)))
-    (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
-		      (/ (- (float lr 1d0) lmin) llen)
-		      (/ (- (float lg 1d0) lmin) llen)
-		      (/ (- (float lb 1d0) lmin) llen))))
+  (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
+		    (float lr 1d0)
+		    (float lg 1d0)
+		    (float lb 1d0)))
 
 
 (defun copy-rgbspace (rgbspace &key (illuminant nil) (bit-per-channel nil))
@@ -240,7 +232,7 @@ http://www.color.org/chardata/rgb/bgsrgb.xalter")
 		:lmin -0.5d0
 		:lmax 7.4999d0
 		:bit-per-channel 16)
-  "scRGB, IEC 61966-2-2:2003
+  "scRGB(16), IEC 61966-2-2:2003
 http://www.color.org/chardata/rgb/scrgb.xalter")
 
 (defparameter +scrgb-nl+
