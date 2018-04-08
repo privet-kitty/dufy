@@ -37,7 +37,6 @@
   ;; nominal range of linear values
   (lmin 0d0 :type double-float)
   (lmax 1d0 :type double-float)
-  (llen 1d0 :type double-float)
   (linearizer (rcurry #'float 1d0) :type (function * double-float))
   (delinearizer (rcurry #'float 1d0) :type (function * double-float))
 
@@ -101,7 +100,6 @@
 			:from-xyz-matrix (invert-matrix33 mat)
 			:lmin lmin
 			:lmax lmax
-			:llen (- lmax lmin)
 			:min min
 			:max max
 			:len len
