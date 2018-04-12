@@ -19,11 +19,11 @@
   (declaim (double-float *maximum-chroma*))
   (defparameter *maximum-chroma*
     #+(and sbcl 64-bit) #.(float (expt 2 (- *bit-most-positive-fixnum* 10)) 1d0)
-    #-(or sbcl 64-bit)  most-positive-double-float
-    "The largest chroma which the converters accepts. It is less than
-    MOST-POSITIVE-DOUBLE-FLOAT because of efficiency: e.g. in
-    SBCL (64-bit) it is desirable that a float F
-    fulfills (typep (round F) '(SIGNED-BYTE 64)"))
+    #-(and sbcl 64-bit)  most-positive-double-float
+    "The largest chroma which the Munsell converters accepts. It is in
+    some cases less than MOST-POSITIVE-DOUBLE-FLOAT because of
+    efficiency: e.g. in SBCL (64-bit) it is desirable that a float F
+    fulfills (typep (round F) '(SIGNED-BYTE 64))"))
 
 
 (declaim (ftype (function * (integer 0 50)) max-chroma))
