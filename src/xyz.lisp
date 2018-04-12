@@ -586,9 +586,11 @@ and TO-ILLUMINANT in XYZ space."
 
 (declaim (ftype (function * (function * (values double-float double-float double-float))) gen-cat-function))
 (defun gen-cat-function (from-illuminant to-illuminant &optional (tmatrix +bradford+))
-  "Returns a chromatic adaptation function on XYZ space:
+  "Returns a chromatic adaptation function between XYZ spaces:
 > (funcall (gen-cat-function +illum-d65+ +illum-e+) 0.9504d0 1.0d0 1.0889d0)
-=> (0.9999700272441295d0 0.999998887365445d0 0.9999997282885571d0)
+=> 0.9999700272441295d0
+0.999998887365445d0
+0.9999997282885571d0
 "
   (declare (optimize (speed 3) (safety 1)))
   (let ((mat (calc-cat-matrix from-illuminant to-illuminant tmatrix)))
@@ -596,7 +598,12 @@ and TO-ILLUMINANT in XYZ space."
 	(multiply-mat-vec mat x y z))))
 
 (defmacro def-cat-function (name from-illuminant to-illuminant &optional (tmatrix +bradford+))
-  "Macro version of GEN-CAT-FUNCTION."
+  "DEF-macro of GEN-CAT-FUNCTION.
+> (def-cat-function d65-to-e +illum-d65+ +illum-e+)
+> (d65-to-e 0.9504d0 1.0d0 1.0889d0)
+=> 0.9999700272441295d0
+0.999998887365445d0
+0.9999997282885571d0"
   (let ((mat-name (intern (format nil "+~A-MAT+" name) :dufy)))
     `(progn
        (defparameter ,mat-name
