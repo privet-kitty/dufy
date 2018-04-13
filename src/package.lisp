@@ -3,7 +3,7 @@
 
 (defpackage :dufy
   (:use :common-lisp :alexandria)
-  (:export :nearyly=
+  (:export :nearly=
 	   :nearly<=
 	   :nearly-equal
 	   :circular-nearer
@@ -118,8 +118,6 @@
 
 	   :delinearize
 	   :linearize
-	   :nearly=
-	   :nearly<=
 	   :xyz-to-lrgb
 	   :lrgb-to-xyz
 	   :lrgb-out-of-gamut-p
@@ -131,18 +129,22 @@
 	   :rgb-to-qrgb
 	   :qrgb-to-rgb
 	   :qrgb-out-of-gamut-p
+	   :lrgb-to-qrgb
+	   :qrgb-to-lrgb
 	   :xyz-to-qrgb
 	   :qrgb-to-xyz
+	   
 	   :qrgb-to-hex
 	   :hex-to-qrgb
 	   :rgb-to-hex
 	   :hex-to-rgb
+	   :lrgb-to-hex
+	   :hex-to-lrgb
 	   :xyz-to-hex
 	   :hex-to-xyz
-	   :two-pi
-	   :subtract-with-mod
-	   :circular-lerp
 
+	   :gen-rgbspace-changer
+	   
 	   :hsv-to-rgb
 	   :rgb-to-hsv
 	   :hsv-to-qrgb

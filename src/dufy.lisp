@@ -25,7 +25,7 @@
 (defstruct (rgbspace (:constructor $make-rgbspace)
 		     (:copier nil))
   "Structure of RGB space, including encoding characteristics"
-    ;; primary coordinates
+  ;; primary coordinates in xyY space.
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
   (xb 0d0 :type double-float) (yb 0d0 :type double-float)
@@ -37,18 +37,19 @@
   ;; nominal range of linear values
   (lmin 0d0 :type double-float)
   (lmax 1d0 :type double-float)
+  
   (linearizer (rcurry #'float 1d0) :type (function * double-float))
   (delinearizer (rcurry #'float 1d0) :type (function * double-float))
 
   ;; nominal range of gamma-corrected values
   (min 0d0 :type double-float)
   (max 1d0 :type double-float)
-  (len 1d0 :type double-float)
+  (len 1d0 :type double-float) ; length of the interval [min, max]
   (normal t :type boolean) ; t, if min = 0d0 and max = 1d0
 
   ;; quantization
   (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
-  (qmax 255 :type (integer 1 #.most-positive-fixnum) :read-only t) ; maximum of quantized values
+  (qmax 255 :type (integer 1 #.most-positive-fixnum) :read-only t) ; max. of quantized values
   (qmax-float 255d0 :type double-float)
   (len/qmax-float (float 1/255 1d0) :type double-float)
   (qmax-float/len 255d0 :type double-float))
@@ -56,7 +57,9 @@
 
 
 (defun make-rgbspace (xr yr xg yg xb yb &key (illuminant +illum-d65+) (lmin 0d0) (lmax 1d0) (linearizer (rcurry #'float 1d0)) (delinearizer (rcurry #'float 1d0)) (bit-per-channel 8) (force-normal nil))
-  "LINEARIZER and DELINEARIZER must be (FUNCTION * DOUBLE-FLOAT)."
+  "LINEARIZER and DELINEARIZER must be (FUNCTION * DOUBLE-FLOAT).
+If FORCE-NORMAL is T, the nominal range of gamma-corrected value is
+forcibly set to [0, 1]."
   (declare (optimize (speed 3) (safety 1))
 	   (double-float xr yr xg yg xb yb)
 	   ((function * double-float) linearizer delinearizer))
@@ -420,6 +423,23 @@ all the real values."
 	    (+ min (* qb len/qmax-float)))))
 
 
+(declaim (inline lrgb-to-qrgb))
+(defun lrgb-to-qrgb (lr lg lb &key (rgbspace +srgb+) (clamp nil))
+  (declare (optimize (speed 3) (safety 1)))
+  (multiple-value-call #'rgb-to-qrgb
+    (lrgb-to-rgb (float lr 1d0) (float lg 1d0) (float lb 1d0) rgbspace)
+    :rgbspace rgbspace
+    :clamp clamp))
+
+(declaim (inline qrgb-to-lrgb))
+(defun qrgb-to-lrgb (qr qg qb &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1))
+	   (integer qr qg qb))
+  (multiple-value-call #'rgb-to-lrgb
+    (qrgb-to-rgb qr qg qb rgbspace)
+    rgbspace))
+
+
 (declaim (inline xyz-to-qrgb))
 (defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (clamp nil))
   (declare (optimize (speed 3) (safety 1)))
@@ -467,8 +487,24 @@ all the real values."
 (defun rgb-to-hex (r g b &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'qrgb-to-hex
-    (rgb-to-qrgb r g b :rgbspace rgbspace)
+    (rgb-to-qrgb (float r 1d0) (float g 1d0) (float b 1d0) :rgbspace rgbspace)
     rgbspace))
+
+
+(declaim (inline hex-to-lrgb))
+(defun hex-to-lrgb (hex &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
+  (multiple-value-call #'qrgb-to-lrgb
+    (hex-to-qrgb hex rgbspace)
+    rgbspace))
+
+(declaim (inline lrgb-to-hex))
+(defun lrgb-to-hex (lr lg lb &optional (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1)))
+  (multiple-value-call #'rgb-to-hex
+    (lrgb-to-rgb (float lr 1d0) (float lg 1d0) (float lb 1d0) rgbspace)
+    rgbspace))
+
 
 (declaim (inline hex-to-xyz))
 (defun hex-to-xyz (hex &optional (rgbspace +srgb+))
@@ -484,6 +520,53 @@ all the real values."
   (multiple-value-call #'qrgb-to-hex
     (xyz-to-qrgb (float x 1d0) (float y 1d0) (float z 1d0) :rgbspace rgbspace)
     rgbspace))
+
+
+(declaim (inline calc-cat-matrix-for-lrgb))
+(defun calc-cat-matrix-for-lrgb (from-rgbspace to-rgbspace &optional (cat +bradford+))
+  (multiply-matrices (rgbspace-from-xyz-matrix to-rgbspace)
+		     (calc-cat-matrix (rgbspace-illuminant from-rgbspace)
+				      (rgbspace-illuminant to-rgbspace)
+				      cat)
+		     (rgbspace-to-xyz-matrix from-rgbspace)))
+
+(defun gen-rgbspace-changer (from-rgbspace to-rgbspace &optional (representation :lrgb) (cat +bradford+))
+  "Returns a function for changing RGB working space.
+> (funcall (gen-rgbspace-changer +srgb+ +adobe+ :rgb) 0 1 0)
+=> 0.28488056007809415d0
+1.0000000000000002d0
+0.041169364382683385d0 ; change from sRGB to Adobe RGB.
+REPRESENTATION can be :LRGB, :RGB, :QRGB or :HEX.
+
+Note about clamping:
+LRGB case: no clamping;
+RGB case: no clamping;
+QRGB case: no clamping;
+HEX case: with clamping."
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((mat (calc-cat-matrix-for-lrgb from-rgbspace to-rgbspace cat)))
+    (ecase representation
+      (:lrgb #'(lambda (lr lg lb)
+		 (multiply-mat-vec mat (float lr 1d0) (float lg 1d0) (float lb 1d0))))
+      (:rgb #'(lambda (r g b)
+		(multiple-value-call #'lrgb-to-rgb
+		  (multiple-value-call #'multiply-mat-vec
+		    mat
+		    (rgb-to-lrgb (float r 1d0) (float g 1d0) (float b 1d0) from-rgbspace))
+		  to-rgbspace)))
+      (:qrgb #'(lambda (qr qg qb)
+		 (multiple-value-call #'lrgb-to-qrgb
+		   (multiple-value-call #'multiply-mat-vec
+		     mat
+		     (qrgb-to-lrgb qr qg qb from-rgbspace))
+		   :rgbspace to-rgbspace)))
+      (:hex #'(lambda (hex)
+		(multiple-value-call #'lrgb-to-hex
+		  (multiple-value-call #'multiply-mat-vec
+		    mat
+		    (hex-to-lrgb hex from-rgbspace))
+		  to-rgbspace))))))
+
 
 
 

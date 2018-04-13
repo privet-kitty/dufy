@@ -7,6 +7,9 @@
 (def-suite :dufy-suite)
 (in-suite :dufy-suite)
 
+
+;;; Test Data
+
 (defparameter *xyz-set*
   '((0.6018278793248849d0 0.3103175002768938d0 0.028210681843353954d0)
     (4.846309924502165d-6 5.099078671483812d-6 5.552388656107547d-6)
@@ -19,9 +22,15 @@
 (defparameter *qrgb16-set*
   '((65535 65534 65533) (0 1000 2000) (-1000 6000 70000)))
 
+(defparameter *rgb-set*
+  '((1d0 0d0 0d0) (0.1d0 0.2d0 0.3d0) (-0.5d0 0d0 0.5d0)))
 
 (defparameter *illum-d55-10*
   (make-illuminant-by-spd (gen-illum-d-spectrum #.(* 5500 (/ 1.43880d0 1.438))) +obs-cie1964+))
+
+
+
+;;; Test Codes
 
 (test test-spectrum
   (is (nearly-equal 1d-4
@@ -90,6 +99,12 @@
 		  (multiple-value-call #'xyz-to-qrgb
 		    (apply (rcurry #'qrgb-to-xyz rgbspace)
 			   qrgb)
+		    :rgbspace rgbspace))))
+      (is (equal qrgb
+		 (multiple-value-list
+		  (multiple-value-call #'lrgb-to-qrgb
+		    (apply (rcurry #'qrgb-to-lrgb rgbspace)
+			   qrgb)
 		    :rgbspace rgbspace))))))
   (is (equal '(0 5001 65535)
 	     (multiple-value-list
@@ -99,14 +114,26 @@
     (is (= hex
 	   (multiple-value-call #'xyz-to-hex
 	     (hex-to-xyz hex +bg-srgb-16+)
-	     +bg-srgb-16+)
-	   hex))
+	     +bg-srgb-16+)))
     (is (= hex
 	   (multiple-value-call #'rgb-to-hex
 	     (hex-to-rgb hex +bg-srgb-16+)
-	     +bg-srgb-16+)
-	   hex))))
-	     
+	     +bg-srgb-16+)))
+    (is (= hex
+	   (multiple-value-call #'lrgb-to-hex
+	     (hex-to-lrgb hex +bg-srgb-16+)
+	     +bg-srgb-16+))))
+  
+  ;; rgbspace changer
+  (dolist (rgb *rgb-set*)
+    (is (nearly-equal 1d-4
+		      rgb
+		      (multiple-value-list
+		       (multiple-value-call (gen-rgbspace-changer +scrgb-nl+ +pal/secam+ :rgb)
+			 (apply (gen-rgbspace-changer +pal/secam+ +scrgb-nl+ :rgb)
+				rgb)))))))
+
+
 (test test-lab/luv
   (dolist (xyy *xyy-set*)
     (is (nearly-equal 1d-4

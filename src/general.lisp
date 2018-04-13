@@ -169,3 +169,38 @@ THETA2] in a circle group."
 	    (+ (* x (aref matrix 2 0))
 	       (* y (aref matrix 2 1))
 	       (* z (aref matrix 2 2))))))
+
+(defmacro dotimes-unroll ((var count &optional result) &body body)
+  `(block nil
+     ,@(loop for i from 0 below count
+	  collect `(let ((,var ,i)) ,@body))
+     ,result))
+
+(declaim (inline multiply-mat-mat))
+(defun multiply-mat-mat (mat1 mat2)
+  (declare (optimize (speed 3) (safety 1))
+  	   (matrix33 mat1 mat2))
+  (let ((ret-mat (make-array '(3 3) :element-type 'double-float)))
+    (dotimes-unroll (i 3)
+      (dotimes-unroll (k 3)
+	(setf (aref ret-mat i k)
+	      (loop for j from 0 below 3 sum (* (aref mat1 i j)
+						(aref mat2 j k))
+		 of-type double-float))))
+    ret-mat))
+
+(defun multiply-matrices (mat1 &rest mats)
+  (if (null mats)
+      mat1
+      (multiply-mat-mat mat1 (apply #'multiply-matrices (car mats) (cdr mats)))))
+
+
+(defun bench-mult-mat (&optional (num 3000000))
+  (time (let ((mat1 (make-array '(3 3)
+				:element-type 'double-float
+				:initial-contents '((1d0 2d0 3d0) (1d0 2d0 3d0) (4d0 5d0 6d0))))
+	      (mat2 (make-array '(3 3)
+				:element-type 'double-float
+				:initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 -1d0)))))
+	  (dotimes (x num)
+	    (dufy::multiply-matrices mat1 mat2)))))
