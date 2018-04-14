@@ -36,9 +36,9 @@
   "Note: SPECTRUM-ARRAY must be (SIMPLE-ARRAY DOUBLE-FLOAT (*)).
 
 Returns a spectral power distribution
-function, #'(lambda (wavelength-nm) ...), by linearly interpolating
-SPECTRUM-ARRAY which can have arbitrary length. The FTYPE of returned
-function is (FUNCTION REAL DOUBLE-FLOAT).
+function, #'(lambda (wavelength-nm) ...), which interpolates
+SPECTRUM-ARRAY linearly.  The FTYPE of returned function is (FUNCTION
+REAL DOUBLE-FLOAT).
 "
   (declare ((simple-array double-float) spectrum-array))
   (let* ((size (- (length spectrum-array) 1))
@@ -46,7 +46,7 @@ function is (FUNCTION REAL DOUBLE-FLOAT).
 	 (wl-end-f (float wl-end 1d0)))
     (if (= size (- wl-end wl-begin))
 	;; If SPECTRUM-ARRAY is defined just for each integer,
-	;; the spectrum function is simple:
+	;; the spectrum function is simpler:
 	#'(lambda (wl-nm)
 	    (declare (optimize (speed 3) (safety 1)))
 	    (multiple-value-bind (quot rem)
@@ -87,7 +87,7 @@ function is (FUNCTION REAL DOUBLE-FLOAT).
 
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
-  "Defines an observer based on CMF arrays, which must
+  "Generates an observer based on CMF arrays, which must
 be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
   (labels ((gen-cmf-1 (arr num &optional (wl-begin 360) (wl-end 830))
 	     ;; verbose, almost equivalent to GEN-SPECTRUM
@@ -159,8 +159,10 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
      :cmf-z (gen-cmf-1 cmf-arr 2 begin-wl end-wl)
      :cmf (gen-cmf-3 cmf-arr begin-wl end-wl))))
 
-(defparameter +obs-cie1931+ (make-observer cmf-arr-cie1931))
-(defparameter +obs-cie1964+ (make-observer cmf-arr-cie1964))
+(defparameter +obs-cie1931+ (make-observer cmf-arr-cie1931)
+  "CIE 1931 Standard Colorimetric Observer (2-degree).")
+(defparameter +obs-cie1964+ (make-observer cmf-arr-cie1964)
+  "CIE 1964 Standard Colorimetric Observer (10-degree).")
 
 
 
@@ -438,6 +440,7 @@ models are available."
   (inv-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
 
 (defun make-cat (mat)
+  "Generates a (linear) CAT model by a 3*3 matrix."
   (let ((mat-arr (make-array '(3 3)
 			     :element-type 'double-float
 			     :initial-contents mat)))
