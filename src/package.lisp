@@ -102,12 +102,8 @@
 	   :lstar-to-y
 	   :lab-to-lchab
 	   :lchab-to-lab
-	   ;; :xyy-to-lab
-	   ;; :lab-to-xyy
 	   :xyz-to-lchab
-	   ;; :xyy-to-lchab
 	   :lchab-to-xyz
-	   ;; :lchab-to-xyy
 
 	   :xyz-to-luv
 	   :luv-to-xyz
@@ -194,23 +190,5 @@
 	   :xyz-to-munsell
 	   :*maximum-chroma*
 ))
-
-
-
-;; (declaim (inline
-;; 	  ;; general.lisp
-;; 	  subtract-with-mod
-;; 	  circular-nearer
-;; 	  circular-clamp
-;; 	  circular-lerp
-;; 	  circular-lerp-loose
-
-;; 	  ;; dufy.lisp
-;; 	  lchab-to-lab
-;; 	  lab-to-lchab
-
-;; 	  ;; munsell.lisp
-;; 	  munsel-value-to-y
-;; 	  munsell-value-to-lstar))
 
 
