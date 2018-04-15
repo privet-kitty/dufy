@@ -1,7 +1,7 @@
 Dufy - Color Library for Common Lisp
 ====
 
-Dufy is a library for an exact color manipulation and conversion in various color models, which supports the following color spaces:
+Dufy is a library for exact color manipulation and conversion in various color models, which supports the following color spaces:
 
 * Munsell color system
 * RGB
@@ -137,7 +137,7 @@ Out of which gamut, however? By default, `xyz-to-qrgb` (and all other RGB conver
        893
     ;; In the Adobe RGB space and bg-sRGB space the color is within gamut.
 
-Likewise most converters regard the implicit standard illuminant as D65. You can also specify it explicitly:
+Likewise most converters regard the implicit illuminant as D65. You can also specify it explicitly:
 
     * (dufy:luv-to-xyz 100 0 0)                  ; Illuminant D65 
     * (dufy:luv-to-xyz 100 0 0 dufy:+illum-d65+) ; Illuminant D65
