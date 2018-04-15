@@ -30,9 +30,9 @@
 	  (values (/ x sum) (/ y sum) y)))))
 
 
-;; In dufy, a spectrum is just a function whose returned type is
-;; DOUBLE-FLOAT.
-(defun gen-spectrum (spectrum-seq &optional (wl-begin 360) (wl-end 830))
+;; A spectrum is just a function which takes real number and returns
+;; double-float.
+(defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
   "Returns a spectral power distribution
 function, #'(lambda (wavelength-nm) ...), which interpolates
 SPECTRUM-SEQ linearly.  The FTYPE of returned function is (FUNCTION
@@ -48,25 +48,25 @@ spectrum-seq '(simple-array double-float (*))).
 			   spectrum-seq
 			   (coerce spectrum-seq '(simple-array double-float (*)))))
 	 (size (- (length spectrum-arr) 1))
-	 (wl-begin-f (float wl-begin 1d0))
-	 (wl-end-f (float wl-end 1d0)))
-    (if (= size (- wl-end wl-begin))
+	 (begin-wl-f (float begin-wl 1d0))
+	 (end-wl-f (float end-wl 1d0)))
+    (if (= size (- end-wl begin-wl))
 	;; If SPECTRUM-ARR is defined just for each integer,
 	;; the spectrum function is simpler:
 	#'(lambda (wl-nm)
 	    (declare (optimize (speed 3) (safety 1)))
 	    (multiple-value-bind (quot rem)
-		(floor (- (clamp (float wl-nm 1d0) wl-begin-f wl-end-f)
-			  wl-begin-f))
+		(floor (- (clamp (float wl-nm 1d0) begin-wl-f end-wl-f)
+			  begin-wl-f))
 	      (lerp rem
 		    (aref spectrum-arr quot)
 		    (aref spectrum-arr (min (1+ quot) size)))))
-	(let* ((band (/ (- wl-end-f wl-begin-f) size))
+	(let* ((band (/ (- end-wl-f begin-wl-f) size))
 	       (/band (/ band)))
 	  #'(lambda (wl-nm)
 	      (declare (optimize (speed 3) (safety 1)))
-	      (let* ((wl$ (- (clamp (float wl-nm 1d0) wl-begin-f wl-end-f)
-			     wl-begin-f))
+	      (let* ((wl$ (- (clamp (float wl-nm 1d0) begin-wl-f end-wl-f)
+			     begin-wl-f))
 		     (frac (mod wl$ band))
 		     (coef (* frac /band))
 		     (idx (round (* (- wl$ frac) /band))))
@@ -86,50 +86,50 @@ spectrum-seq '(simple-array double-float (*))).
   (cmf-arr (make-array '(471 3) :element-type 'double-float)
 	   :type (simple-array double-float (* 3)))
   ;; Functions based on cmf-arr
-  (cmf-x #'empty-function :type function)
-  (cmf-y #'empty-function :type function)
-  (cmf-z #'empty-function :type function)
-  (cmf #'empty-function :type function))
+  (cmf-x nil :type (function * double-float))
+  (cmf-y nil :type (function * double-float))
+  (cmf-z nil :type (function * double-float))
+  (cmf nil :type (function * (values double-float double-float double-float))))
 
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
   "Generates an observer based on CMF arrays, which must
 be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
-  (labels ((gen-cmf-1 (arr num &optional (wl-begin 360) (wl-end 830))
+  (labels ((gen-cmf-1 (arr num &optional (begin-wl 360) (end-wl 830))
 	     ;; verbose, almost equivalent to GEN-SPECTRUM
 	     (declare ((simple-array double-float (* 3)) arr))
 	     (let* ((size (- (array-dimension arr 0) 1))
-		    (wl-begin-f (float wl-begin 1d0))
-		    (wl-end-f (float wl-end 1d0)))
-	       (if (= size (- wl-end wl-begin))
+		    (begin-wl-f (float begin-wl 1d0))
+		    (end-wl-f (float end-wl 1d0)))
+	       (if (= size (- end-wl begin-wl))
 		   #'(lambda (wl)
 		       (declare (optimize (speed 3) (safety 1)))
 		       (multiple-value-bind (quot rem)
-			   (floor (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
+			   (floor (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
 			 (lerp rem
 			       (aref arr quot num)
 			       (aref arr (min (1+ quot) size) num))))
-		   (let* ((band (/ (- wl-end-f wl-begin-f) size))
+		   (let* ((band (/ (- end-wl-f begin-wl-f) size))
 			  (/band (/ band)))
 		     #'(lambda (wl)
 			 (declare (optimize (speed 3) (safety 1)))
-			 (let* ((wl$ (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
+			 (let* ((wl$ (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
 				(idx (round (* (- wl$ frac) /band))))
 			   (lerp coef
 				 (aref arr idx num)
 				 (aref arr (min (+ idx 1) size) num))))))))
-	   (gen-cmf-3 (arr &optional (wl-begin 360) (wl-end 830))
+	   (gen-cmf-3 (arr &optional (begin-wl 360) (end-wl 830))
 	     (declare ((simple-array double-float (* 3)) arr))
 	     (let* ((size (- (array-dimension arr 0) 1))
-		    (wl-begin-f (float wl-begin 1d0))
-		    (wl-end-f (float wl-end 1d0)))
-	       (if (= size (- wl-end wl-begin))
+		    (begin-wl-f (float begin-wl 1d0))
+		    (end-wl-f (float end-wl 1d0)))
+	       (if (= size (- end-wl begin-wl))
 		   #'(lambda (wl)
 		       (declare (optimize (speed 3) (safety 1)))
 		       (multiple-value-bind (quot rem)
-			   (floor (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
+			   (floor (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
 			 (values (lerp rem
 				       (aref arr quot 0)
 				       (aref arr (min (1+ quot) size) 0))
@@ -139,11 +139,11 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 				 (lerp rem
 				       (aref arr quot 2)
 				       (aref arr (min (1+ quot) size) 2)))))
-		   (let* ((band (/ (- wl-end-f wl-begin-f) size))
+		   (let* ((band (/ (- end-wl-f begin-wl-f) size))
 			  (/band (/ band)))
 		     #'(lambda (wl)
 			 (declare (optimize (speed 3) (safety 1)))
-			 (let* ((wl$ (- (clamp (float wl 1d0) wl-begin-f wl-end-f) wl-begin-f))
+			 (let* ((wl$ (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
 				(idx (round (* (- wl$ frac) /band))))
@@ -191,10 +191,10 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 (defparameter +s1-func+ (gen-spectrum +s1-arr+ 300 830))
 (defparameter +s2-func+ (gen-spectrum +s2-arr+ 300 830))
 
-(defun gen-illum-d-spectrum-array (temperature &optional (wl-begin 300) (wl-end 830))
+(defun gen-illum-d-spectrum-array (temperature &optional (begin-wl 300) (end-wl 830))
   (declare (optimize (speed 3) (safety 1)))
-  (check-type wl-begin fixnum)
-  (check-type wl-end fixnum)
+  (check-type begin-wl fixnum)
+  (check-type end-wl fixnum)
   (labels ((calc-xd (temp)
 	     (let ((/temp (/ temp)))
 	       (if (<= temp 7000d0)
@@ -207,11 +207,11 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 	   (m (+ 0.0241d0 (* xd 0.2562d0) (* yd -0.7341d0)))
 	   (m1 (/ (+ -1.3515d0 (* xd -1.7703d0) (* yd 5.9114d0)) m))
 	   (m2 (/ (+ 0.03d0 (* xd -31.4424d0) (* yd 30.0717d0)) m))
-	   (arr (make-array (1+ (- wl-end wl-begin))
+	   (arr (make-array (1+ (- end-wl begin-wl))
 			    :element-type 'double-float
 			    :initial-element 0d0)))
-      (loop for wl from wl-begin to wl-end do
-	   (setf (aref arr (- wl wl-begin))
+      (loop for wl from begin-wl to end-wl do
+	   (setf (aref arr (- wl begin-wl))
 		 (+ (funcall +s0-func+ wl)
 		    (* m1 (funcall +s1-func+ wl))
 		    (* m2 (funcall +s2-func+ wl)))))
@@ -224,8 +224,8 @@ temperature."
 		300 830))
 
 				 
-(defun spectrum-sum (spectrum &optional (wl-begin 300) (wl-end 830) (band 1))
-  (loop for wl from wl-begin to wl-end by band
+(defun spectrum-sum (spectrum &optional (begin-wl 300) (end-wl 830) (band 1))
+  (loop for wl from begin-wl to end-wl by band
      sum (funcall spectrum wl)))
 
 (declaim (inline bb-spectrum))
@@ -297,42 +297,36 @@ f(x) = 0d0 otherwise.
 	     (format stream "The illuminant has no spectrum: ~A"
 		     (cond-illuminant condition)))))
 
-(defvar +illum-e+) ;; to avoid WARNING
-(defun spectrum-to-xyz (spectrum &optional (illuminant +illum-e+))
+(defvar +illum-e+) ; defined later
+(defun spectrum-to-xyz (spectrum &optional (illuminant +illum-e+) (begin-wl 360) (end-wl 830) (band 1))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
-case. The function SPECTRUM must be defined at least in [360, 830].
-The return values are not normalized."
+case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL, BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
   (if (illuminant-no-spd-p illuminant)
       (let ((*print-array* nil))
 	(error (make-condition 'no-spd-error :illuminant illuminant)))
       (spectrum-to-xyz-raw spectrum
 			   (illuminant-spectrum illuminant)
-			   (illuminant-observer illuminant))))
+			   (illuminant-observer illuminant)
+			   begin-wl
+			   end-wl
+			   band)))
 
-(defun spectrum-to-xyz-raw (spectrum illum-spectrum observer)
-  "Another version of spectrum-to-xyz: only the return value
-of (illuminant-spectrum illuminant) and observer are used in
-spectrum-to-xyz."
+(defun spectrum-to-xyz-raw (spectrum illum-spectrum observer &optional (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1))
 	   ((function * double-float) spectrum illum-spectrum))
   (let ((x 0d0) (y 0d0) (z 0d0) (max-y 0d0)
-	(arr (observer-cmf-arr observer)))
+	(cmf (observer-cmf observer)))
     (declare (double-float x y z max-y))
-    (loop for wl from 360 to 830 do
+    (loop for wl from begin-wl to end-wl by band do
 	 (let ((p (funcall illum-spectrum wl))
-	       (reflec (funcall spectrum wl))
-	       (idx (- wl 360)))
-	   (progn
-	     (incf x (* (aref arr idx 0) p reflec))
-	     (incf y (* (aref arr idx 1) p reflec))
-	     (incf z (* (aref arr idx 2) p reflec))
-	     (incf max-y (* (aref arr idx 1) p)))))
+	       (reflec (funcall spectrum wl)))
+	   (multiple-value-bind (x-fac y-fac z-fac) (funcall cmf wl)
+	     (incf x (* x-fac p reflec))
+	     (incf y (* y-fac p reflec))
+	     (incf z (* z-fac p reflec))
+	     (incf max-y (* y-fac p)))))
     (let ((factor (/ max-y)))
       (values (* x factor) (* y factor) (* z factor)))))
-
-;; (defun spectrum-to-lchab (spectrum &key (illuminant +illum-e+) (observer +obs-cie1931+))
-;;   (apply (rcurry #'xyz-to-lchab illuminant)
-;; 	 (spectrum-to-xyz spectrum :illuminant illuminant :observer observer)))
 
 
 (let ((mat (make-array '(3 3)
@@ -374,8 +368,9 @@ many."
     
 	    
 (defun make-illuminant (small-x small-y &optional (spectrum nil) (observer +obs-cie1931+))
-  "Defines an illuminant based on a white point. No error occurs, even
-if the given (small-x, small-y) and SPD contradicts to each other."
+  "Generates an illuminant based on a white point. No error occurs,
+even if the given white point, (small-x, small-y), and SPD contradicts
+to each other."
   (multiple-value-bind (x y z) (xyy-to-xyz small-x small-y 1d0)
     ($make-illuminant :small-x (float small-x 1d0)
 		      :small-y (float small-y 1d0)
@@ -389,7 +384,7 @@ if the given (small-x, small-y) and SPD contradicts to each other."
 					      +empty-matrix+))))
 
 (defun make-illuminant-by-spd (spectrum &optional (observer +obs-cie1931+))
-  "Defines an illuminant based on a spectral power distribution. The
+  "Generates an illuminant based on a spectral power distribution. The
 white point is automatically calculated."
   (multiple-value-bind (x y z)
       (spectrum-to-xyz-raw #'flat-spectrum spectrum observer)
