@@ -2,7 +2,7 @@
 (declaim (optimize (compilation-speed 0)))
 
 (defpackage :dufy
-  (:use :common-lisp :alexandria)
+  (:use :common-lisp :alexandria :iter)
   (:export :nearly=
 	   :nearly<=
 	   :nearly-equal
@@ -14,6 +14,7 @@
 
 	   ;; xyz.lisp
 	   :gen-spectrum
+	   :approximate-spectrum
 	   :gen-illum-d-spectrum
 	   :spectrum-to-xyz
 	   :xyz-to-spectrum

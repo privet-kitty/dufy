@@ -51,11 +51,13 @@
 		     (multiple-value-call #'xyz-to-xyy
 		       (spectrum-to-xyz #'flat-spectrum *illum-d55-10*)))))
   (dolist (xyz *xyz-set*)
-    (is (nearly-equal 1d-4
+    (is (nearly-equal 1d-3
 		      xyz
 		      (multiple-value-list
-		       (spectrum-to-xyz (apply (rcurry #'xyz-to-spectrum *illum-d55-10*)
-					       xyz)
+		       (spectrum-to-xyz (approximate-spectrum
+					 (apply (rcurry #'xyz-to-spectrum *illum-d55-10*)
+						xyz)
+					 340d0 850d0 1.01d0)
 					*illum-d55-10*))))))
 
 (test test-xyy

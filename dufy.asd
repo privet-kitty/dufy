@@ -8,7 +8,7 @@
   :author "Hugo I."
   :license "MIT"
   :serial t
-  :depends-on (:cl-ppcre :alexandria)
+  :depends-on (:cl-ppcre :alexandria :iterate)
   :components ((:module "dat")
 	       (:module "src"
 		:components

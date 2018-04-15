@@ -73,6 +73,25 @@ spectrum-seq '(simple-array double-float (*)))."
 		      (aref spectrum-arr idx)
 		      (aref spectrum-arr (min (+ idx 1) size)))))))))
 
+(defun approximate-spectrum (spectrum &optional (begin-wl 360d0) (end-wl 830d0) (band 1d0))
+  "Generates an approximate spectrum of SPECTRUM by pieacewise
+linearization. It is used to lighten a \"heavy\" spectrum function."
+  (declare (optimize (speed 3) (safety 1))
+	   ((function * double-float) spectrum))
+  (with-double-float (begin-wl end-wl band)
+    (let* ((partitions (max 2 (round (/ (- end-wl begin-wl) band))))
+	   (partitions-f (float partitions 1d0)))
+      (declare (fixnum partitions))
+      (gen-spectrum
+       (iter (for i from 0 to partitions)
+	     (for wl = (lerp (/ i partitions-f) begin-wl end-wl))
+	     (declare (double-float wl)
+		      (fixnum i))
+	     (collect (funcall spectrum wl)
+	       result-type '(simple-array double-float (*))))
+       begin-wl
+       end-wl))))
+
 
 ;;;
 ;;; Observer
