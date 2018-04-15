@@ -30,19 +30,18 @@
 	  (values (/ x sum) (/ y sum) y)))))
 
 
-;; A spectrum is just a function which takes real number and returns
-;; double-float.
 (defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
-  "Returns a spectral power distribution
+  "A spectrum is just a function which takes a real number as
+wavelength (nm) and returns a double-float.
+
+GEN-SPECTRUM returns a spectral power distribution
 function, #'(lambda (wavelength-nm) ...), which interpolates
-SPECTRUM-SEQ linearly.  The FTYPE of returned function is (FUNCTION
-REAL DOUBLE-FLOAT).
+SPECTRUM-SEQ linearly.
 
 Note: SPECTRUM-SEQ must be a sequence of DOUBLE-FLOAT.
 If the type of SPECTRUM-SEQ is (SIMPLE-ARRAY DOUBLE-FLOAT (*)), it is
 not copied but referenced, otherwise it is copied by (coerce
-spectrum-seq '(simple-array double-float (*))).
-"
+spectrum-seq '(simple-array double-float (*)))."
   (check-type spectrum-seq sequence)
   (let* ((spectrum-arr (if (typep spectrum-seq '(simple-array double-float (*)))
 			   spectrum-seq
@@ -51,7 +50,7 @@ spectrum-seq '(simple-array double-float (*))).
 	 (begin-wl-f (float begin-wl 1d0))
 	 (end-wl-f (float end-wl 1d0)))
     (if (= size (- end-wl begin-wl))
-	;; If SPECTRUM-ARR is defined just for each integer,
+	;; If SPECTRUM-SEQ is defined just for each integer,
 	;; the spectrum function is simpler:
 	#'(lambda (wl-nm)
 	    (declare (optimize (speed 3) (safety 1)))
