@@ -223,7 +223,8 @@ THETA2] in a circle group."
   "Ensures that variables are double-float."
   (labels ((expand (var-lst)
 	     (if (null var-lst)
-		 `(progn ,@body)
-		 `(let ((,(car var-lst) (float ,(car var-lst) 1d0)))
-		    ,(expand (cdr var-lst))))))
-    (expand vars)))
+		 nil
+		 (cons `(,(car var-lst) (float ,(car var-lst) 1d0))
+		       (expand (cdr var-lst))))))
+    `(let ,(expand vars)
+       ,@body)))

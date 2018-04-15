@@ -10,9 +10,7 @@
 (defun xyy-to-xyz (small-x small-y y)
   "xyY to XYZ."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((small-x (float small-x 1d0))
-	(small-y (float small-y 1d0))
-	(y (float y 1d0)))
+  (with-double-float (small-x small-y y)
     (if (zerop small-y)
 	(values 0d0 y 0d0)
 	(values (/ (* small-x y) small-y) 
@@ -23,7 +21,7 @@
 (defun xyz-to-xyy (x y z)
   "XYZ to xyY."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
+  (with-double-float (x y z)
     (let ((sum (+ x y z)))
       (if (= sum 0)
 	  (values 0d0 0d0 y)
@@ -31,15 +29,15 @@
 
 
 (defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
-  "A spectrum is just a function which takes a real number as
+  "In dufy, a spectrum is just a function which takes a real number as
 wavelength (nm) and returns a double-float.
 
 GEN-SPECTRUM returns a spectral power distribution
 function, #'(lambda (wavelength-nm) ...), which interpolates
 SPECTRUM-SEQ linearly.
 
-Note: SPECTRUM-SEQ must be a sequence of DOUBLE-FLOAT.
-If the type of SPECTRUM-SEQ is (SIMPLE-ARRAY DOUBLE-FLOAT (*)), it is
+Note: SPECTRUM-SEQ must be a sequence of double-float.
+If the type of SPECTRUM-SEQ is (simple-array double-float (*)), it is
 not copied but referenced, otherwise it is copied by (coerce
 spectrum-seq '(simple-array double-float (*)))."
   (check-type spectrum-seq sequence)
