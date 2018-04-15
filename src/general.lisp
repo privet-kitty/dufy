@@ -212,3 +212,18 @@ THETA2] in a circle group."
 				:initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 -1d0)))))
 	  (dotimes (x num)
 	    (dufy::multiply-matrices mat1 mat2)))))
+
+
+
+;;;
+;;; General macros
+;;;
+
+(defmacro with-double-float (vars &body body)
+  "Ensures that variables are double-float."
+  (labels ((expand (var-lst)
+	     (if (null var-lst)
+		 `(progn ,@body)
+		 `(let ((,(car var-lst) (float ,(car var-lst) 1d0)))
+		    ,(expand (cdr var-lst))))))
+    (expand vars)))
