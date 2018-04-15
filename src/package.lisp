@@ -66,6 +66,7 @@
 	   :+cat97s-revised+
 	   :+cat02+
 
+	   ;; rgb.lisp
 	   :rgbspace
 	   :+srgb+
 	   :+bg-srgb-10+ :+bg-srgb-12+ :+bg-srgb-16+
@@ -96,21 +97,6 @@
 	   :rgbspace-dequantizer
 	   :gen-linearizer
 	   :gen-delinearizer
-
-	   :xyz-to-lab
-	   :lab-to-xyz
-	   :lstar-to-y
-	   :lab-to-lchab
-	   :lchab-to-lab
-	   :xyz-to-lchab
-	   :lchab-to-xyz
-
-	   :xyz-to-luv
-	   :luv-to-xyz
-	   :luv-to-lchuv
-	   :lchuv-to-luv
-	   :xyz-to-lchuv
-	   :lchuv-to-xyz
 
 	   :delinearize
 	   :linearize
@@ -154,7 +140,23 @@
 	   :qrgb-to-hsl
 	   :hsl-to-xyz
 	   :xyz-to-hsl
-	   
+
+	   ;; lab-and-luv.lisp
+	   :xyz-to-lab
+	   :lab-to-xyz
+	   :lstar-to-y
+	   :lab-to-lchab
+	   :lchab-to-lab
+	   :xyz-to-lchab
+	   :lchab-to-xyz
+
+	   :xyz-to-luv
+	   :luv-to-xyz
+	   :luv-to-lchuv
+	   :lchuv-to-luv
+	   :xyz-to-lchuv
+	   :lchuv-to-xyz
+
 	   ;; deltae.lisp
 	   :deltae
 	   :xyz-deltae

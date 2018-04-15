@@ -13,12 +13,13 @@
 	       (:module "src"
 		:components
 		((:file "package")
-		 (:file "fundamental-data" :depends-on ("package"))
-		 (:file "general" :depends-on ("package"))
-		 (:file "xyz" :depends-on ("package" "general" "fundamental-data"))
-		 (:file "dufy" :depends-on ("package" "fundamental-data" "xyz" "general"))
-		 (:file "deltae" :depends-on ("package" "dufy"))
+		 (:file "fundamental-data")
+		 (:file "general")
+		 (:file "xyz")
+		 (:file "rgb")
+		 (:file "lab-and-luv")
+		 (:file "deltae")
 		 (:file "munsell-renotation-data")
-		 (:file "munsell" :depends-on ("package" "dufy" "munsell-renotation-data" "deltae" "general" "xyz")))))
+		 (:file "munsell"))))
   :in-order-to ((test-op (test-op dufy-test))))
 
