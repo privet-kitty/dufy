@@ -2,7 +2,7 @@
 (declaim (optimize (compilation-speed 0)))
 
 (defpackage :dufy
-  (:use :common-lisp :alexandria :iter)
+  (:use :common-lisp :alexandria)
   (:export :nearly=
 	   :nearly<=
 	   :nearly-equal

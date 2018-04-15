@@ -81,12 +81,11 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
 	   (partitions-f (float partitions 1d0)))
       (declare (fixnum partitions))
       (gen-spectrum
-       (iter (for i from 0 to partitions)
-	     (for wl = (lerp (/ i partitions-f) begin-wl end-wl))
-	     (declare (double-float wl)
-		      (fixnum i))
-	     (collect (funcall spectrum wl)
-	       result-type '(simple-array double-float (*))))
+       (let ((arr (make-array (1+ partitions) :element-type 'double-float)))
+	 (loop for i from 0 to partitions
+	    for wl = (lerp (/ i partitions-f) begin-wl end-wl)
+	    do (setf (aref arr i) (funcall spectrum wl))
+	    finally (return arr)))
        begin-wl
        end-wl))))
 
