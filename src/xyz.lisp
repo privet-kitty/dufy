@@ -32,20 +32,26 @@
 
 ;; In dufy, a spectrum is just a function whose returned type is
 ;; DOUBLE-FLOAT.
-(defun gen-spectrum (spectrum-array &optional (wl-begin 360) (wl-end 830))
-  "Note: SPECTRUM-ARRAY must be (SIMPLE-ARRAY DOUBLE-FLOAT (*)).
-
-Returns a spectral power distribution
+(defun gen-spectrum (spectrum-seq &optional (wl-begin 360) (wl-end 830))
+  "Returns a spectral power distribution
 function, #'(lambda (wavelength-nm) ...), which interpolates
-SPECTRUM-ARRAY linearly.  The FTYPE of returned function is (FUNCTION
+SPECTRUM-SEQ linearly.  The FTYPE of returned function is (FUNCTION
 REAL DOUBLE-FLOAT).
+
+Note: SPECTRUM-SEQ must be a sequence of DOUBLE-FLOAT.
+If the type of SPECTRUM-SEQ is (SIMPLE-ARRAY DOUBLE-FLOAT (*)), it is
+not copied but referenced, otherwise it is copied by (coerce
+spectrum-seq '(simple-array double-float (*))).
 "
-  (declare ((simple-array double-float) spectrum-array))
-  (let* ((size (- (length spectrum-array) 1))
+  (check-type spectrum-seq sequence)
+  (let* ((spectrum-arr (if (typep spectrum-seq '(simple-array double-float (*)))
+			   spectrum-seq
+			   (coerce spectrum-seq '(simple-array double-float (*)))))
+	 (size (- (length spectrum-arr) 1))
 	 (wl-begin-f (float wl-begin 1d0))
 	 (wl-end-f (float wl-end 1d0)))
     (if (= size (- wl-end wl-begin))
-	;; If SPECTRUM-ARRAY is defined just for each integer,
+	;; If SPECTRUM-ARR is defined just for each integer,
 	;; the spectrum function is simpler:
 	#'(lambda (wl-nm)
 	    (declare (optimize (speed 3) (safety 1)))
@@ -53,8 +59,8 @@ REAL DOUBLE-FLOAT).
 		(floor (- (clamp (float wl-nm 1d0) wl-begin-f wl-end-f)
 			  wl-begin-f))
 	      (lerp rem
-		    (aref spectrum-array quot)
-		    (aref spectrum-array (min (1+ quot) size)))))
+		    (aref spectrum-arr quot)
+		    (aref spectrum-arr (min (1+ quot) size)))))
 	(let* ((band (/ (- wl-end-f wl-begin-f) size))
 	       (/band (/ band)))
 	  #'(lambda (wl-nm)
@@ -65,8 +71,8 @@ REAL DOUBLE-FLOAT).
 		     (coef (* frac /band))
 		     (idx (round (* (- wl$ frac) /band))))
 		(lerp coef
-		      (aref spectrum-array idx)
-		      (aref spectrum-array (min (+ idx 1) size)))))))))
+		      (aref spectrum-arr idx)
+		      (aref spectrum-arr (min (+ idx 1) size)))))))))
 
 
 ;;;
