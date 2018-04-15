@@ -259,13 +259,8 @@ f(x) = 0d0 otherwise.
   (declare (optimize (speed 3) (safety 1)))
   (declare (ignore wavelength-nm))
   1d0)
-    
-(defun scale-xyz (x y z &optional (scale-to 1))
-  "X, Y, Z are scaled so as to satisfy X+Y+Z = SCALE-TO."
-  (let ((factor (* scale-to (/ (+ x y z)))))
-    (values (* x factor)
-	    (* y factor)
-	    (* z factor))))
+
+
 
 
 
