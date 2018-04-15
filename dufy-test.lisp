@@ -8,7 +8,9 @@
 (in-suite :dufy-suite)
 
 
+;;;
 ;;; Test Data
+;;;
 
 (defparameter *xyz-set*
   '((0.6018278793248849d0 0.3103175002768938d0 0.028210681843353954d0)
@@ -29,8 +31,9 @@
   (make-illuminant-by-spd (gen-illum-d-spectrum #.(* 5500 (/ 1.43880d0 1.438))) +obs-cie1964+))
 
 
-
+;;;
 ;;; Test Codes
+;;;
 
 (test test-spectrum
   (is (nearly-equal 1d-4
@@ -40,7 +43,8 @@
   (is (nearly-equal 1d-3
 		    '(0.95047d0 1d0 1.08883d0)
 		    (multiple-value-list
-		     (spectrum-to-xyz #'flat-spectrum +illum-d65+))))
+		     (spectrum-to-xyz #'flat-spectrum +illum-d65+
+				      370s0 825.5 1/10))))
   (is (nearly-equal 1d-4
 		    '(0.33411 0.34877 1.0d0)
 		    (multiple-value-list
