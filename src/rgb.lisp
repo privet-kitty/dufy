@@ -5,22 +5,22 @@
 ;;;
 
 (defun gen-linearizer (gamma)
-  (let ((gamma$ (float gamma 1d0)))
+  (let ((gamma (float gamma 1d0)))
     #'(lambda (x)
 	(declare (optimize (speed 3) (safety 1))
 		 (double-float x))
 	(if (plusp x)
-	    (expt x gamma$)
-	    (- (expt (- x) gamma$))))))
+	    (expt x gamma)
+	    (- (expt (- x) gamma))))))
 
 (defun gen-delinearizer (gamma)
-  (let ((gamma-recipro (/ 1d0 (float gamma 1d0))))
+  (let ((/gamma (/ (float gamma 1d0))))
     #'(lambda (x)
 	(declare (optimize (speed 3) (safety 1))
 		 (double-float x))
 	(if (plusp x)
-	    (expt x gamma-recipro)
-	    (- (expt (- x) gamma-recipro))))))
+	    (expt x /gamma)
+	    (- (expt (- x) /gamma))))))
 
 (defstruct (rgbspace (:constructor $make-rgbspace)
 		     (:copier nil))
@@ -61,59 +61,59 @@
 If FORCE-NORMAL is T, the nominal range of gamma-corrected value is
 forcibly set to [0, 1]."
   (declare (optimize (speed 3) (safety 1))
-	   (double-float xr yr xg yg xb yb)
 	   ((function * double-float) linearizer delinearizer))
-  (let ((coordinates
-	 (make-array '(3 3)
-		     :element-type 'double-float
-		     :initial-contents
-		     (list (list xr xg xb)
-			   (list yr yg yb)
-			   (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
-    (multiple-value-bind (sr sg sb)
-	(multiply-mat-vec (invert-matrix33 coordinates)
-			  (illuminant-x illuminant)
-			  (illuminant-y illuminant)
-			  (illuminant-z illuminant))
-      (let* ((mat
-	      (make-array '(3 3)
-			  :element-type 'double-float
-			  :initial-contents
-			  (list (list (* sr (aref coordinates 0 0))
-				      (* sg (aref coordinates 0 1))
-				      (* sb (aref coordinates 0 2)))
-				(list (* sr (aref coordinates 1 0))
-				      (* sg (aref coordinates 1 1))
-				      (* sb (aref coordinates 1 2)))
-				(list (* sr (aref coordinates 2 0))
-				      (* sg (aref coordinates 2 1))
-				      (* sb (aref coordinates 2 2))))))
-	     (min (if force-normal 0d0 (funcall delinearizer lmin)))
-	     (max (if force-normal 1d0 (funcall delinearizer lmax)))
-	     (normal (if (and (= min 0d0) (= max 1d0))
-			 t nil))
-	     (qmax (- (expt 2 bit-per-channel) 1))
-	     (qmax-float (float qmax 1d0))
-	     (len (- max min)))
-	($make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
-			:illuminant illuminant
-			:linearizer linearizer
-			:delinearizer delinearizer
-			:to-xyz-matrix mat
-			:from-xyz-matrix (invert-matrix33 mat)
-			:lmin lmin
-			:lmax lmax
-			:min min
-			:max max
-			:len len
-			:normal normal
-			:bit-per-channel bit-per-channel
-			:qmax qmax
-			:qmax-float qmax-float
-			:qmax-float/len (/ qmax-float len)
-			:len/qmax-float (/ len qmax-float))))))
+  (with-double-float (xr yr xg yg xb yb)
+    (let ((coordinates
+	   (make-array '(3 3)
+		       :element-type 'double-float
+		       :initial-contents
+		       (list (list xr xg xb)
+			     (list yr yg yb)
+			     (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
+      (multiple-value-bind (sr sg sb)
+	  (multiply-mat-vec (invert-matrix33 coordinates)
+			    (illuminant-x illuminant)
+			    (illuminant-y illuminant)
+			    (illuminant-z illuminant))
+	(let* ((mat
+		(make-array '(3 3)
+			    :element-type 'double-float
+			    :initial-contents
+			    (list (list (* sr (aref coordinates 0 0))
+					(* sg (aref coordinates 0 1))
+					(* sb (aref coordinates 0 2)))
+				  (list (* sr (aref coordinates 1 0))
+					(* sg (aref coordinates 1 1))
+					(* sb (aref coordinates 1 2)))
+				  (list (* sr (aref coordinates 2 0))
+					(* sg (aref coordinates 2 1))
+					(* sb (aref coordinates 2 2))))))
+	       (min (if force-normal 0d0 (funcall delinearizer lmin)))
+	       (max (if force-normal 1d0 (funcall delinearizer lmax)))
+	       (normal (if (and (= min 0d0) (= max 1d0))
+			   t nil))
+	       (qmax (- (expt 2 bit-per-channel) 1))
+	       (qmax-float (float qmax 1d0))
+	       (len (- max min)))
+	  ($make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
+			  :illuminant illuminant
+			  :linearizer linearizer
+			  :delinearizer delinearizer
+			  :to-xyz-matrix mat
+			  :from-xyz-matrix (invert-matrix33 mat)
+			  :lmin lmin
+			  :lmax lmax
+			  :min min
+			  :max max
+			  :len len
+			  :normal normal
+			  :bit-per-channel bit-per-channel
+			  :qmax qmax
+			  :qmax-float qmax-float
+			  :qmax-float/len (/ qmax-float len)
+			  :len/qmax-float (/ len qmax-float)))))))
 
-(defvar +srgb+)
+(defvar +srgb+) ; later defined
 
 (declaim (inline xyz-to-lrgb))
 (defun xyz-to-lrgb (x y z &optional (rgbspace +srgb+))
@@ -162,8 +162,12 @@ are nil, it is just a copier."
 		   :force-normal (rgbspace-normal rgbspace))))
 
 
+;;;
+;;; Predefined RGB spaces
+;;;
+
 (defun linearize-srgb (x)
-  "actually the same as bg-sRGB"
+  "linearizer of sRGB (actually the same as bg-sRGB)"
   (declare (optimize (speed 3) (safety 1))
 	   (double-float x))
   (cond ((> x #.(* 0.0031308d0 12.92d0))
@@ -173,7 +177,7 @@ are nil, it is just a copier."
 	(t (* x #.(/ 12.92d0)))))
 
 (defun delinearize-srgb (x)
-  "actually the same as bg-sRGB"
+  "delinealizer of sRGB (actually the same as bg-sRGB)"
   (declare (optimize (speed 3) (safety 1))
 	   (double-float x))
   (cond ((> x 0.0031308d0)
@@ -206,7 +210,7 @@ are nil, it is just a copier."
 		:linearizer #'linearize-srgb				
 		:delinearizer #'delinearize-srgb
 		:force-normal t)
-  "sRGB")
+  "sRGB, 8-bit per channel")
 
 (defparameter +bg-srgb-10+
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
@@ -246,19 +250,6 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
   "scRGB-nl, IEC 61966-2-2:2003
 http://www.color.org/chardata/rgb/scrgb-nl.xalter")
 
-		
-
-;; (defun linearize-adobe (x)
-;;   (clamp (if (<= x 0.0556d0)
-;; 	     (* x #.(float 1/32 1d0))
-;; 	     (expt x 2.2d0))
-;; 	 0d0 1d0))
-
-;; (defun delinearize-adobe (x)
-;;   (clamp (if (<= x 0.00174d0)
-;; 	     (* x 32d0)
-;; 	     (expt x #.(/ 1 2.2d0)))
-;; 	 0d0 1d0))
 
 (defparameter +adobe+
   (make-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
@@ -326,6 +317,13 @@ http://www.color.org/ROMMRGB.pdf")
   (copy-rgbspace +prophoto+ :bit-per-channel 16)
   "Prophoto RGB (also known as ROMM RGB), 16-bit per channel,
 http://www.color.org/ROMMRGB.pdf")
+
+
+
+;;;
+;;; Linear RGB, gamma-corrected RGB and quantized RGB
+;;;
+
 
 (defun lrgb-out-of-gamut-p (lr lg lb &key (rgbspace +srgb+) (threshold 1d-4))
   "Returns true, if at least one of LR, LG and LB is outside the
@@ -614,7 +612,7 @@ HEX case: with clamping."
 (declaim (inline rgb-to-hsv))
 (defun rgb-to-hsv (r g b)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((r (float r 1d0)) (g (float g 1d0)) (b (float b 1d0)))
+  (with-double-float (r g b)
     (let* ((maxrgb (coerce (max r g b) 'double-float))
 	   (minrgb (coerce (min r g b) 'double-float))
 	   (s (if (= maxrgb 0d0)
@@ -645,9 +643,7 @@ HEX case: with clamping."
   "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0,
 1]; all the real values outside the interval are also acceptable."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((hue (float hue 1d0))
-	(sat (float sat 1d0))
-	(lum (float lum 1d0)))
+  (with-double-float (hue sat lum)
     (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (- (* lum 2d0) 1d0)))))
 	   (max (+ lum tmp))
 	   (min (- lum tmp))
@@ -693,7 +689,7 @@ HEX case: with clamping."
 (declaim (inline rgb-to-hsl))
 (defun rgb-to-hsl (r g b)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((r (float r 1d0)) (g (float g 1d0)) (b (float b 1d0)))
+  (with-double-float (r g b)
     (let ((min (min r g b))
 	  (max (max r g b)))
       (let ((hue (cond ((= min max) 0d0)

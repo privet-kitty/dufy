@@ -67,7 +67,7 @@
 (declaim (inline lab-to-lchab))
 (defun lab-to-lchab (lstar astar bstar)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((astar (float astar 1d0)) (bstar (float bstar 1d0)))
+  (with-double-float (astar bstar)
     (values lstar
 	    (sqrt (+ (* astar astar) (* bstar bstar)))
 	    (mod (* (atan bstar astar) +360/TWO-PI+) 360d0))))
@@ -75,7 +75,7 @@
 (declaim (inline lchab-to-lab))
 (defun lchab-to-lab (lstar cstarab hab)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((cstarab (float cstarab 1d0)) (hab (float hab 1d0)))
+  (with-double-float (cstarab hab)
     (let ((hue-two-pi (* hab +TWO-PI/360+)))
       (values lstar
 	      (* cstarab (cos hue-two-pi))
@@ -102,7 +102,8 @@
     (lchab-to-xyz lstar cstarab hab illuminant)) )
 
 
-;; (declaim (ftype (function (double-float double-float) (values double-float double-float)) calc-uvprime))
+
+
 (declaim (inline calc-uvprime))
 (defun calc-uvprime (x y)
   (declare (optimize (speed 3) (safety 0))
@@ -111,7 +112,6 @@
     (values (/ (* 4d0 x) denom)
 	    (/ (* 9d0 y) denom))))
 
-;; (declaim (ftype (function (double-float double-float double-float) (values double-float double-float)) calc-uvprime-from-xyz))
 (declaim (inline calc-uvprime-from-xyz))
 (defun calc-uvprime-from-xyz (x y z)
   (declare (optimize (speed 3) (safety 0))
@@ -123,7 +123,7 @@
 (declaim (inline xyz-to-luv))
 (defun xyz-to-luv (x y z &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
-  (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
+  (with-double-float (x y z)
     (multiple-value-bind (uprime vprime)
 	(calc-uvprime-from-xyz x y z)
       (multiple-value-bind (urprime vrprime)
@@ -139,7 +139,7 @@
 (declaim (inline luv-to-xyz))
 (defun luv-to-xyz (lstar ustar vstar &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
-  (let ((lstar (float lstar 1d0)) (ustar (float ustar 1d0)) (vstar (float vstar 1d0)))
+  (with-double-float (lstar ustar vstar)
     (multiple-value-bind (urprime vrprime)
 	(calc-uvprime (illuminant-small-x illuminant) (illuminant-small-y illuminant))
       (let* ((uprime (+ (/ ustar (* 13d0 lstar)) urprime))
@@ -158,9 +158,7 @@
 (declaim (inline luv-to-lchuv))
 (defun luv-to-lchuv (lstar ustar vstar)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((lstar (float lstar 1d0))
-	(ustar (float ustar 1d0))
-	(vstar (float vstar 1d0)))
+  (with-double-float (lstar ustar vstar)
     (values lstar
 	    (sqrt (+ (* ustar ustar) (* vstar vstar)))
 	    (mod (* (atan vstar ustar) +360/TWO-PI+) 360d0))))

@@ -30,8 +30,7 @@
 (defun max-chroma (hue40 value &key (use-dark t))
   "Returns the largest chroma in the Munsell renotation data."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((hue40 (float hue40 1d0))
-	(value (float value 1d0)))
+  (with-double-float (hue40 value)
     (let* ((hue (mod hue40 40d0))
 	   (hue1 (floor hue))
 	   (hue2 (mod (ceiling hue) 40)))
@@ -58,7 +57,7 @@
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
 formula is based on ASTM D1535-08e1:"
   (declare (optimize (speed 3) (safety 1)))
-  (let ((v (float v 1d0)))
+  (with-double-float (v)
     (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
 
 (defun munsell-value-to-lstar (v)
@@ -473,17 +472,15 @@ equal to MAX-ITERATION.
 "
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum max-iteration))
-  (let ((lstar (float lstar 1d0))
-	(cstarab (float cstarab 1d0))
-	(hab (float hab 1d0)))
+  (with-double-float (lstar cstarab hab factor threshold)
     (multiple-value-bind (init-h disused init-c)
 	(rough-lchab-to-mhvc lstar cstarab hab)
       (declare (ignore disused))
       (invert-mhvc-to-lchab-with-init lstar cstarab hab
 				      init-h init-c
 				      :max-iteration max-iteration
-				      :factor (float factor 1d0)
-				      :threshold (float threshold 1d0)))))
+				      :factor factor
+				      :threshold threshold))))
 
 (defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant C."
@@ -496,7 +493,7 @@ equal to MAX-ITERATION.
 	    ite)))
 
 (defun xyz-to-mhvc (x y z &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
-  "Illuminant D65. including Bradford transformation."
+  "Illuminant D65. doing Bradford transformation."
   (multiple-value-call #'lchab-to-mhvc
     (multiple-value-call #'xyz-to-lchab
       (d65-to-c x y z)
@@ -507,7 +504,7 @@ equal to MAX-ITERATION.
 
 
 (defun xyz-to-munsell (x y z &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
-  "Illuminant D65. including Bradford transformation."
+  "Illuminant D65. doing Bradford transformation."
   (multiple-value-bind (m h v ite)
       (xyz-to-mhvc x y z
 		   :max-iteration max-iteration
