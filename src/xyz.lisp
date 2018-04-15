@@ -224,7 +224,7 @@ temperature."
 		300 830))
 
 				 
-(defun spectrum-sum (spectrum &key (wl-begin 300) (wl-end 830) (band 1))
+(defun spectrum-sum (spectrum &optional (wl-begin 300) (wl-end 830) (band 1))
   (loop for wl from wl-begin to wl-end by band
      sum (funcall spectrum wl)))
 
