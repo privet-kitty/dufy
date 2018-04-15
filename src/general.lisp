@@ -182,17 +182,18 @@ THETA2] in a circle group."
   	   (matrix33 mat1 mat2))
   (let ((ret-mat (make-array '(3 3) :element-type 'double-float)))
     (dotimes-unroll (i 3)
-      (dotimes-unroll (k 3)
-	(setf (aref ret-mat i k)
-	      (loop for j from 0 below 3 sum (* (aref mat1 i j)
-						(aref mat2 j k))
-		 of-type double-float))))
+      (dotimes-unroll (j 3)
+	(setf (aref ret-mat i j)
+	      (+ (* (aref mat1 i 0) (aref mat2 0 j))
+		 (* (aref mat1 i 1) (aref mat2 1 j))
+		 (* (aref mat1 i 2) (aref mat2 2 j))))))
     ret-mat))
 
 (defun multiply-matrices (mat1 &rest mats)
   (if (null mats)
       mat1
-      (multiply-mat-mat mat1 (apply #'multiply-matrices (car mats) (cdr mats)))))
+      (multiply-mat-mat mat1
+			(apply #'multiply-matrices (car mats) (cdr mats)))))
 
 
 (defun bench-mult-mat (&optional (num 3000000))
