@@ -205,4 +205,7 @@ Second, if you want to know the gamut of the Munsell renotation data, you can fi
     => 0.378725146277375d0
        0.14933867420177885d0
        0.05430213863814263d0 ; extrapolated, since 24.1 > 24
-       
+
+
+## Others
+Most of the documentation is written as docstrings in the source code. Some other information is in [github wiki](https://github.com/privet-kitty/dufy/wiki).
