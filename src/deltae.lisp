@@ -53,12 +53,7 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 (defdeltae deltae94 (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
   "APPLICATION must be :graphic-arts or :textiles"
   (declare (optimize (speed 3) (safety 1)))
-  (let ((l1 (float l1 1d0))
-	(a1 (float a1 1d0))
-	(b1 (float b1 1d0))
-	(l2 (float l2 1d0))
-	(a2 (float a2 1d0))
-	(b2 (float b2 1d0)))
+  (with-double-float (l1 a1 b1 l2 a2 b2)
     (let ((c1 (sqrt (+ (* a1 a1) (* b1 b1))))
 	  (c2 (sqrt (+ (* a2 a2) (* b2 b2)))))
       (let* ((delta-l (- l1 l2))
@@ -70,10 +65,9 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 				    (* delta-b delta-b)
 				    (- (* delta-c delta-c)))))))
 	(multiple-value-bind (kL k1 k2)
-	    (case application
+	    (ecase application
 	      (:graphic-arts (values 1d0 0.045d0 0.015d0))
-	      (:textiles (values 2d0 0.048d0 0.014d0))
-	      (otherwise (error "Unknown APPLICATION: ~A" application)))
+	      (:textiles (values 2d0 0.048d0 0.014d0)))
 	  (let ((sc (+ 1d0 (* k1 c1)))
 		(sh (+ 1d0 (* k2 c1))))
 	    (let ((term1 (/ delta-l kL))
@@ -87,12 +81,7 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 ;; CIEDE2000
 (defdeltae deltae00 (l1 a1 b1 l2 a2 b2)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((l1 (float l1 1d0))
-	(a1 (float a1 1d0))
-	(b1 (float b1 1d0))
-	(l2 (float l2 1d0))
-	(a2 (float a2 1d0))
-	(b2 (float b2 1d0)))
+  (with-double-float (l1 a1 b1 l2 a2 b2)
     (let ((c1 (sqrt (+ (* a1 a1) (* b1 b1))))
 	  (c2 (sqrt (+ (* a2 a2) (* b2 b2)))))
       (let* ((deltaLprime (- l2 l1))
@@ -156,6 +145,7 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 		      (/ (* deltalargeHprime deltalargeHprime)
 			 (* varSH varSH))
 		      (* varRT (/ deltaCprime varSC) (/ deltalargeHprime varSH)))))))))
+
 
 (defun bench-deltae00 (&optional (num 1000000))
   (declare (optimize (speed 3) (safety 1)))

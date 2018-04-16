@@ -1,5 +1,5 @@
 ;;;
-;;; L*a*b*, L*u*v*, LCh
+;;; L*a*b*
 ;;;
 
 (in-package :dufy)
@@ -103,6 +103,9 @@
 
 
 
+;;;
+;;; L*u*v*
+;;;
 
 (declaim (inline calc-uvprime))
 (defun calc-uvprime (x y)
