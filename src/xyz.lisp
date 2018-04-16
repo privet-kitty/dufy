@@ -613,11 +613,14 @@ and TO-ILLUMINANT in XYZ space."
 0.9999997282885571d0"
   (let ((mat-name (intern (format nil "+~A-MAT+" name) :dufy)))
     `(progn
+       (declaim (type matrix33 ,mat-name))
        (defparameter ,mat-name
 	 (load-time-value
 	  (calc-cat-matrix ,from-illuminant ,to-illuminant ,cat)
 	  t))	 
-       (declaim (type matrix33 ,mat-name))
+       (declaim (ftype (function (t t t)
+				 (values double-float double-float double-float &optional))
+		       ,name))
        (defun ,name (x y z)
 	 (declare (optimize (speed 3) (safety 1)))
 	 (multiply-mat-vec ,mat-name (float x 1d0) (float y 1d0) (float z 1d0))))))

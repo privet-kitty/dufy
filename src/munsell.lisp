@@ -5,7 +5,6 @@
 (in-package :dufy)
 
 ;; The bradford transformations between D65 and C are frequently used here.
-(declaim (ftype (function * (values double-float double-float double-float)) d65-to-c c-to-d65))
 (declaim (inline c-to-d65))
 (def-cat-function c-to-d65 +illum-c+ +illum-d65+ +bradford+)
 
