@@ -2,8 +2,9 @@
 
 ;; define delta-E functions for L*a*b*, xyz and qrgb
 (defmacro defdeltae (name args &body body)
-  "Only &key arguments are allowed in sub-args. The following symbols
-cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
+  "Defines delta-E function for L*a*b* and other color spaces. Only
+&key arguments are allowed in sub-args. The following symbols cannot
+be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
   (labels ((extract (lst) ; extract sub-args
 	     (reduce #'append
 		     (mapcar #'(lambda (pair)
@@ -16,9 +17,12 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 	   (qrgb-name (intern (format nil "QRGB-~A" name) :dufy))
 	   (xyz-name (intern (format nil "XYZ-~A" name) :dufy)))
       `(progn
+	 ;; for L*a*b*
 	 (declaim (inline ,name))
 	 (defun ,name (,@main-args ,@sub-args-with-key)
 	   ,@body)
+
+	 ;; for XYZ
 	 (declaim (inline ,xyz-name))
 	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
 	   (declare (optimize (speed 3) (safety 1)))
@@ -26,6 +30,8 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 	     (xyz-to-lab (float x1 1d0) (float y1 1d0) (float z1 1d0) illuminant)
 	     (xyz-to-lab (float x2 1d0) (float y2 1d0) (float z2 1d0) illuminant)
 	     ,@(extract sub-args)))
+
+	 ;; for quantized RGB
 	 (declaim (inline ,qrgb-name))
 	 (defun ,qrgb-name (qr1 qg1 qb1 qr2 qg2 qb2 &key ,@sub-args (rgbspace +srgb+))
 	   (declare (optimize (speed 3) (safety 1))
@@ -153,3 +159,4 @@ cannot be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 	  (qrgb-deltae00 (random 65536) (random 65536) (random 65536)
 			 (random 65536) (random 65536) (random 65536)
 			 :rgbspace +bg-srgb-16+))))
+

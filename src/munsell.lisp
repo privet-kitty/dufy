@@ -117,6 +117,11 @@ smaller than 10^-5."
   (y-to-munsell-value (nth-value 1 (qrgb-to-xyz r g b rgbspace))))
 
 
+
+;;;
+;;; Munsell-to- converters
+;;;
+
 (declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float))
 		mhvc-to-lchab-simplest-case
 		mhvc-to-lchab-value-chroma-integer-case
@@ -403,6 +408,11 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (if (<= (- x (floor x)) epsilon)
       (floor x)
       x))
+
+
+;;;
+;;; -to-Munsell converters
+;;;
 
 (declaim (inline lstar-to-munsell-value))
 (defun lstar-to-munsell-value (lstar)
