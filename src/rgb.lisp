@@ -5,6 +5,7 @@
 ;;;
 
 (defun gen-linearizer (gamma)
+  "Returns a linearization function for a given gamma value."
   (let ((gamma (float gamma 1d0)))
     #'(lambda (x)
 	(declare (optimize (speed 3) (safety 1))
@@ -14,6 +15,7 @@
 	    (- (expt (- x) gamma))))))
 
 (defun gen-delinearizer (gamma)
+  "Returns a gamma-correction function for a given gamma value."
   (let ((/gamma (/ (float gamma 1d0))))
     #'(lambda (x)
 	(declare (optimize (speed 3) (safety 1))
