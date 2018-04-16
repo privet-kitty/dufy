@@ -114,20 +114,20 @@
 		    :rgbspace rgbspace))))))
   (is (equal '(0 5001 65535)
 	     (multiple-value-list
-	      (hex-to-qrgb (qrgb-to-hex 0 5001 65535 +bg-srgb-16+)
+	      (int-to-qrgb (qrgb-to-int 0 5001 65535 +bg-srgb-16+)
 			   +bg-srgb-16+))))
-  (dolist (hex '(#x000011112222 #x5678abcdffff))
-    (is (= hex
-	   (multiple-value-call #'xyz-to-hex
-	     (hex-to-xyz hex +bg-srgb-16+)
+  (dolist (int '(#x000011112222 #x5678abcdffff))
+    (is (= int
+	   (multiple-value-call #'xyz-to-int
+	     (int-to-xyz int +bg-srgb-16+)
 	     +bg-srgb-16+)))
-    (is (= hex
-	   (multiple-value-call #'rgb-to-hex
-	     (hex-to-rgb hex +bg-srgb-16+)
+    (is (= int
+	   (multiple-value-call #'rgb-to-int
+	     (int-to-rgb int +bg-srgb-16+)
 	     +bg-srgb-16+)))
-    (is (= hex
-	   (multiple-value-call #'lrgb-to-hex
-	     (hex-to-lrgb hex +bg-srgb-16+)
+    (is (= int
+	   (multiple-value-call #'lrgb-to-int
+	     (int-to-lrgb int +bg-srgb-16+)
 	     +bg-srgb-16+))))
   
   ;; rgbspace changer

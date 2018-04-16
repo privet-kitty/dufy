@@ -117,14 +117,14 @@
 	   :xyz-to-qrgb
 	   :qrgb-to-xyz
 	   
-	   :qrgb-to-hex
-	   :hex-to-qrgb
-	   :rgb-to-hex
-	   :hex-to-rgb
-	   :lrgb-to-hex
-	   :hex-to-lrgb
-	   :xyz-to-hex
-	   :hex-to-xyz
+	   :qrgb-to-int
+	   :int-to-qrgb
+	   :rgb-to-int
+	   :int-to-rgb
+	   :lrgb-to-int
+	   :int-to-lrgb
+	   :xyz-to-int
+	   :int-to-xyz
 
 	   :gen-rgbspace-changer
 	   

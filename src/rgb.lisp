@@ -456,8 +456,8 @@ all the real values."
     (qrgb-to-rgb qr qg qb rgbspace)
     rgbspace))
 
-(declaim (inline qrgb-to-hex))
-(defun qrgb-to-hex (qr qg qb &optional (rgbspace +srgb+))
+(declaim (inline qrgb-to-int))
+(defun qrgb-to-int (qr qg qb &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer qr qg qb))
   (let ((bpc (rgbspace-bit-per-channel rgbspace))
@@ -466,58 +466,58 @@ all the real values."
        (ash (clamp qg 0 qmax) bpc)
        (clamp qb 0 qmax))))
 
-(declaim (inline hex-to-qrgb))
-(defun hex-to-qrgb (hex &optional (rgbspace +srgb+))
+(declaim (inline int-to-qrgb))
+(defun int-to-qrgb (int &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
-	   (integer hex))
+	   (integer int))
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
 	(qmax (rgbspace-qmax rgbspace)))
-    (values (logand (ash hex (+ minus-bpc minus-bpc)) qmax)
-	    (logand (ash hex minus-bpc) qmax)
-	    (logand hex qmax))))
+    (values (logand (ash int (+ minus-bpc minus-bpc)) qmax)
+	    (logand (ash int minus-bpc) qmax)
+	    (logand int qmax))))
 
-(declaim (inline hex-to-rgb))
-(defun hex-to-rgb (hex &optional (rgbspace +srgb+))
+(declaim (inline int-to-rgb))
+(defun int-to-rgb (int &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'qrgb-to-rgb
-    (hex-to-qrgb hex rgbspace)
+    (int-to-qrgb int rgbspace)
     rgbspace))
 
-(declaim (inline rgb-to-hex))
-(defun rgb-to-hex (r g b &optional (rgbspace +srgb+))
+(declaim (inline rgb-to-int))
+(defun rgb-to-int (r g b &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'qrgb-to-hex
+  (multiple-value-call #'qrgb-to-int
     (rgb-to-qrgb (float r 1d0) (float g 1d0) (float b 1d0) :rgbspace rgbspace)
     rgbspace))
 
 
-(declaim (inline hex-to-lrgb))
-(defun hex-to-lrgb (hex &optional (rgbspace +srgb+))
+(declaim (inline int-to-lrgb))
+(defun int-to-lrgb (int &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'qrgb-to-lrgb
-    (hex-to-qrgb hex rgbspace)
+    (int-to-qrgb int rgbspace)
     rgbspace))
 
-(declaim (inline lrgb-to-hex))
-(defun lrgb-to-hex (lr lg lb &optional (rgbspace +srgb+))
+(declaim (inline lrgb-to-int))
+(defun lrgb-to-int (lr lg lb &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-hex
+  (multiple-value-call #'rgb-to-int
     (lrgb-to-rgb (float lr 1d0) (float lg 1d0) (float lb 1d0) rgbspace)
     rgbspace))
 
 
-(declaim (inline hex-to-xyz))
-(defun hex-to-xyz (hex &optional (rgbspace +srgb+))
+(declaim (inline int-to-xyz))
+(defun int-to-xyz (int &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
-	   (integer hex))
+	   (integer int))
   (multiple-value-call #'qrgb-to-xyz
-    (hex-to-qrgb hex rgbspace)
+    (int-to-qrgb int rgbspace)
     rgbspace))
 
-(declaim (inline xyz-to-hex))
-(defun xyz-to-hex (x y z &optional (rgbspace +srgb+))
+(declaim (inline xyz-to-int))
+(defun xyz-to-int (x y z &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'qrgb-to-hex
+  (multiple-value-call #'qrgb-to-int
     (xyz-to-qrgb (float x 1d0) (float y 1d0) (float z 1d0) :rgbspace rgbspace)
     rgbspace))
 
@@ -536,13 +536,13 @@ all the real values."
 => 0.28488056007809415d0
 1.0000000000000002d0
 0.041169364382683385d0 ; change from sRGB to Adobe RGB.
-REPRESENTATION can be :LRGB, :RGB, :QRGB or :HEX.
+REPRESENTATION can be :LRGB, :RGB, :QRGB or :INT.
 
 Note about clamping:
 LRGB case: no clamping;
 RGB case: no clamping;
 QRGB case: no clamping;
-HEX case: with clamping."
+INT case: with clamping."
   (declare (optimize (speed 3) (safety 1)))
   (let ((mat (calc-cat-matrix-for-lrgb from-rgbspace to-rgbspace cat)))
     (ecase representation
@@ -560,11 +560,11 @@ HEX case: with clamping."
 		     mat
 		     (qrgb-to-lrgb qr qg qb from-rgbspace))
 		   :rgbspace to-rgbspace)))
-      (:hex #'(lambda (hex)
-		(multiple-value-call #'lrgb-to-hex
+      (:int #'(lambda (int)
+		(multiple-value-call #'lrgb-to-int
 		  (multiple-value-call #'multiply-mat-vec
 		    mat
-		    (hex-to-lrgb hex from-rgbspace))
+		    (int-to-lrgb int from-rgbspace))
 		  to-rgbspace))))))
 
 

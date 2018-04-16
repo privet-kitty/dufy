@@ -64,7 +64,7 @@ converter_tree
     lrgb [ label = "LRGB\n(linear RGB)" ]
     rgb [ label = "RGB\n(gamma-corrected RGB)" ]
     qrgb [ label = "QRGB\n(quantized RGB)" ]
-    hex [ label = "HEX" ]
+    int [ label = "INT" ]
     lab [ label = "LAB" ]
     lchab [ label = "LCHAB" ]
     luv [ label = "LUV" ]
@@ -81,7 +81,7 @@ converter_tree
     xyz -- lrgb
     lrgb -- rgb
     rgb -- qrgb
-    qrgb -- hex
+    qrgb -- int
   
     xyz -- lab
     lab -- lchab

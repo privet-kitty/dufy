@@ -189,24 +189,24 @@
 
 
 (let ((d65-to-c (gen-cat-function +illum-d65+ +illum-c+)))
-  (defun bench-hex-to-lchuv (&optional (num 1000000))
+  (defun bench-int-to-lchuv (&optional (num 1000000))
     (declare (optimize (speed 3) (safety 1))
 	     (fixnum num))
     (simple-time
      (dotimes (x num)
        (multiple-value-call #'xyz-to-lchuv
 	 (multiple-value-call d65-to-c
-	   (hex-to-xyz (random #.(expt 2 48)) +bg-srgb-16+))
+	   (int-to-xyz (random #.(expt 2 48)) +bg-srgb-16+))
 	 +illum-c+)))))
 
 
 (let ((c-to-d65 (gen-cat-function +illum-c+ +illum-d65+)))
-  (defun bench-lchuv-to-hex (&optional (num 1000000))
+  (defun bench-lchuv-to-int (&optional (num 1000000))
     (declare (optimize (speed 3) (safety 1))
 	     (fixnum num))
     (simple-time
       (dotimes (x num)
-	(multiple-value-call #'xyz-to-hex
+	(multiple-value-call #'xyz-to-int
 	  (multiple-value-call c-to-d65
 	    (lchuv-to-xyz (random 100d0)
 			  (+ -100d0 (random 200d0))
