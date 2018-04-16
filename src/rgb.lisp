@@ -456,6 +456,7 @@ all the real values."
     (qrgb-to-rgb qr qg qb rgbspace)
     rgbspace))
 
+
 (declaim (inline qrgb-to-int))
 (defun qrgb-to-int (qr qg qb &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
@@ -475,6 +476,44 @@ all the real values."
     (values (logand (ash int (+ minus-bpc minus-bpc)) qmax)
 	    (logand (ash int minus-bpc) qmax)
 	    (logand int qmax))))
+
+
+;; For handling alpha channel
+(defun qrgba-to-int (qr qg qb qalpha &optional (rgbspace +srgb+) (order :argb))
+  "The order can be :ARGB or :RGBA. Note that it is different from the
+  'physical' byte order in a machine, which depends on the endianess."
+  (declare (optimize (speed 3) (safety 1))
+	   (integer qr qg qb qalpha))
+  (let ((bpc (rgbspace-bit-per-channel rgbspace))
+	(qmax (rgbspace-qmax rgbspace)))
+    (ecase order
+      (:argb (+ (clamp qb 0 qmax)
+		(ash (clamp qg 0 qmax) bpc)
+		(ash (clamp qr 0 qmax) (+ bpc bpc))
+		(ash (clamp qalpha 0 qmax) (+ bpc bpc bpc))))
+      (:rgba (+ (clamp qalpha 0 qmax)
+		(ash (clamp qb 0 qmax) bpc)
+		(ash (clamp qg 0 qmax) (+ bpc bpc))
+		(ash (clamp qr 0 qmax) (+ bpc bpc bpc)))))))
+
+(defun int-to-qrgba (int &optional (rgbspace +srgb+) (order :argb))
+  "The order can be :ARGB or :RGBA. Note that it is different from the
+  'physical' byte order in a machine, which depends on the endianess."
+  (declare (optimize (speed 3) (safety 1))
+	   (integer int))
+  (let ((-bpc (- (rgbspace-bit-per-channel rgbspace)))
+	(qmax (rgbspace-qmax rgbspace)))
+    (ecase order
+      (:argb (values (logand (ash int (+ -bpc -bpc)) qmax)
+		     (logand (ash int -bpc) qmax)
+		     (logand int qmax)
+		     (logand (ash int (+ -bpc -bpc -bpc)) qmax)))
+      (:rgba (values (logand (ash int (+ -bpc -bpc -bpc)) qmax)
+		     (logand (ash int (+ -bpc -bpc)) qmax)
+		     (logand (ash int -bpc) qmax)
+		     (logand int qmax))))))
+
+
 
 (declaim (inline int-to-rgb))
 (defun int-to-rgb (int &optional (rgbspace +srgb+))
