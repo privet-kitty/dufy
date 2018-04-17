@@ -100,9 +100,8 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
   "OBSERVER is a structure of color matching functions."
   (begin-wl 360 :type (integer 0))
   (end-wl 830 :type (integer 0))
-  (cmf-arr (make-array '(471 3) :element-type 'double-float)
-	   :type (simple-array double-float (* 3)))
-  ;; Functions based on cmf-arr
+  (cmf-arr nil :type (simple-array double-float (* 3)))
+  ;; (linear) interpolation functions of cmf-arr
   (cmf-x nil :type (function * double-float))
   (cmf-y nil :type (function * double-float))
   (cmf-z nil :type (function * double-float))
@@ -243,7 +242,7 @@ temperature."
   (gen-spectrum (gen-illum-d-spectrum-array temperature 300 830)
 		300 830))
 
-				 
+
 (defun spectrum-sum (spectrum &optional (begin-wl 300) (end-wl 830) (band 1))
   (loop for wl from begin-wl to end-wl by band
      sum (funcall spectrum wl)))
@@ -313,7 +312,10 @@ f(x) = 0d0 otherwise.
 		     (cond-illuminant condition)))))
 
 (defvar +illum-e+) ; defined later
+(defvar +illum-c+)
+
 (defun spectrum-to-xyz (spectrum &optional (illuminant +illum-e+) (begin-wl 360) (end-wl 830) (band 1))
+  (declare (optimize (speed 3) (safety 1)))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
 case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL, BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
   (if (illuminant-no-spd-p illuminant)
@@ -342,6 +344,14 @@ case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the 
 	     (incf max-y (* y-fac p)))))
     (let ((factor (/ max-y)))
       (values (* x factor) (* y factor) (* z factor)))))
+
+
+(defun bench-spectrum (&optional (num 50000) (illuminant +illum-c+))
+  (declare (optimize (speed 3) (safety 1))
+	   (fixnum num))
+  (time (let ((spctrm (gen-illum-d-spectrum 4000)))
+	  (dotimes (idx num)
+	    (spectrum-to-xyz spctrm illuminant)))))
 
 
 (let ((mat (make-array '(3 3)
