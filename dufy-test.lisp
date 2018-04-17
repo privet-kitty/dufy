@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage dufy-test
-  (:use :cl :fiveam :dufy :alexandria))
+  (:use :cl :fiveam :dufy :alexandria :cl-csv :parse-float))
 (in-package :dufy-test)
 
 (def-suite :dufy-suite)
@@ -34,18 +34,29 @@
 (defparameter *lchuv-set*
   '((20 30 40) (0.5 0.2 240) (99.9 0.1 359.9)))
 
-(dufy:def-cat-function lchuv-d50-to-a dufy:+illum-d50+ dufy:+illum-a+
+(def-cat-function lchuv-d50-to-a +illum-d50+ +illum-a+
 		       :target :lchuv
-		       :cat dufy:+cmccat97+)
-(dufy:def-cat-function lchuv-a-to-d50 dufy:+illum-a+ dufy:+illum-d50+
+		       :cat +cmccat97+)
+(def-cat-function lchuv-a-to-d50 +illum-a+ +illum-d50+
 		       :target :lchuv
-		       :cat dufy:+cmccat97+)
-(dufy:def-cat-function xyy-c-to-e dufy:+illum-c+ dufy:+illum-e+
+		       :cat +cmccat97+)
+(def-cat-function xyy-c-to-e +illum-c+ +illum-e+
 		       :target :xyy
-		       :cat dufy:+von-kries+)
-(dufy:def-cat-function xyy-e-to-c dufy:+illum-e+ dufy:+illum-c+
+		       :cat +von-kries+)
+(def-cat-function xyy-e-to-c +illum-e+ +illum-c+
 		       :target :xyy
-		       :cat dufy:+von-kries+)
+		       :cat +von-kries+)
+
+(defparameter *ciede2000-set-path* (merge-pathnames "ciede2000-test-data.csv" (asdf:component-pathname (asdf:find-component :dufy :dat))))
+(defparameter *ciede2000-set*
+  (loop for (row1 row2)
+     on (read-csv *ciede2000-set-path*
+		  :map-fn #'(lambda (row) (mapcar (rcurry #'parse-float
+							  :junk-allowed t
+							  :type 'double-float)
+						  row)))
+     by #'cddr
+     collect (append (subseq row1 0 3) (subseq row2 0 3) (last row1))))
 
 ;;;
 ;;; Test Codes
@@ -209,11 +220,12 @@
 			 :rgbspace rgbspace))))))))
 
 (test test-deltae
-  (let ((*read-default-float-format* 'double-float))
+  (dolist (row *ciede2000-set*)
     (is (nearly= 1d-3
-		 (deltae00 63.0109 -31.0961 -5.8663
-			   62.8187 -29.7946 -4.0864)
-		 1.2630))))
+		 (nth 6 row)
+		 (apply #'deltae00
+			(append  (subseq row 0 3)
+				 (subseq row 3 6)))))))
 
 (test test-munsell
   (dolist (xyz *xyz-set*)
