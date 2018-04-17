@@ -36,6 +36,14 @@
        (/ (float (- (get-internal-run-time) ,start) 1d0)
 	  internal-time-units-per-second))))
 
+#+sbcl
+(defmacro with-profile (&body body)
+  "For devel."
+  `(progn (sb-profile:profile "DUFY")
+	  ,@body
+	  (sb-profile:report :print-no-call-list nil)
+	  (sb-profile:unprofile "DUFY")))
+
 
 
 ;;; Comparison operators
