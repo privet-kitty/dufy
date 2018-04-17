@@ -382,6 +382,11 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
 	(mhvc-to-xyz hue40 value chroma))))
 
+(defun munsell-to-xyz-illum-c (munsellspec)
+  (multiple-value-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
+    (if (mhvc-invalid-p hue40 value chroma)
+	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
+	(mhvc-to-xyz-illum-c hue40 value chroma))))
 
 (defun munsell-to-xyy (munsellspec)
   "Illuminant D65."

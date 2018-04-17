@@ -184,6 +184,7 @@
 	   :munsell-out-of-mrd-p
 	   :munsell-to-lchab
 	   :munsell-to-xyz
+	   :munsell-to-xyz-illum-c
 	   :munsell-to-xyy
 	   :munsell-to-qrgb
 	   :max-chroma

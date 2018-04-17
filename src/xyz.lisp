@@ -4,11 +4,11 @@
 
 (in-package :dufy)
 
-;; The nominal range of Y is always [0, 1], though all real values are
-;; accepted.
+
 (declaim (inline xyy-to-xyz))
 (defun xyy-to-xyz (small-x small-y y)
-  "xyY to XYZ."
+  "xyY to XYZ. The nominal range of Y is [0, 1], though all real
+values are accepted."
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (small-x small-y y)
     (if (zerop small-y)
@@ -19,7 +19,8 @@
 
 (declaim (inline xyz-to-xyy))
 (defun xyz-to-xyy (x y z)
-  "XYZ to xyY."
+  "XYZ to xyY. The nominal range of Y is [0, 1], though all real
+values are accepted."
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (x y z)
     (let ((sum (+ x y z)))
@@ -70,6 +71,7 @@ spectrum-seq '(simple-array double-float (*)))."
 		(lerp coef
 		      (aref spectrum-arr idx)
 		      (aref spectrum-arr (min (+ idx 1) size)))))))))
+
 
 (defun approximate-spectrum (spectrum &optional (begin-wl 360d0) (end-wl 830d0) (band 1d0))
   "Generates an approximate spectrum of SPECTRUM by pieacewise
@@ -190,15 +192,18 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 ;; s0, s1, s2 for illuminant series D
 ;; http://www.rit.edu/cos/colorscience/rc_useful_data.php
 (defparameter +s0-arr+
-  #.(make-array 54 :element-type 'double-float
+  #.(make-array 54
+		:element-type 'double-float
 		:initial-contents '(0.04d0 6d0 29.6d0 55.3d0 57.3d0 61.8d0 61.5d0 68.8d0 63.4d0 65.8d0 94.8d0 104.8d0 105.9d0 96.8d0 113.9d0 125.6d0 125.5d0 121.3d0 121.3d0 113.5d0 113.1d0 110.8d0 106.5d0 108.8d0 105.3d0 104.4d0 100d0 96d0 95.1d0 89.1d0 90.5d0 90.3d0 88.4d0 84d0 85.1d0 81.9d0 82.6d0 84.9d0 81.3d0 71.9d0 74.3d0 76.4d0 63.3d0 71.7d0 77d0 65.2d0 47.7d0 68.6d0 65d0 66d0 61d0 53.3d0 58.9d0 61.9d0)))
 
 (defparameter +s1-arr+
-  #.(make-array 54 :element-type 'double-float
+  #.(make-array 54
+		:element-type 'double-float
 		:initial-contents '(0.02d0 4.5d0 22.4d0 42d0 40.6d0 41.6d0 38d0 42.4d0 38.5d0 35d0 43.4d0 46.3d0 43.9d0 37.1d0 36.7d0 35.9d0 32.6d0 27.9d0 24.3d0 20.1d0 16.2d0 13.2d0 8.6d0 6.1d0 4.2d0 1.9d0 0d0 -1.6d0 -3.5d0 -3.5d0 -5.8d0 -7.2d0 -8.6d0 -9.5d0 -10.9d0 -10.7d0 -12d0 -14d0 -13.6d0 -12d0 -13.3d0 -12.9d0 -10.6d0 -11.6d0 -12.2d0 -10.2d0 -7.8d0 -11.2d0 -10.4d0 -10.6d0 -9.7d0 -8.3d0 -9.3d0 -9.8d0)))
 
 (defparameter +s2-arr+
-  #.(make-array 54 :element-type 'double-float
+  #.(make-array 54
+		:element-type 'double-float
 		:initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0)))
 
 (declaim (type (function * double-float) +s0-func+ +s1-func+ +s2-func+))
@@ -501,7 +506,7 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
   "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
-  (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
+  (with-double-float (x y z)
     (if illuminant
 	(let* ((mat (cat-matrix cat))
 	       (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
@@ -526,7 +531,7 @@ the transform is virtually equivalent to that of illuminant E. "
   "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
-  (let ((l (float l 1d0)) (m (float m 1d0)) (s (float s 1d0)))
+  (with-double-float (l m s)
     (if illuminant
 	(let* ((mat (cat-matrix cat))
 	       (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))

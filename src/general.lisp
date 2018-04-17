@@ -9,6 +9,37 @@
 (deftype single-valued-function () '(function * (values t &optional)))
 (deftype matrix33 () '(simple-array double-float (3 3)))
 
+(defun empty-function ()
+  "Used instead of NIL.")
+
+
+;;;
+;;; General macros
+;;;
+
+(defmacro with-double-float (vars &body body)
+  "Ensures that variables are double-float."
+  (labels ((expand (var-lst)
+	     (if (null var-lst)
+		 nil
+		 (cons `(,(car var-lst) (float ,(car var-lst) 1d0))
+		       (expand (cdr var-lst))))))
+    `(let ,(expand vars)
+       ,@body)))
+
+
+(defmacro simple-time (&body body)
+  "For devel. Simpler alternative to TIME."
+  (let ((start (gensym)))
+    `(let ((,start (get-internal-run-time)))
+       ,@body
+       (/ (float (- (get-internal-run-time) ,start) 1d0)
+	  internal-time-units-per-second))))
+
+
+
+;;; Comparison operators
+
 (defun nearly= (threshold number &rest more-numbers)
   (if (null more-numbers)
       t
@@ -27,18 +58,7 @@
       (and (<= (- number (car (the cons more-numbers))) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
-(defun empty-function ()
-  "Used instead of NIL.")
 
-
-;;; For development
-
-(defmacro simple-time (&body body)
-  (let ((start (gensym)))
-    `(let ((,start (get-internal-run-time)))
-       ,@body
-       (/ (float (- (get-internal-run-time) ,start) 1d0)
-	  internal-time-units-per-second))))
 
 
 ;;;
@@ -166,7 +186,7 @@ THETA2] in a circle group."
 (defun multiply-mat-vec (matrix x y z)
   (declare (optimize (speed 3) (safety 1))
   	   (matrix33 matrix))
-  (let ((x (float x 1d0)) (y (float y 1d0)) (z (float z 1d0)))
+  (with-double-float (x y z)
     (values (+ (* x (aref matrix 0 0))
 	       (* y (aref matrix 0 1))
 	       (* z (aref matrix 0 2)))
@@ -197,6 +217,7 @@ THETA2] in a circle group."
     ret-mat))
 
 (defun multiply-matrices (mat1 &rest mats)
+  (declare (optimize (speed 3) (safety 1)))
   (if (null mats)
       mat1
       (multiply-mat-mat mat1
@@ -213,18 +234,3 @@ THETA2] in a circle group."
 	  (dotimes (x num)
 	    (dufy::multiply-matrices mat1 mat2)))))
 
-
-
-;;;
-;;; General macros
-;;;
-
-(defmacro with-double-float (vars &body body)
-  "Ensures that variables are double-float."
-  (labels ((expand (var-lst)
-	     (if (null var-lst)
-		 nil
-		 (cons `(,(car var-lst) (float ,(car var-lst) 1d0))
-		       (expand (cdr var-lst))))))
-    `(let ,(expand vars)
-       ,@body)))

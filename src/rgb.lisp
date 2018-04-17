@@ -478,7 +478,8 @@ all the real values."
 	    (logand int qmax))))
 
 
-;; For handling alpha channel
+;; For handling alpha channel.
+;; These are improvised and not exported.
 (defun qrgba-to-int (qr qg qb qalpha &optional (rgbspace +srgb+) (order :argb))
   "The order can be :ARGB or :RGBA. Note that it is different from the
   'physical' byte order in a machine, which depends on the endianess."
@@ -525,9 +526,10 @@ all the real values."
 (declaim (inline rgb-to-int))
 (defun rgb-to-int (r g b &optional (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'qrgb-to-int
-    (rgb-to-qrgb (float r 1d0) (float g 1d0) (float b 1d0) :rgbspace rgbspace)
-    rgbspace))
+  (with-double-float (r g b)
+    (multiple-value-call #'qrgb-to-int
+      (rgb-to-qrgb r g b :rgbspace rgbspace)
+      rgbspace)))
 
 
 (declaim (inline int-to-lrgb))
