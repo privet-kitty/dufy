@@ -31,6 +31,22 @@
   (make-illuminant-by-spd (gen-illum-d-spectrum #.(* 5500 (/ 1.43880d0 1.438))) +obs-cie1964+))
 
 
+(defparameter *lchuv-set*
+  '((20 30 40) (0.5 0.2 240) (99.9 0.1 359.9)))
+
+(dufy:def-cat-function lchuv-d50-to-a dufy:+illum-d50+ dufy:+illum-a+
+		       :target :lchuv
+		       :cat dufy:+cmccat97+)
+(dufy:def-cat-function lchuv-a-to-d50 dufy:+illum-a+ dufy:+illum-d50+
+		       :target :lchuv
+		       :cat dufy:+cmccat97+)
+(dufy:def-cat-function xyy-c-to-e dufy:+illum-c+ dufy:+illum-e+
+		       :target :xyy
+		       :cat dufy:+von-kries+)
+(dufy:def-cat-function xyy-e-to-c dufy:+illum-e+ dufy:+illum-c+
+		       :target :xyy
+		       :cat dufy:+von-kries+)
+
 ;;;
 ;;; Test Codes
 ;;;
@@ -80,16 +96,28 @@
 				xyz)
 			 :illuminant *illum-d55-10*
 			 :cat +cmccat97+)))))
-  (let ((cat-func (gen-cat-function *illum-d55-10* +illum-a+))
-	(cat-func-rev (gen-cat-function +illum-a+ *illum-d55-10*)))
-    (dolist (xyz *xyz-set*)
+  (let ((cat-func (gen-cat-function *illum-d55-10* +illum-a+ :target :xyy))
+	(cat-func-rev (gen-cat-function +illum-a+ *illum-d55-10* :target :xyy)))
+    (dolist (xyy *xyy-set*)
       (is (nearly-equal 1d-4
-			xyz
+			xyy
 			(multiple-value-list
 			 (multiple-value-call cat-func-rev
-			   (apply cat-func xyz))))))))
-			 
-		      
+			   (apply cat-func xyy)))))))
+  (dolist (lchuv *lchuv-set*)
+    (is (nearly-equal 1d-4
+		      lchuv
+		      (multiple-value-list
+		       (multiple-value-call #'lchuv-a-to-d50
+			 (apply #'lchuv-d50-to-a lchuv))))))
+  (dolist (xyy *xyy-set*)
+    (is (nearly-equal 1d-4
+		      xyy
+		      (multiple-value-list
+		       (multiple-value-call #'xyy-c-to-e
+			 (apply #'xyy-e-to-c xyy)))))))
+
+
 (test test-rgb
   (dolist (xyz *xyz-set*)
     (is (nearly-equal 1d-4

@@ -194,7 +194,7 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 
 
 (defmacro def-cat-function (name from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
-  "DEF-macro of GEN-CAT-FUNCTION for static use.
+  "DEF-macro of GEN-CAT-FUNCTION.
 > (def-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
 > (d65-to-e 0.9504d0 1.0d0 1.0889d0)
 => 0.9999700272441295d0
