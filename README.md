@@ -1,7 +1,7 @@
 Dufy - Color Library for Common Lisp
 ====
 
-Dufy is a library for exact color manipulation and conversion in various color models, which supports the following color spaces:
+Dufy is a library for exact color manipulation and conversion in various color spaces, which supports the following color models:
 
 * Munsell color system
 * RGB
@@ -21,6 +21,10 @@ Dufy can deal with the following concepts:
 * Observer (Color Matching Functions): CIE 1931 2&deg; Standard Observer, CIE 1964 10&deg;. Other observer model can be defined by color matching data.
 * Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000.
 * Chromatic adaptaion transform: Bradford, Von Kries, etc. User-defined CAT is also available.
+
+
+# Documentation
+Besides this README file, most of the documentation is written as docstrings in the source code. Some other information is in [github wiki](https://github.com/privet-kitty/dufy/wiki).
 
 
 # Dependencies
@@ -205,7 +209,3 @@ Second, if you want to know the gamut of the Munsell renotation data, you can fi
     => 0.378725146277375d0
        0.14933867420177885d0
        0.05430213863814263d0 ; extrapolated, since 24.1 > 24
-
-
-## Others
-Most of the documentation is written as docstrings in the source code. Some other information is in [github wiki](https://github.com/privet-kitty/dufy/wiki).
