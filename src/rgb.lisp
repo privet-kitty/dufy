@@ -563,54 +563,6 @@ all the real values."
     rgbspace))
 
 
-(declaim (inline calc-cat-matrix-for-lrgb))
-(defun calc-cat-matrix-for-lrgb (from-rgbspace to-rgbspace &optional (cat +bradford+))
-  (multiply-matrices (rgbspace-from-xyz-matrix to-rgbspace)
-		     (calc-cat-matrix (rgbspace-illuminant from-rgbspace)
-				      (rgbspace-illuminant to-rgbspace)
-				      cat)
-		     (rgbspace-to-xyz-matrix from-rgbspace)))
-
-(defun gen-rgbspace-changer (from-rgbspace to-rgbspace &optional (target :lrgb) (cat +bradford+))
-  "Returns a function for changing RGB working space.
-> (funcall (gen-rgbspace-changer +srgb+ +adobe+ :rgb) 0 1 0)
-=> 0.28488056007809415d0
-1.0000000000000002d0
-0.041169364382683385d0 ; change from sRGB to Adobe RGB.
-TARGET can be :LRGB, :RGB, :QRGB or :INT.
-
-Note about clamping:
-LRGB case: no clamping;
-RGB case: no clamping;
-QRGB case: no clamping;
-INT case: with clamping."
-  (declare (optimize (speed 3) (safety 1)))
-  (let ((mat (calc-cat-matrix-for-lrgb from-rgbspace to-rgbspace cat)))
-    (ecase target
-      (:lrgb #'(lambda (lr lg lb)
-		 (multiply-mat-vec mat (float lr 1d0) (float lg 1d0) (float lb 1d0))))
-      (:rgb #'(lambda (r g b)
-		(multiple-value-call #'lrgb-to-rgb
-		  (multiple-value-call #'multiply-mat-vec
-		    mat
-		    (rgb-to-lrgb (float r 1d0) (float g 1d0) (float b 1d0) from-rgbspace))
-		  to-rgbspace)))
-      (:qrgb #'(lambda (qr qg qb)
-		 (multiple-value-call #'lrgb-to-qrgb
-		   (multiple-value-call #'multiply-mat-vec
-		     mat
-		     (qrgb-to-lrgb qr qg qb from-rgbspace))
-		   :rgbspace to-rgbspace)))
-      (:int #'(lambda (int)
-		(multiple-value-call #'lrgb-to-int
-		  (multiple-value-call #'multiply-mat-vec
-		    mat
-		    (int-to-lrgb int from-rgbspace))
-		  to-rgbspace))))))
-
-
-
-
 
 ;;;
 ;;; HSV/HSL

@@ -18,6 +18,7 @@
 		 (:file "xyz")
 		 (:file "rgb")
 		 (:file "lab-and-luv")
+		 (:file "cat")
 		 (:file "deltae")
 		 (:file "munsell-renotation-data")
 		 (:file "munsell"))))
