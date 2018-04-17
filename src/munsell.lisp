@@ -6,10 +6,10 @@
 
 ;; The bradford transformations between D65 and C are frequently used here.
 (declaim (inline c-to-d65))
-(def-cat-function c-to-d65 +illum-c+ +illum-d65+ +bradford+)
+(def-cat-function c-to-d65 +illum-c+ +illum-d65+ :cat +bradford+)
 
 (declaim (inline d65-to-c))
-(def-cat-function d65-to-c +illum-d65+ +illum-c+ +bradford+)
+(def-cat-function d65-to-c +illum-d65+ +illum-c+ :cat +bradford+)
 
 (eval-when (:compile-toplevel)
   (defparameter *bit-most-positive-fixnum* #.(floor (log most-positive-fixnum 2))))

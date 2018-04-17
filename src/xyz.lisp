@@ -596,20 +596,46 @@ and TO-ILLUMINANT in XYZ space."
 			  matrix1)))))
 
 
-(declaim (ftype (function * (function * (values double-float double-float double-float))) gen-cat-function))
-(defun gen-cat-function (from-illuminant to-illuminant &optional (cat +bradford+))
-  "Returns a chromatic adaptation function between XYZ spaces:
-> (funcall (gen-cat-function +illum-d65+ +illum-e+) 0.9504d0 1.0d0 1.0889d0)
-=> 0.9999700272441295d0
-0.999998887365445d0
-0.9999997282885571d0
+(declaim (ftype (function * (function * (values double-float double-float double-float &optional))) gen-cat-function))
+(defun gen-cat-function (from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
+  "Returns a chromatic adaptation function. An example for xyY spaces:
+> (funcall (gen-cat-function +illum-a+ +illum-e+ :target :xyy) 0.44757 0.40745 1)
+=> 0.3333333257806802d0
+0.33333331733957294d0
+1.0000000029690765d0
 "
   (declare (optimize (speed 3) (safety 1)))
-  (let ((mat (calc-cat-matrix from-illuminant to-illuminant cat)))
-    #'(lambda (x y z)
-	(multiply-mat-vec mat x y z))))
+  (macrolet ((def-lambda (args repr)
+	       (let* ((term (symbol-name repr))
+		      (xyz-to-repr (intern (format nil "XYZ-TO-~A" term) :dufy))
+		      (repr-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy)))
+		 `#'(lambda ,args
+		      (with-double-float ,args
+			(multiple-value-call #',xyz-to-repr
+			  (multiple-value-call #'multiply-mat-vec
+			    mat
+			    (,repr-to-xyz ,@args from-illuminant))
+			  to-illuminant))))))
+    (let ((mat (calc-cat-matrix from-illuminant to-illuminant cat)))
+      (ecase target
+	(:xyz
+	 #'(lambda (x y z)
+	     (with-double-float (x y z)
+	       (multiply-mat-vec mat x y z))))
+	(:xyy
+	 #'(lambda (small-x small-y y)
+	     (with-double-float (small-x small-y y)
+	       (multiple-value-call #'xyz-to-xyy
+		 (multiple-value-call #'multiply-mat-vec
+		   mat
+		   (xyy-to-xyz small-x small-y y))))))
+	(:lab (def-lambda (lstar astar bstar) :lab))
+	(:lchab (def-lambda (lstar cstarab hab) :lchab))
+	(:luv (def-lambda (lstar ustar vstar) :luv))
+	(:lchuv (def-lambda (lstar cstaruv huv) :lchuv))))))
 
-(defmacro def-cat-function (name from-illuminant to-illuminant &optional (cat +bradford+))
+
+(defmacro def-cat-function (name from-illuminant to-illuminant &key (cat +bradford+))
   "DEF-macro of GEN-CAT-FUNCTION.
 > (def-cat-function d65-to-e +illum-d65+ +illum-e+)
 > (d65-to-e 0.9504d0 1.0d0 1.0889d0)

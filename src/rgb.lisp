@@ -571,13 +571,13 @@ all the real values."
 				      cat)
 		     (rgbspace-to-xyz-matrix from-rgbspace)))
 
-(defun gen-rgbspace-changer (from-rgbspace to-rgbspace &optional (representation :lrgb) (cat +bradford+))
+(defun gen-rgbspace-changer (from-rgbspace to-rgbspace &optional (target :lrgb) (cat +bradford+))
   "Returns a function for changing RGB working space.
 > (funcall (gen-rgbspace-changer +srgb+ +adobe+ :rgb) 0 1 0)
 => 0.28488056007809415d0
 1.0000000000000002d0
 0.041169364382683385d0 ; change from sRGB to Adobe RGB.
-REPRESENTATION can be :LRGB, :RGB, :QRGB or :INT.
+TARGET can be :LRGB, :RGB, :QRGB or :INT.
 
 Note about clamping:
 LRGB case: no clamping;
@@ -586,7 +586,7 @@ QRGB case: no clamping;
 INT case: with clamping."
   (declare (optimize (speed 3) (safety 1)))
   (let ((mat (calc-cat-matrix-for-lrgb from-rgbspace to-rgbspace cat)))
-    (ecase representation
+    (ecase target
       (:lrgb #'(lambda (lr lg lb)
 		 (multiply-mat-vec mat (float lr 1d0) (float lg 1d0) (float lb 1d0))))
       (:rgb #'(lambda (r g b)
