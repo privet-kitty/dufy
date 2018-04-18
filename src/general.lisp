@@ -38,6 +38,12 @@
        (/ (float (- (get-internal-run-time) ,start) 1d0)
 	  internal-time-units-per-second))))
 
+
+(defmacro time-after-gc (&body body)
+  `(progn
+    #+sbcl(sb-ext:gc :full t)
+    (time ,@body)))
+
 #+sbcl
 (defmacro with-profile (&body body)
   "For devel."

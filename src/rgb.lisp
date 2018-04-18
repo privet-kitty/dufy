@@ -402,14 +402,15 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 ..., RGBSPACE-QMAX} ({0, 1, ..., 255}, typically), though it accepts
 all the real values."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((min (rgbspace-min rgbspace))
-	(qmax-float/len (rgbspace-qmax-float/len rgbspace))
-	(clamper (if clamp
-		     (the function (rcurry #'clamp 0 (rgbspace-qmax rgbspace)))
-		     #'identity)))
-    (values (funcall clamper (round (* (- (float r 1d0) min) qmax-float/len)))
-	    (funcall clamper (round (* (- (float g 1d0) min) qmax-float/len)))
-	    (funcall clamper (round (* (- (float b 1d0) min) qmax-float/len))))))   
+  (with-double-float (r g b)
+    (let ((min (rgbspace-min rgbspace))
+	  (qmax-float/len (rgbspace-qmax-float/len rgbspace))
+	  (clamper (if clamp
+		       (the function (rcurry #'clamp 0 (rgbspace-qmax rgbspace)))
+		       #'identity)))
+      (values (funcall clamper (round (* (- r min) qmax-float/len)))
+	      (funcall clamper (round (* (- g min) qmax-float/len)))
+	      (funcall clamper (round (* (- b min) qmax-float/len)))))))   
 
 
 (declaim (inline qrgb-to-rgb))
@@ -485,34 +486,42 @@ all the real values."
   'physical' byte order in a machine, which depends on the endianess."
   (declare (optimize (speed 3) (safety 1))
 	   (integer qr qg qb qalpha))
-  (let ((bpc (rgbspace-bit-per-channel rgbspace))
-	(qmax (rgbspace-qmax rgbspace)))
+  (let* ((bpc (rgbspace-bit-per-channel rgbspace))
+	 (2bpc (+ bpc bpc))
+	 (qmax (rgbspace-qmax rgbspace)))
     (ecase order
       (:argb (+ (clamp qb 0 qmax)
 		(ash (clamp qg 0 qmax) bpc)
-		(ash (clamp qr 0 qmax) (+ bpc bpc))
-		(ash (clamp qalpha 0 qmax) (+ bpc bpc bpc))))
+		(ash (clamp qr 0 qmax) 2bpc)
+		(ash (clamp qalpha 0 qmax) (+ 2bpc bpc))))
       (:rgba (+ (clamp qalpha 0 qmax)
 		(ash (clamp qb 0 qmax) bpc)
-		(ash (clamp qg 0 qmax) (+ bpc bpc))
-		(ash (clamp qr 0 qmax) (+ bpc bpc bpc)))))))
+		(ash (clamp qg 0 qmax) 2bpc)
+		(ash (clamp qr 0 qmax) (+ 2bpc bpc)))))))
 
 (defun int-to-qrgba (int &optional (rgbspace +srgb+) (order :argb))
   "The order can be :ARGB or :RGBA. Note that it is different from the
   'physical' byte order in a machine, which depends on the endianess."
   (declare (optimize (speed 3) (safety 1))
 	   (integer int))
-  (let ((-bpc (- (rgbspace-bit-per-channel rgbspace)))
-	(qmax (rgbspace-qmax rgbspace)))
+  (let* ((-bpc (- (rgbspace-bit-per-channel rgbspace)))
+	 (-2bpc (+ -bpc -bpc))
+	 (qmax (rgbspace-qmax rgbspace)))
     (ecase order
-      (:argb (values (logand (ash int (+ -bpc -bpc)) qmax)
+      (:argb (values (logand (ash int -2bpc) qmax)
 		     (logand (ash int -bpc) qmax)
 		     (logand int qmax)
-		     (logand (ash int (+ -bpc -bpc -bpc)) qmax)))
-      (:rgba (values (logand (ash int (+ -bpc -bpc -bpc)) qmax)
-		     (logand (ash int (+ -bpc -bpc)) qmax)
+		     (logand (ash int (+ -2bpc -bpc)) qmax)))
+      (:rgba (values (logand (ash int (+ -2bpc -bpc)) qmax)
+		     (logand (ash int -2bpc) qmax)
 		     (logand (ash int -bpc) qmax)
 		     (logand int qmax))))))
+
+(defun bench-qrgb (&optional (num 5000000))
+  (time-after-gc (dotimes (i num)
+		   (multiple-value-call #'qrgb-to-int
+		     (int-to-qrgb (random #.(expt 2 64)) +bg-srgb-16+)
+		     +bg-srgb-16+))))
 
 
 
@@ -608,8 +617,8 @@ all the real values."
 (defun rgb-to-hsv (r g b)
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (r g b)
-    (let* ((maxrgb (coerce (max r g b) 'double-float))
-	   (minrgb (coerce (min r g b) 'double-float))
+    (let* ((maxrgb (max r g b))
+	   (minrgb (min r g b))
 	   (s (if (= maxrgb 0d0)
 		  0d0
 		  (/ (- maxrgb minrgb) maxrgb)))
@@ -643,27 +652,27 @@ all the real values."
 	   (max (+ lum tmp))
 	   (min (- lum tmp))
 	   (delta (- max min))
-	   (h-prime (* (mod hue 360d0) #.(float 1/60 1d0)))
-	   (h-prime-int (floor (the (double-float 0d0 6d0) h-prime))))
+	   (h-prime (floor (the (double-float 0d0 6d0)
+				(* (mod hue 360d0) #.(float 1/60 1d0))))))
       (cond ((= sat 0d0) (values max max max))
-	    ((= 0 h-prime-int) (values max
-				       (+ min (* delta hue #.(float 1/60 1d0)))
-				       min))
-	    ((= 1 h-prime-int) (values (+ min (* delta (- 120d0 hue) #.(float 1/60 1d0)))
-				       max
-				       min))
-	    ((= 2 h-prime-int) (values min
-				       max
-				       (+ min (* delta (- hue 120d0) #.(float 1/60 1d0)))))
-	    ((= 3 h-prime-int) (values min
-				       (+ min (* delta (- 240d0 hue) #.(float 1/60 1d0)))
-				       max))
-	    ((= 4 h-prime-int) (values (+ min (* delta (- hue 240d0) #.(float 1/60 1d0)))
-				       min
-				       max))
-	    ((= 5 h-prime-int) (values max
-				       min
-				       (+ min (* delta (- 360d0 hue) #.(float 1/60 1d0)))))))))
+	    ((= 0 h-prime) (values max
+				   (+ min (* delta hue #.(float 1/60 1d0)))
+				   min))
+	    ((= 1 h-prime) (values (+ min (* delta (- 120d0 hue) #.(float 1/60 1d0)))
+				   max
+				   min))
+	    ((= 2 h-prime) (values min
+				   max
+				   (+ min (* delta (- hue 120d0) #.(float 1/60 1d0)))))
+	    ((= 3 h-prime) (values min
+				   (+ min (* delta (- 240d0 hue) #.(float 1/60 1d0)))
+				   max))
+	    ((= 4 h-prime) (values (+ min (* delta (- hue 240d0) #.(float 1/60 1d0)))
+				   min
+				   max))
+	    ((= 5 h-prime) (values max
+				   min
+				   (+ min (* delta (- 360d0 hue) #.(float 1/60 1d0)))))))))
  
 
 (declaim (inline hsl-to-qrgb))
