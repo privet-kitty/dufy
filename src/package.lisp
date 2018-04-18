@@ -159,15 +159,15 @@
 	   :lchuv-to-xyz
 
 	   ;; deltae.lisp
-	   :deltae
-	   :xyz-deltae
-	   :qrgb-deltae
-	   :deltae94
-	   :xyz-deltae94
-	   :qrgb-deltae94
-	   :deltae00
-	   :xyz-deltae00
-	   :qrgb-deltae00
+	   ;; :deltae
+	   ;; :xyz-deltae
+	   ;; :qrgb-deltae
+	   ;; :deltae94
+	   ;; :xyz-deltae94
+	   ;; :qrgb-deltae94
+	   ;; :deltae00
+	   ;; :xyz-deltae00
+	   ;; :qrgb-deltae00
 
 	   ;; munsell.lisp
 	   :munsell-value-to-y
