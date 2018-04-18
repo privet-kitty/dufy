@@ -7,10 +7,12 @@
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 
 (deftype single-valued-function () '(function * (values t &optional)))
+(deftype spectrum-function () '(function * (values double-float &optional)))
 (deftype matrix33 () '(simple-array double-float (3 3)))
 
 (defun empty-function ()
-  "Used instead of NIL.")
+  "Used instead of NIL."
+  0d0)
 
 
 ;;;

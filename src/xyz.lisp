@@ -77,7 +77,7 @@ spectrum-seq '(simple-array double-float (*)))."
   "Generates an approximate spectrum of SPECTRUM by pieacewise
 linearization. It is used to lighten a \"heavy\" spectrum function."
   (declare (optimize (speed 3) (safety 1))
-	   ((function * double-float) spectrum))
+	   (spectrum-function spectrum))
   (with-double-float (begin-wl end-wl band)
     (let* ((partitions (max 2 (round (/ (- end-wl begin-wl) band))))
 	   (partitions-f (float partitions 1d0)))
@@ -102,10 +102,10 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
   (end-wl 830 :type (integer 0))
   (cmf-arr nil :type (simple-array double-float (* 3)))
   ;; (linear) interpolation functions of cmf-arr
-  (cmf-x nil :type (function * double-float))
-  (cmf-y nil :type (function * double-float))
-  (cmf-z nil :type (function * double-float))
-  (cmf nil :type (function * (values double-float double-float double-float))))
+  (cmf-x nil :type spectrum-function)
+  (cmf-y nil :type spectrum-function)
+  (cmf-z nil :type spectrum-function)
+  (cmf nil :type (function * (values double-float double-float double-float &optional))))
 
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
@@ -205,12 +205,12 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		:element-type 'double-float
 		:initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0)))
 
-(declaim (type (function * double-float) +s0-func+ +s1-func+ +s2-func+))
+(declaim (type spectrum-function +s0-func+ +s1-func+ +s2-func+))
 (defparameter +s0-func+ (gen-spectrum +s0-arr+ 300 830))
 (defparameter +s1-func+ (gen-spectrum +s1-arr+ 300 830))
 (defparameter +s2-func+ (gen-spectrum +s2-arr+ 300 830))
 
-(defun gen-illum-d-spectrum-array (temperature &optional (begin-wl 300) (end-wl 830))
+(defun make-illum-d-spectrum-array (temperature &optional (begin-wl 300) (end-wl 830))
   (declare (optimize (speed 3) (safety 1)))
   (check-type begin-wl fixnum)
   (check-type end-wl fixnum)
@@ -239,7 +239,7 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 (defun gen-illum-d-spectrum (temperature)
   "Generates the spectrum of the illuminant series D for a given
 temperature."
-  (gen-spectrum (gen-illum-d-spectrum-array temperature 300 830)
+  (gen-spectrum (make-illum-d-spectrum-array temperature 300 830)
 		300 830))
 
 
@@ -294,7 +294,7 @@ f(x) = 0d0 otherwise.
   (x 0.0 :type double-float)
   (y 0.0 :type double-float)
   (z 0.0 :type double-float)
-  (spectrum #'empty-function :type function)
+  (spectrum #'empty-function :type spectrum-function)
   (observer +obs-cie1931+ :type observer)
   ;; used for xyz-to-spectrum conversion
   (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
@@ -330,7 +330,7 @@ case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the 
 
 (defun spectrum-to-xyz-raw (spectrum illum-spectrum observer &optional (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1))
-	   ((function * double-float) spectrum illum-spectrum))
+	   (spectrum-function spectrum illum-spectrum))
   (let ((x 0d0) (y 0d0) (z 0d0) (max-y 0d0)
 	(cmf (observer-cmf observer)))
     (declare (double-float x y z max-y))
@@ -349,6 +349,7 @@ case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the 
 (defun bench-spectrum (&optional (num 50000) (illuminant +illum-c+))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum num))
+  #+sbcl(sb-ext:gc :full t)
   (time (let ((spctrm (gen-illum-d-spectrum 4000)))
 	  (dotimes (idx num)
 	    (spectrum-to-xyz spctrm illuminant)))))
