@@ -1,4 +1,4 @@
-;;;; dufy.asd -*- Mode: Lisp;-*-
+;;;; -*- Mode: Lisp;-*-
 
 (in-package :cl-user)
 
@@ -10,4 +10,4 @@
   :depends-on (:dufy :fiveam :cl-csv :parse-float)
   :components ((:file "dufy-test"))
   :perform (asdf:test-op (o s)
-		    (uiop:symbol-call :fiveam :run! :dufy-suite)))
+			 (uiop:symbol-call :fiveam :run! :dufy-suite)))

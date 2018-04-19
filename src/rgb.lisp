@@ -397,7 +397,7 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 	      (<= inf qb sup)))))
 
 (declaim (inline rgb-to-qrgb))
-(defun rgb-to-qrgb (r g b &key (rgbspace +srgb+) (clamp nil))
+(defun rgb-to-qrgb (r g b &key (rgbspace +srgb+) (clamp t))
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1], typically) to {0, 1,
 ..., RGBSPACE-QMAX} ({0, 1, ..., 255}, typically), though it accepts
 all the real values."
@@ -425,7 +425,7 @@ all the real values."
 
 
 (declaim (inline lrgb-to-qrgb))
-(defun lrgb-to-qrgb (lr lg lb &key (rgbspace +srgb+) (clamp nil))
+(defun lrgb-to-qrgb (lr lg lb &key (rgbspace +srgb+) (clamp t))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-qrgb
     (lrgb-to-rgb (float lr 1d0) (float lg 1d0) (float lb 1d0) rgbspace)
@@ -442,7 +442,7 @@ all the real values."
 
 
 (declaim (inline xyz-to-qrgb))
-(defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (clamp nil))
+(defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (clamp t))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-qrgb
     (xyz-to-rgb (float x 1d0) (float y 1d0) (float z 1d0) rgbspace)
@@ -599,7 +599,7 @@ all the real values."
 	    ((= 5 h-prime-int) (values (+ base c) base (+ base x)))))))
 
 (declaim (inline hsv-to-qrgb))
-(defun hsv-to-qrgb (hue sat val &key (rgbspace +srgb+) (clamp nil))
+(defun hsv-to-qrgb (hue sat val &key (rgbspace +srgb+) (clamp t))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-qrgb
     (hsv-to-rgb hue sat val)
@@ -676,7 +676,7 @@ all the real values."
  
 
 (declaim (inline hsl-to-qrgb))
-(defun hsl-to-qrgb (hue sat lum &key (rgbspace +srgb+) (clamp nil))
+(defun hsl-to-qrgb (hue sat lum &key (rgbspace +srgb+) (clamp t))
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'rgb-to-qrgb
     (hsl-to-rgb hue sat lum)

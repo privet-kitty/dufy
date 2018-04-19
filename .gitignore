@@ -3,6 +3,7 @@
 *.bak
 *.fasl
 *.mat
+*.icc
 .Rhistory
 \#*#
 doc/

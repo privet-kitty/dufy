@@ -1,7 +1,7 @@
 (cl:in-package :cl-user)
 (declaim (optimize (compilation-speed 0)))
 
-(defpackage :dufy
+(defpackage dufy
   (:use :common-lisp :alexandria)
   (:export :nearly=
 	   :nearly<=

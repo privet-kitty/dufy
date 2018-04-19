@@ -141,13 +141,13 @@
     (dolist (qrgb *qrgb16-set*)
       (is (equal qrgb
 		 (multiple-value-list
-		  (multiple-value-call #'xyz-to-qrgb
+		  (multiple-value-call (rcurry #'xyz-to-qrgb :clamp nil)
 		    (apply (rcurry #'qrgb-to-xyz rgbspace)
 			   qrgb)
 		    :rgbspace rgbspace))))
       (is (equal qrgb
 		 (multiple-value-list
-		  (multiple-value-call #'lrgb-to-qrgb
+		  (multiple-value-call (rcurry #'lrgb-to-qrgb :clamp nil)
 		    (apply (rcurry #'qrgb-to-lrgb rgbspace)
 			   qrgb)
 		    :rgbspace rgbspace))))))
@@ -214,7 +214,7 @@
 	 (dolist (qrgb *qrgb16-set*)
 	   (is (equal qrgb
 		      (multiple-value-list
-		       (multiple-value-call foo-to-qrgb
+		       (multiple-value-call (rcurry foo-to-qrgb :clamp nil)
 			 (apply (rcurry qrgb-to-foo rgbspace)
 				qrgb)
 			 :rgbspace rgbspace))))))))

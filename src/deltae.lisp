@@ -46,8 +46,8 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 	     :illuminant (rgbspace-illuminant rgbspace)))))))
 
 
-;; CIE76
 (defdeltae deltae (l1 a1 b1 l2 a2 b2)
+  "CIE 1976. Euclidean distance in L*a*b* space."
   (declare (optimize (speed 3) (safety 1)))
   (let ((deltal (- (float l1 1d0) (float l2 1d0)))
 	(deltaa (- (float a1 1d0) (float a2 1d0)))
@@ -58,9 +58,8 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 
 
 
-;; CIE94
 (defdeltae deltae94 (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
-  "APPLICATION must be :graphic-arts or :textiles"
+  "CIE 1994. APPLICATION must be :graphic-arts or :textiles"
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (l1 a1 b1 l2 a2 b2)
     (let ((c1 (sqrt (+ (* a1 a1) (* b1 b1))))
@@ -87,8 +86,8 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 		       (* term3 term3))))))))))
 
 
-;; CIEDE2000
 (defdeltae deltae00 (l1 a1 b1 l2 a2 b2)
+  "CIEDE2000."
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (l1 a1 b1 l2 a2 b2)
     (let ((c1 (sqrt (+ (* a1 a1) (* b1 b1))))

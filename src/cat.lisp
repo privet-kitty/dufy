@@ -267,7 +267,7 @@ TARGET can be :LRGB, :RGB, :QRGB or :INT.
 Note about clamping:
 LRGB case: no clamping;
 RGB case: no clamping;
-QRGB case: no clamping;
+QRGB case: with clamping;
 INT case: with clamping."
   (declare (optimize (speed 3) (safety 1)))
   (let ((mat (calc-cat-matrix-for-lrgb from-rgbspace to-rgbspace cat)))
