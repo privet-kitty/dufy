@@ -27,6 +27,7 @@
 		 (cons `(,(car var-lst) (float ,(car var-lst) 1d0))
 		       (expand (cdr var-lst))))))
     `(let ,(expand vars)
+       (declare (type double-float ,@vars))
        ,@body)))
 
 

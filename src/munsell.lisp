@@ -306,8 +306,8 @@ since the Munsell Renotation Data is measured under the Illuminant C."
     :clamp clamp))
 
 (defun bench-mhvc-to-qrgb (&optional (num 300000))
-  (time (dotimes (x num)
-	  (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
+  (time-after-gc (dotimes (x num)
+		   (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
 
 (define-condition invalid-munsell-spec-error (simple-error)
   ((spec :initarg :spec

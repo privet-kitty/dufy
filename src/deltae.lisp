@@ -19,13 +19,11 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
       `(progn
 	 ;; for L*a*b*
 	 (declaim (inline ,name))
-	 (export ',name)
 	 (defun ,name (,@main-args ,@sub-args-with-key)
 	   ,@body)
 
 	 ;; for XYZ
 	 (declaim (inline ,xyz-name))
-	 (export ',xyz-name)
 	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
 	   (declare (optimize (speed 3) (safety 1)))
 	   (multiple-value-call #',name
@@ -35,7 +33,6 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 
 	 ;; for quantized RGB
 	 (declaim (inline ,qrgb-name))
-	 (export ',qrgb-name)
 	 (defun ,qrgb-name (qr1 qg1 qb1 qr2 qg2 qb2 &key ,@sub-args (rgbspace +srgb+))
 	   (declare (optimize (speed 3) (safety 1))
 		    (integer qr1 qg1 qb1 qr2 qg2 qb2))
