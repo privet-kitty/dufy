@@ -109,7 +109,8 @@ The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-
        1.060034922742541d0  ; Z
        
     * (multiple-value-call #'dufy:xyz-to-qrgb
-        (dufy:lab-to-xyz 87.07 -78.15 -20.51))
+        (dufy:lab-to-xyz 87.07 -78.15 -20.51)
+        :clamp nil)
     => -169 ; R
        255  ; G
        255  ; B
