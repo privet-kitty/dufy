@@ -196,11 +196,11 @@ The hue of of `mhvc` is a circle group: i.e. hues outside the interval [0, 40] a
     * (dufy:mhvc-to-munsell -400.0 4.5 6.1) ; the same as (0.0 4.5 6.1)
     => "0.00R 4.50/6.10"
     
-There are some more points to remember: First, since the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C, the converters like `mhvc-to-xyz` do the (Bradford) transformation from C to D65. If you want to use a direct converter with illuminant C, for e.g. accuracy or efficiency, the following converters are available under illuminant C: `munsell-to-lchab`, `lchab-to-munsell`, `mhvc-to-lchab`, `lchab-to-mhvc` `mhvc-to-xyz-illum-c`. 
+There are some more points to remember: First, since the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C, the converters like `mhvc-to-xyz` do the (Bradford) transformation from C to D65. If you want to use a direct converter with illuminant C, for e.g. accuracy or efficiency, the following converters are available under illuminant C: `munsell-to-lchab`, `lchab-to-munsell`, `mhvc-to-lchab`, `lchab-to-mhvc`, `munsell-to-xyz-illum-c`, `mhvc-to-xyz-illum-c`. 
 
-Second, if you want to know the gamut of the Munsell renotation data, you can find the maximum chroma for a given hue and value by `max-chroma`:
+Second, if you want to know the gamut of the Munsell renotation data, you can find the maximum chroma for a given hue and value by `max-chroma-in-mrd`:
 
-    * (dufy:max-chroma 1.28 4.5)
+    * (dufy:max-chroma-in-mrd 1.28 4.5) ; V = 1.28, C = 4.5
     => 24
     * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
     => 0.19362651667300654d0
