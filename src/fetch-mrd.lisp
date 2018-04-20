@@ -2,10 +2,11 @@
 ;;; This script file fetches the Munsell renotation data and saves several arrays as a .lisp file.
 ;;;
 
-(require :drakma)
-(require :babel)
-(require :dufy)
-(require :alexandria)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require :drakma)
+  (require :babel)
+  (require :dufy)
+  (require :alexandria))
 
 (defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
 (defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :src)))
@@ -41,7 +42,9 @@
 
 (defparameter munsell-renotation-data nil)
 
-;; hold the munsell renotation data as list
+;; Reads the munsell renotation data to a list. Y values in the MRD
+;; are substituted by #'dufy:munsell-value-to-y (the formula in ASTM
+;; D1535-08e1)
 (with-input-from-string (in dat-txt)
   (setf munsell-renotation-data nil)
   (read-line in) ; the first row is the label of the data
@@ -73,8 +76,8 @@
 (defparameter max-chroma-overall (apply #'max (mapcar #'third munsell-renotation-data)))
 
 
-;; construct max-chroma-arr(for 40 hues and V in [1, 10])
-;; and max-chroma-arr-dark (for 40 hues and V in [0, 1])
+;; Constructs max-chroma-arr(for 40 hues and V in [1, 10]) and
+;; max-chroma-arr-dark (for 40 hues and V in [0, 1])
 (defparameter max-chroma-arr
   (make-array '(40 11) :element-type 'fixnum))
 (defparameter max-chroma-arr-dark
@@ -82,7 +85,7 @@
 
 (dotimes (hue 40)
   (dotimes (value 11)
-     ;use value=1 when value=0, as the data V=0 are not in mrd. 
+     ;; use value=1 when value=0, as the data V=0 are not in mrd. 
     (let ((value$ (if (zerop value) 1 value)))
       (setf (aref max-chroma-arr hue value)
 	    (let ((rows nil))
@@ -91,10 +94,6 @@
 			 (= (second row) value$))
 		    (push (third row) rows)))
 	      (apply #'max rows))))))
-
-
-;; (defun mean (x y)
-;;   (* (+ x y) 0.5))
 
 
 ;; We need to interpolate the missing data at 10Y 0.2/2.
@@ -126,7 +125,7 @@
 
 (dotimes (hue 40)
   (dotimes (dark-value 6)
-     ; use dark-value=1 (i.e. 0.2) when dark-value=0, as the data V=0 are not in mrd. 
+     ;; use dark-value=1 (i.e. 0.2) when dark-value=0, as the data V=0 are not in mrd. 
     (let ((value$ (if (zerop dark-value) 1 dark-value)))
       (setf (aref max-chroma-arr-dark hue dark-value)
 	    (let ((rows nil))
@@ -137,7 +136,7 @@
 	      (apply #'max rows))))))
 
 (defun max-chroma-simple-case (hue value)
-  ;use value=0.2d0 when value=0, as the data value=0 are not in mrd. 
+  ;; use value=0.2d0 when value=0, as the data value=0 are not in mrd. 
   (let ((value$ (if (zerop value) 0.2d0 value)))
     (let ((rows nil))
       (dolist (row munsell-renotation-data)
@@ -147,9 +146,11 @@
       (apply #'max rows))))
 
 
-;; get data without correcting the luminance factor, i.e. max(Y) = 1.0257 (not 1.00)
-;; The data with value=0 are substituted with the data with value=0.2.
 (defun get-xyy-from-dat (hue-num value chroma)
+  "Illuminant C. Returns a list. 
+
+Note: The data with value=0 are substituted with the data with
+value=0.2."
   (cond ((= chroma 0)
 	 (multiple-value-list (dufy::munsell-value-to-achromatic-xyy value)))
 	((= value 0)
@@ -186,40 +187,36 @@
 
 (defun get-extrapolated-lchab-from-dat (hue-num value chroma)
   "CHROMA must be even."
-  (aif (get-lchab-from-dat hue-num value chroma)
-       it
-       (let* ((mchroma (max-chroma-simple-case hue-num value)))
-	 (destructuring-bind (lstar cstarab hab)
-	     (get-lchab-from-dat hue-num value mchroma)
-	   (list lstar
-		 (* cstarab (/ chroma mchroma))
-		 hab)))))
+  (or (get-lchab-from-dat hue-num value chroma)
+      (let* ((mchroma (max-chroma-simple-case hue-num value)))
+        (destructuring-bind (lstar cstarab hab)
+            (get-lchab-from-dat hue-num value mchroma)
+          (list lstar
+                (* cstarab (/ chroma mchroma))
+                hab)))))
 
 (defparameter value-list '(0 1 2 3 4 5 6 7 8 9 10 0.2 0.4 0.6 0.8))
-(defparameter value-variety (length value-list))
 
-(defparameter half-chroma-variety (+ (/ max-chroma-overall 2) 1))
+(defparameter half-chroma-size (+ (/ max-chroma-overall 2) 1))
 (defparameter mrd-array
-  (make-array (list 40 11 half-chroma-variety 3)
+  (make-array (list 40 11 half-chroma-size 3)
 	      :element-type 'double-float))
 
 ;; separate the data whose values are within [0, 1]
 (defparameter mrd-array-dark
-  (make-array (list 40 6 half-chroma-variety 3)
+  (make-array (list 40 6 half-chroma-size 3)
 	      :element-type 'double-float))
 
 (defparameter mrd-array-lchab
-  (make-array (list 40 11 half-chroma-variety 3)
+  (make-array (list 40 11 half-chroma-size 3)
 	      :element-type 'double-float))
 
 (defparameter mrd-array-lchab-dark
-  (make-array (list 40 6 half-chroma-variety 3)
+  (make-array (list 40 6 half-chroma-size 3)
 	      :element-type 'double-float))
   
 
-;; construct mrd-array
-
-(defparameter large-negative-float -1d99)
+;; constructs mrd-array
 
 (defun xyy-to-lchab (x y largey)
   (multiple-value-bind (lstar cstarab hab)
@@ -230,37 +227,37 @@
 	  cstarab
 	  hab)))
 
-
 (dotimes (hue 40)
   (dolist (value '(0 1 2 3 4 5 6 7 8 9 10))
-    (dotimes (half-chroma half-chroma-variety)
+    (dotimes (half-chroma half-chroma-size)
       (destructuring-bind (lstar cstarab hab)
 	  (get-extrapolated-lchab-from-dat hue value (* half-chroma 2))
 	(setf (aref mrd-array-lchab hue value half-chroma 0) lstar)
 	(setf (aref mrd-array-lchab hue value half-chroma 1) cstarab)
 	(setf (aref mrd-array-lchab hue value half-chroma 2) hab)))))
 
-
 (dotimes (hue 40)
   (dotimes (value-idx 6)
     (let ((value (aref #(0d0 0.2d0 0.4d0 0.6d0 0.8d0 1d0) value-idx)))
-      (dotimes (half-chroma half-chroma-variety)
+      (dotimes (half-chroma half-chroma-size)
 	(destructuring-bind (lstar cstarab hab)
 	    (get-extrapolated-lchab-from-dat hue value (* half-chroma 2))
 	  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 0) lstar)
 	  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 1) cstarab)
 	  (setf (aref mrd-array-lchab-dark hue value-idx half-chroma 2) hab))))))
 
+
+;; prints the arrays to a .lisp file
 (defun array-to-list (array)
-  (let* ((dimensions (array-dimensions array))
-         (depth      (1- (length dimensions)))
-         (indices    (make-list (1+ depth) :initial-element 0)))
+  (let* ((dims (array-dimensions array))
+         (depth (- (length dims) 1))
+         (indices (make-list (1+ depth) :initial-element 0)))
     (labels ((recurse (n)
-               (loop for j below (nth n dimensions)
-                     do (setf (nth n indices) j)
-                     collect (if (= n depth)
-                                 (apply #'aref array indices)
-                               (recurse (1+ n))))))
+               (loop for j below (nth n dims)
+                  do (setf (nth n indices) j)
+                  collect (if (= n depth)
+                              (apply #'aref array indices)
+                              (recurse (1+ n))))))
       (recurse 0))))
 
 (defun print-make-array (var-name array &optional (stream t) (declaration t))
@@ -280,8 +277,8 @@
     (terpri stream)))
 
 
-(defun main (obj-name)
-  (let ((obj-path (merge-pathnames obj-name src-dir-path)))
+(defun main (obj-filename)
+  (let ((obj-path (merge-pathnames obj-filename src-dir-path)))
     (with-open-file (out obj-path
 			 :direction :output
 			 :if-exists :supersede)
