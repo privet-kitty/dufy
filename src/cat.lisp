@@ -163,7 +163,7 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV. If you want to
 choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 "
   (declare (optimize (speed 3) (safety 1)))
-  (macrolet ((def-lambda (args repr)
+  (macrolet ((gen-lambda (args repr)
 	       (let* ((term (symbol-name repr))
 		      (xyz-to-repr (intern (format nil "XYZ-TO-~A" term) :dufy))
 		      (repr-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy)))
@@ -187,10 +187,10 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 		 (multiple-value-call #'multiply-mat-vec
 		   mat
 		   (xyy-to-xyz small-x small-y y))))))
-	(:lab (def-lambda (lstar astar bstar) :lab))
-	(:lchab (def-lambda (lstar cstarab hab) :lchab))
-	(:luv (def-lambda (lstar ustar vstar) :luv))
-	(:lchuv (def-lambda (lstar cstaruv huv) :lchuv))))))
+	(:lab (gen-lambda (lstar astar bstar) :lab))
+	(:lchab (gen-lambda (lstar cstarab hab) :lchab))
+	(:luv (gen-lambda (lstar ustar vstar) :luv))
+	(:lchuv (gen-lambda (lstar cstaruv huv) :lchuv))))))
 
 
 (defmacro def-cat-function (name from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
