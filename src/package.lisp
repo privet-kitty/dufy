@@ -186,18 +186,18 @@
 	      :mhvc-to-xyz-illum-c
 	      :mhvc-to-lrgb
 	      :mhvc-to-qrgb
-	      :mhvc-to-lchab
+	      :mhvc-to-lchab-illum-c
 	      :mhvc-to-munsell
 	      :munsell-to-mhvc
 	      :munsell-out-of-mrd-p
-	      :munsell-to-lchab
+	      :munsell-to-lchab-illum-c
 	      :munsell-to-xyz
 	      :munsell-to-xyz-illum-c
 	      :munsell-to-xyy
 	      :munsell-to-qrgb
 	      :max-chroma-in-mrd
-	      :lchab-to-mhvc
-	      :lchab-to-munsell
+	      :lchab-to-mhvc-illum-c
+	      :lchab-to-munsell-illum-c
 	      :xyz-to-mhvc
 	      :xyz-to-munsell
 	      :*maximum-chroma*

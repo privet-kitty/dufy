@@ -27,7 +27,8 @@
 
 (declaim (ftype (function * (integer 0 50)) max-chroma-in-mrd))
 (defun max-chroma-in-mrd (hue40 value &key (use-dark t))
-  "Returns the largest chroma in the Munsell renotation data."
+  "Returns the largest chroma in the Munsell renotation data for a
+given hue and value."
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (hue40 value)
     (let* ((hue (mod hue40 40d0))
@@ -238,21 +239,21 @@ smaller than 10^-5."
 
       
 (defun mhvc-out-of-mrd-p (hue40 value chroma)
-  "Judge if MHVC is out of the Munsell renotation data."
+  "Checks if MHVC is out of the Munsell renotation data."
   (or (< value 0) (> value 10)
       (< chroma 0)
       (> chroma (max-chroma-in-mrd hue40 value))))
 
 
 (defun mhvc-invalid-p (hue40 value chroma)
-  "Judge if MHVC is invalid."
+  "Checks if MHVC values are out of range."
   (declare (ignore hue40))
   (or (< value 0) (> value 10)
       (< chroma 0) (> chroma *maximum-chroma*)))
 
-(declaim (inline mhvc-to-lchab))
-(defun mhvc-to-lchab (hue40 value chroma)
-  "Note: The Standard Illuminant is C."
+(declaim (inline mhvc-to-lchab-illum-c-))
+(defun mhvc-to-lchab-illum-c (hue40 value chroma)
+  "Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (let ((d-hue (mod (float hue40 1d0) 40d0))
 	(d-value (clamp (float value 1d0) 0d0 10d0))
@@ -268,7 +269,7 @@ smaller than 10^-5."
 Illuminant C.)"
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'lchab-to-xyz
-    (mhvc-to-lchab (float hue40 1d0) (float value 1d0) (float chroma 1d0))
+    (mhvc-to-lchab-illum-c (float hue40 1d0) (float value 1d0) (float chroma 1d0))
     +illum-c+))
 
 (declaim (inline mhvc-to-xyz))
@@ -364,12 +365,12 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 (defun munsell-out-of-mrd-p (munsellspec)
   (multiple-value-call #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
 
-(defun munsell-to-lchab (munsellspec)
+(defun munsell-to-lchab-illum-c (munsellspec)
   "Illuminant C."
   (multiple-value-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
     (if (mhvc-invalid-p hue40 value chroma)
 	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
-	(mhvc-to-lchab hue40 value chroma))))
+	(mhvc-to-lchab-illum-c hue40 value chroma))))
 
 (defun munsell-to-xyz (munsellspec)
   "Illuminant D65."
@@ -399,9 +400,9 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 
 (defun max-chroma-lchab (hue40 value &key (use-dark t))
   "Returns the LCh(ab) value of the color on the max-chroma boundary in MRD."
-  (mhvc-to-lchab hue40
-		 value
-		 (max-chroma-in-mrd hue40 value :use-dark use-dark)))
+  (mhvc-to-lchab-illum-c hue40
+                         value
+                         (max-chroma-in-mrd hue40 value :use-dark use-dark)))
 
 
 ;;;
@@ -433,8 +434,8 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 
 
 ;; used in INVERT-LCHAB-TO-MHVC
-(declaim (inline invert-mhvc-to-lchab-with-init))
-(defun invert-mhvc-to-lchab-with-init (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+(declaim (inline invert-mhvc-to-lchab))
+(defun invert-mhvc-to-lchab (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
   (declare (optimize (speed 3) (safety 0))
 	   (double-float lstar cstarab hab factor threshold)
@@ -443,9 +444,12 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	(v (lstar-to-munsell-value lstar))
 	(tmp-c init-chroma))
     (declare (double-float tmp-hue40 tmp-c v))
-    (dotimes (i max-iteration (values (mod tmp-hue40 40) v tmp-c max-iteration))
+    (dotimes (i max-iteration (values (mod tmp-hue40 40)
+                                      v
+                                      tmp-c
+                                      max-iteration))
       (multiple-value-bind (disused tmp-cstarab tmp-hab)
-	  (mhvc-to-lchab tmp-hue40 v tmp-c)
+	  (mhvc-to-lchab-illum-c tmp-hue40 v tmp-c)
 	(declare (ignore disused))
 	(let* ((delta-cstarab (- cstarab tmp-cstarab))
 	       (delta-hab (circular-delta hab tmp-hab))
@@ -458,9 +462,9 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 		    tmp-c (max (+ tmp-c (* factor delta-c)) 0d0))))))))
 
 
-(defun lchab-to-mhvc (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+(defun lchab-to-mhvc-illum-c (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C.
-An inverter of MHVC-TO-LCHAB with a simple iteration algorithm:
+An inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration algorithm:
 V := LSTAR-TO-MUNSELL-VALUE(LSTAR);
 H_(n+1) := H_n + factor * delta(H_n);
 C_(n+1) :=  C_n + factor * delta(C_n),
@@ -472,7 +476,7 @@ values are as follows:
 2. If the number of iteration exceeds MAX-ITERATION:
 => H V C MAX-ITERATION.
 In other words: The inversion has failed, if the second value is
-equal to MAX-ITERATION.
+equal to MAX-ITERATION
 "
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum max-iteration))
@@ -480,25 +484,25 @@ equal to MAX-ITERATION.
     (multiple-value-bind (init-h disused init-c)
 	(rough-lchab-to-mhvc lstar cstarab hab)
       (declare (ignore disused))
-      (invert-mhvc-to-lchab-with-init lstar cstarab hab
-				      init-h init-c
-				      :max-iteration max-iteration
-				      :factor factor
-				      :threshold threshold))))
+      (invert-mhvc-to-lchab lstar cstarab hab
+                            init-h init-c
+                            :max-iteration max-iteration
+                            :factor factor
+                            :threshold threshold))))
 
-(defun lchab-to-munsell (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
+(defun lchab-to-munsell-illum-c (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant C."
   (multiple-value-bind (h v c ite)
-      (lchab-to-mhvc lstar cstarab hab
-		     :max-iteration max-iteration
-		     :factor factor
-		     :threshold threshold)
+      (lchab-to-mhvc-illum-c lstar cstarab hab
+                             :max-iteration max-iteration
+                             :factor factor
+                             :threshold threshold)
     (values (mhvc-to-munsell h v c digits)
 	    ite)))
 
 (defun xyz-to-mhvc (x y z &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
   "Illuminant D65. doing Bradford transformation."
-  (multiple-value-call #'lchab-to-mhvc
+  (multiple-value-call #'lchab-to-mhvc-illum-c
     (multiple-value-call #'xyz-to-lchab
       (d65-to-c x y z)
       +illum-c+)
@@ -527,8 +531,9 @@ equal to MAX-ITERATION.
 	(do ((cstarab 0 (+ cstarab 10)))
 	    ((= cstarab 200) nil)
 	  (multiple-value-bind (lst number)
-	      (lchab-to-mhvc lstar cstarab hab
-			     :threshold 1d-6 :max-iteration max-iteration)
+	      (lchab-to-mhvc-illum-c lstar cstarab hab
+                                     :threshold 1d-6
+                                     :max-iteration max-iteration)
 	    (declare (ignore lst))
 	    (when (= number max-iteration)
 	      (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
@@ -552,7 +557,9 @@ equal to MAX-ITERATION.
 		(qrgb-to-xyz qr qg qb rgbspace))
 	      +illum-c+)
 	  (multiple-value-bind (h v c ite)
-	      (lchab-to-mhvc lstar cstarab hab :max-iteration max-ite :factor 0.5d0)
+	      (lchab-to-mhvc-illum-c lstar cstarab hab
+                                     :max-iteration max-ite
+                                     :factor 0.5d0)
 	    (declare (ignore h v c))
 	    (when (= ite max-ite)
 	      (incf sum)
