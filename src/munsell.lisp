@@ -216,7 +216,9 @@ smaller than 10^-5."
 		(multiple-value-bind (lstar2 astar2 bstar2)
 		    (multiple-value-call #'lchab-to-lab
 		      (mhvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
-		  (declare (double-float lstar lstar1 astar1 bstar1 lstar2 astar2 bstar2))
+		  (declare (double-float lstar
+                                         lstar1 astar1 bstar1
+                                         lstar2 astar2 bstar2))
 		  (let ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
 				  (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
 			(bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
@@ -303,8 +305,14 @@ since the Munsell Renotation Data is measured under the Illuminant C."
     :clamp clamp))
 
 (defun bench-mhvc-to-qrgb (&optional (num 300000))
-  (time-after-gc (dotimes (x num)
-		   (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
+  (time-after-gc
+    (dotimes (x num)
+      (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
+
+(defun bench-mhvc-to-lchab (&optional (num 2000000))
+  (time-after-gc
+    (dotimes (x num)
+      (mhvc-to-lchab-illum-c (random 80d0) (random 10d0) (random 50d0)))))
 
 (define-condition munsellspec-parse-error (parse-error)
   ((spec :initarg :spec
