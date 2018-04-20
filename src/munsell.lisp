@@ -11,7 +11,7 @@
 (declaim (inline d65-to-c))
 (def-cat-function d65-to-c +illum-d65+ +illum-c+ :cat +bradford+)
 
-(eval-when (:compile-toplevel)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *bit-most-positive-fixnum* #.(floor (log most-positive-fixnum 2))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -63,12 +63,6 @@ formula is based on ASTM D1535-08e1:"
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
   (- (* 116d0 (function-f (munsell-value-to-y v))) 16d0))
 
-  
-;; (defun munsell-value-to-achromatic-qrgb (v)
-;;   "Returns the gray corresponding to given Munsell value."
-;;   (let ((x (round (* (delinearize (munsell-value-to-y v)) 255))))
-;;     (values x x x)))
-
 (defun munsell-value-to-achromatic-xyy (v)
   "Illuminant C."
   (values 0.31006d0 0.31616d0 (munsell-value-to-y v)))
@@ -99,7 +93,7 @@ smaller than 10^-5."
 	     (* r (aref y-to-munsell-value-arr y2)))))))
 
 (defun test-value-to-y (&optional (num 100000000))
-  "Checks error of y-to-munsell-value"
+  "Evaluates error of y-to-munsell-value"
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum num))
   (let ((max-error 0d0)
@@ -119,6 +113,7 @@ smaller than 10^-5."
 
 ;;;
 ;;; Munsell-to- converters
+;;; The primary converter is mhvc-to-lchab.
 ;;;
 
 (declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float))
@@ -132,19 +127,20 @@ smaller than 10^-5."
   "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
   (declare (optimize (speed 3) (safety 0))
 	   (fixnum hue40 tmp-value half-chroma))
-  (let ((arr (if dark
-		 mrd-array-lchab-dark
-		 mrd-array-lchab)))
-    (if (<= half-chroma 25)
-	(values (aref arr hue40 tmp-value half-chroma 0)
-		(aref arr hue40 tmp-value half-chroma 1)
-		(aref arr hue40 tmp-value half-chroma 2))
-	;; in the case chroma > 50
-	(let ((cstarab (aref arr hue40 tmp-value 25 1))
-	      (factor (* half-chroma #.(float 1/25 1d0))))
-	  (values (aref arr hue40 tmp-value 25 0)
-		  (* cstarab factor)
-		  (aref arr hue40 tmp-value 25 2))))))
+  (macrolet ((gen-body (arr-l arr-c-h)
+               `(if (<= half-chroma 25)
+                    (values (aref ,arr-l tmp-value)
+                            (aref ,arr-c-h hue40 tmp-value half-chroma 0)
+                            (aref ,arr-c-h hue40 tmp-value half-chroma 1))
+                    ;; in the case chroma > 50
+                    (let ((cstarab (aref ,arr-c-h hue40 tmp-value 25 0))
+                          (factor (* half-chroma #.(float 1/25 1d0))))
+                      (values (aref ,arr-l tmp-value)
+                              (* cstarab factor)
+                              (aref ,arr-c-h hue40 tmp-value 25 1))))))
+    (if dark
+        (gen-body mrd-array-l-dark mrd-array-c-h-dark)
+        (gen-body mrd-array-l mrd-array-c-h))))
 
 (defun mhvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
