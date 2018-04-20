@@ -19,6 +19,13 @@
 ;;; General macros
 ;;;
 
+(defmacro subseq-values (start end number form)
+  (let ((vars (loop for i from 0 below number collect (gensym))))
+    `(multiple-value-bind ,vars ,form
+       (declare (ignore ,@(subseq vars 0 start)
+                        ,@(subseq vars end number)))
+       (values ,@(subseq vars start end)))))
+
 (defmacro with-double-float (vars &body body)
   "Ensures that variables are double-float."
   (labels ((expand (var-lst)

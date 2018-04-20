@@ -305,14 +305,14 @@ since the Munsell Renotation Data is measured under the Illuminant C."
   (time-after-gc (dotimes (x num)
 		   (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
 
-(define-condition invalid-munsell-spec-error (simple-error)
+(define-condition munsellspec-parse-error (parse-error)
   ((spec :initarg :spec
 	 :initform nil
 	 :accessor cond-spec))
   (:report (lambda (condition stream)
-	     (format stream "Invalid Munsell spec.: ~A"
+	     (format stream "Invalid Munsell specification: ~A"
 		     (cond-spec condition)))))
-      
+
 (defun munsell-to-mhvc (munsellspec)
   "Usage Example:
 CL-USER> (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
@@ -335,13 +335,13 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	    (switch (hue-name :test #'string=)
 	      ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
 	      ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9) ("N" -1)
-	      (t (error (make-condition 'invalid-munsell-spec-error
-					:spec (format nil "Invalid hue designator: ~A" hue-name)))))))
+	      (t (error (make-condition 'munsellspec-parse-error
+					:spec (format nil "invalid hue designator: ~A" hue-name)))))))
       (if (< hue-number 0)
 	  (values 0d0 (car lst) 0d0)
 	  (if (/= (length lst) 3)
-	      (error (make-condition 'invalid-munsell-spec-error
-				     :spec lst))
+	      (error (make-condition 'munsellspec-parse-error
+				     :spec (format nil "contains more than 3 numbers: ~A" lst)))
 	      (progn
 		(setf (car lst) (+ (* hue-number 4) (/ (* (car lst) 2) 5)))
 		(values-list lst)))))))
