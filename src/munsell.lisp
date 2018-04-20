@@ -25,8 +25,8 @@
     fulfills (typep (round F) '(SIGNED-BYTE 64))"))
 
 
-(declaim (ftype (function * (integer 0 50)) max-chroma))
-(defun max-chroma (hue40 value &key (use-dark t))
+(declaim (ftype (function * (integer 0 50)) max-chroma-in-mrd))
+(defun max-chroma-in-mrd (hue40 value &key (use-dark t))
   "Returns the largest chroma in the Munsell renotation data."
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (hue40 value)
@@ -241,7 +241,7 @@ smaller than 10^-5."
   "Judge if MHVC is out of the Munsell renotation data."
   (or (< value 0) (> value 10)
       (< chroma 0)
-      (> chroma (max-chroma hue40 value))))
+      (> chroma (max-chroma-in-mrd hue40 value))))
 
 
 (defun mhvc-invalid-p (hue40 value chroma)
@@ -401,13 +401,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   "Returns the LCh(ab) value of the color on the max-chroma boundary in MRD."
   (mhvc-to-lchab hue40
 		 value
-		 (max-chroma hue40 value :use-dark use-dark)))
-
-; avoid that x slightly exceeds an integer 
-(defun modify-float-error (x epsilon)
-  (if (<= (- x (floor x)) epsilon)
-      (floor x)
-      x))
+		 (max-chroma-in-mrd hue40 value :use-dark use-dark)))
 
 
 ;;;

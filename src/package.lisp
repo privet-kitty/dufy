@@ -195,7 +195,7 @@
 	      :munsell-to-xyz-illum-c
 	      :munsell-to-xyy
 	      :munsell-to-qrgb
-	      :max-chroma
+	      :max-chroma-in-mrd
 	      :lchab-to-mhvc
 	      :lchab-to-munsell
 	      :xyz-to-mhvc

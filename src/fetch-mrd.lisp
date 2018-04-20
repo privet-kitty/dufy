@@ -203,7 +203,6 @@ value=0.2."
 (defparameter mrd-array-c-h
   (make-array (list 40 11 half-chroma-size 2)
 	      :element-type 'double-float))
-
 ;; separate the data whose values are within [0, 1]
 (defparameter mrd-array-c-h-dark
   (make-array (list 40 6 half-chroma-size 2)
