@@ -118,14 +118,17 @@ smaller than 10^-5."
 ;;;
 
 (declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float))
-		mhvc-to-lchab-simplest-case
+		mhvc-to-lchab-all-integer-case
 		mhvc-to-lchab-value-chroma-integer-case
 		mhvc-to-lchab-value-integer-case
 		mhvc-to-lchab-general-case
-		mhvc-to-lchab))
+		mhvc-to-lchab-illum-c))
 
-(defun mhvc-to-lchab-simplest-case (hue40 tmp-value half-chroma &optional (dark nil))
-  "There are no type checks: e.g. HUE40 must be in {0, ...., 39}."
+
+(declaim (inline mhvc-to-lchab-all-integer-case))
+(defun mhvc-to-lchab-all-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
+  "All integer case. There are no type checks: e.g. HUE40 must be in
+{0, ...., 39}."
   (declare (optimize (speed 3) (safety 0))
 	   (fixnum hue40 tmp-value half-chroma))
   (macrolet ((gen-body (arr-l arr-c-h)
@@ -143,30 +146,30 @@ smaller than 10^-5."
         (gen-body mrd-array-l-dark mrd-array-c-h-dark)
         (gen-body mrd-array-l mrd-array-c-h))))
 
+(declaim (inline mhvc-to-lchab-value-chroma-integer-case))
 (defun mhvc-to-lchab-value-chroma-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
 	   ((double-float 0d0 40d0) hue40)
 	   (fixnum tmp-value half-chroma))
-  (let* ((hue1 (floor hue40))
-	 (hue2 (mod (ceiling hue40) 40)))
-    (if (= hue1 hue2)
-	(mhvc-to-lchab-simplest-case (round hue40) tmp-value half-chroma dark)
-	(multiple-value-bind (lstar cstarab1 hab1)
-	    (mhvc-to-lchab-simplest-case hue1 tmp-value half-chroma dark)
-	  (multiple-value-bind (disused cstarab2 hab2)
-	      (mhvc-to-lchab-simplest-case hue2 tmp-value half-chroma dark)
-	    (declare (ignore disused)
-		     ((double-float 0d0 360d0) hab1 hab2))
-	    (if (= hab1 hab2)
-		(values lstar cstarab1 hab1)
-		(let* ((hab (the (double-float 0d0 360d0)
-				 (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
-		       (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
-						  (subtract-with-mod hab2 hab1 360d0)))
-				   (* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
-						  (subtract-with-mod hab2 hab1 360d0))))))
-		  (values lstar cstarab hab))))))))
-
+  (let ((hue1 (floor hue40))
+        (hue2 (mod (ceiling hue40) 40)))
+    (multiple-value-bind (lstar cstarab1 hab1)
+        (mhvc-to-lchab-all-integer-case hue1 tmp-value half-chroma dark)
+      (if (= hue1 hue2)
+          (values lstar cstarab1 hab1)
+          (multiple-value-bind (disused cstarab2 hab2)
+              (mhvc-to-lchab-all-integer-case hue2 tmp-value half-chroma dark)
+            (declare (ignore disused)
+                     ((double-float 0d0 360d0) hab1 hab2))
+            (if (= hab1 hab2)
+                (values lstar cstarab1 hab1)
+                (let* ((hab (the (double-float 0d0 360d0)
+                                 (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
+                       (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
+                                                  (subtract-with-mod hab2 hab1 360d0)))
+                                   (* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
+                                                  (subtract-with-mod hab2 hab1 360d0))))))
+                  (values lstar cstarab hab))))))))
 
 (defun mhvc-to-lchab-value-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
