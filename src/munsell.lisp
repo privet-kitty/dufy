@@ -447,7 +447,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	z
 	(- z 360d0))))
 
-(define-condition approximation-error (arithmetic-error)
+(define-condition large-approximation-error (arithmetic-error)
   ((message :initarg :message
             :initform "Couldn't achieve the sufficent accuracy."
             :accessor cond-message))
@@ -484,8 +484,8 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
                                       (* factor delta-c))))))))
     (ecase if-reach-max
       (:error
-       (error (make-condition 'approximation-error
-                              :message "Reached MAX-ITERATION without achieving sufficient accuracy.")))
+       (error (make-condition 'large-approximation-error
+                              :message "INVERT-MHVC-TO-LCHAB reached MAX-ITERATION without achieving sufficient accuracy.")))
       (:negative (values most-negative-double-float
                          most-negative-double-float
                          most-negative-double-float))
@@ -504,12 +504,12 @@ C_(n+1) :=  C_n + factor * delta(C_n);
 H_(n+1) := H_n + factor * delta(H_n),
 
 where delta(H_n) and delta(C_n) is internally calculated at every
-step. It returns HVC if C_0 <= THRESHOLD or max(delta(H_n),
-delta(C_n)) falls below THRESHOLD.
+step. It returns Munsell HVC values if C_0 <= THRESHOLD or
+max(delta(H_n), delta(C_n)) falls below THRESHOLD.
 
 IF-REACH-MAX specifies the action to be taken if the loop reaches the
 MAX-ITERATION:
-:error: Error of type APPROXIMATION-ERROR is signaled.
+:error: Error of type DUFY:LARGE-APPROXIMATION-ERROR is signaled.
 :negative: Three MOST-NEGATIVE-DOUBLE-FLOATs are returned.
 :return: Just returns HVC as it is.
 "
@@ -531,14 +531,13 @@ MAX-ITERATION:
 
 (defun lchab-to-munsell-illum-c (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant C."
-  (multiple-value-bind (h v c ite)
+  (multiple-value-bind (h v c)
       (lchab-to-mhvc-illum-c lstar cstarab hab
                              :max-iteration max-iteration
                              :if-reach-max if-reach-max
                              :factor factor
                              :threshold threshold)
-    (values (mhvc-to-munsell h v c digits)
-	    ite)))
+    (values (mhvc-to-munsell h v c digits))))
 
 (defun xyz-to-mhvc (x y z &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "Illuminant D65. doing Bradford transformation."
@@ -554,13 +553,13 @@ MAX-ITERATION:
 
 (defun xyz-to-munsell (x y z &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant D65. doing Bradford transformation."
-  (multiple-value-bind (m h v ite)
+  (multiple-value-bind (m h v)
       (xyz-to-mhvc x y z
 		   :max-iteration max-iteration
                    :if-reach-max if-reach-max
 		   :factor factor
 		   :threshold threshold)
-    (values (mhvc-to-munsell m h v digits) ite)))
+    (values (mhvc-to-munsell m h v digits))))
 
   
 (defun test-inverter ()
@@ -586,8 +585,7 @@ MAX-ITERATION:
   #-sbcl(declare (ignore profile))
   (let ((qmax+1 (1+ (rgbspace-qmax rgbspace)))
 	(cat-func (gen-cat-function (rgbspace-illuminant rgbspace) +illum-c+))
-	(sum 0)
-	(max-ite 300))
+	(sum 0))
     (dotimes (x num-loop (prog1 (float (/ sum num-loop) 1d0)
 			   #+sbcl(when profile
 				   (sb-profile:report :print-no-call-list nil)
@@ -600,13 +598,11 @@ MAX-ITERATION:
 	      (multiple-value-call cat-func
 		(qrgb-to-xyz qr qg qb rgbspace))
 	      +illum-c+)
-	  (multiple-value-bind (h v c)
-	      (lchab-to-mhvc-illum-c lstar cstarab hab
-                                     :max-iteration max-ite
-                                     :if-reach-max :error
-                                     :factor 0.5d0)
-            (declare (ignore h c))
-	    (when (= v most-negative-double-float)
+	  (let ((result (lchab-to-mhvc-illum-c lstar cstarab hab
+                                               :max-iteration 300
+                                               :if-reach-max :negative
+                                               :factor 0.5d0)))
+            (when (= result most-negative-double-float)
 	      (incf sum)
 	      (format t "~A ~A ~A, (~a ~a ~a)~%" lstar cstarab hab qr qg qb))))))))
 
@@ -617,17 +613,17 @@ MAX-ITERATION:
 (defun test-inverter3 (&optional (rgbspace +srgb+))
   "For devel."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((max-ite 200)
-	(sum 0))
+  (let ((sum 0))
     (dotimes (qr 256)
       (print qr)
       (dotimes (qg 256)
 	(dotimes (qb 256)
-	  (let ((ite (nth-value 3 (multiple-value-call #'xyz-to-mhvc 
-				    (qrgb-to-xyz qr qg qb rgbspace)
-				    :threshold 1.0d-3))))
-	    (declare (fixnum ite))
-	    (when (= ite max-ite)
+	  (let ((result (multiple-value-call #'xyz-to-mhvc 
+                          (qrgb-to-xyz qr qg qb rgbspace)
+                          :if-reach-max :negative
+                          :max-iteration 200
+                          :threshold 1.0d-3)))
+	    (when (= result most-negative-double-float)
 	      (incf sum)
-	      (format t "(~a ~a ~a) ~A~%" qr qg qb ite))))))
+	      (format t "(~a ~a ~a)~%" qr qg qb))))))
     (float (/ sum (* 256 256 256)) 1d0)))
