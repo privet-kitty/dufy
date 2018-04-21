@@ -429,17 +429,17 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (declare (optimize (speed 3) (safety 1)))
   (y-to-munsell-value (lstar-to-y (float lstar 1d0))))
 
-;; used in INVERT-LCHAB-TO-MHVC
 (defun rough-lchab-to-mhvc (lstar cstarab hab)
+  "rough conversion from LCHab to munsell HVC"
   (declare (optimize (speed 3) (safety 0))
 	   (double-float lstar cstarab hab))
   (values (* hab #.(float 40/360 1d0))
 	  (lstar-to-munsell-value lstar)
 	  (* cstarab #.(/ 5.5d0))))
 
-;; used in INVERT-LCHAB-TO-MHVC
-(declaim (ftype (function * double-float) circular-delta))
+(declaim (ftype (function * (values double-float &optional)) circular-delta))
 (defun circular-delta (theta1 theta2)
+  "used in INVERT-LCHAB-TO-MHVC"
   (declare (optimize (speed 3) (safety 0))
 	   (double-float theta1 theta2))
   (let ((z (mod (- theta1 theta2) 360d0)))
@@ -447,10 +447,17 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	z
 	(- z 360d0))))
 
+(define-condition approximation-error (arithmetic-error)
+  ((message :initarg :message
+            :initform "Couldn't achieve the sufficent accuracy."
+            :accessor cond-message))
+  (:report (lambda (condition stream)
+	     (format stream "~A"
+                     (cond-message condition)))))
 
 ;; used in INVERT-LCHAB-TO-MHVC
 (declaim (inline invert-mhvc-to-lchab))
-(defun invert-mhvc-to-lchab (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+(defun invert-mhvc-to-lchab (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
   (declare (optimize (speed 3) (safety 0))
 	   (double-float lstar cstarab hab factor threshold)
@@ -459,10 +466,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	(v (lstar-to-munsell-value lstar))
 	(tmp-c init-chroma))
     (declare (double-float tmp-hue40 tmp-c v))
-    (dotimes (i max-iteration (values (mod tmp-hue40 40)
-                                      v
-                                      tmp-c
-                                      max-iteration))
+    (dotimes (i max-iteration)
       (multiple-value-bind (disused tmp-cstarab tmp-hab)
 	  (mhvc-to-lchab-illum-c tmp-hue40 v tmp-c)
 	(declare (ignore disused))
@@ -472,65 +476,88 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	       (delta-c (* delta-cstarab #.(/ 5.5d0))))
 	  (if (and (<= (abs delta-hue40) threshold)
 		   (<= (abs delta-c) threshold))
-	      (return (values (mod tmp-hue40 40d0) v tmp-c i))
-	      (setf tmp-hue40 (+ tmp-hue40 (* factor delta-hue40))
-		    tmp-c (max (+ tmp-c (* factor delta-c)) 0d0))))))))
+	      (return-from invert-mhvc-to-lchab
+                (values (mod tmp-hue40 40d0) v tmp-c))
+	      (setf tmp-hue40 (+ tmp-hue40
+                                 (* factor delta-hue40))
+		    tmp-c (max 0d0 (+ tmp-c
+                                      (* factor delta-c))))))))
+    (ecase if-reach-max
+      (:error
+       (error (make-condition 'approximation-error
+                              :message "Reached MAX-ITERATION without achieving sufficient accuracy.")))
+      (:negative (values most-negative-double-float
+                         most-negative-double-float
+                         most-negative-double-float))
+      (:return (values (mod tmp-hue40 40d0) v tmp-c)))))
 
 
-(defun lchab-to-mhvc-illum-c (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
-  "Illuminant C.
-An inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration algorithm:
-V := LSTAR-TO-MUNSELL-VALUE(LSTAR);
-H_(n+1) := H_n + factor * delta(H_n);
-C_(n+1) :=  C_n + factor * delta(C_n),
+(defun lchab-to-mhvc-illum-c (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
+  "An inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
+algorithm like the one in \"An Open-Source Inversion Algorithm for the
+Munsell Renotation\" by Paul Centore, 2011:
+
+V := LSTAR-TO-MUNSELL-VALUE(L*);
+C_0 := C*ab / 5.5;
+H_0 := Hab / 9;
+C_(n+1) :=  C_n + factor * delta(C_n);
+H_(n+1) := H_n + factor * delta(H_n),
+
 where delta(H_n) and delta(C_n) is internally calculated at every
-step. H and C could diverge, if FACTOR is too large. The return
-values are as follows:
-1. If max(delta(H_n), delta(C_n)) falls below THRESHOLD:
-=> H V C NUMBER-OF-ITERATION.
-2. If the number of iteration exceeds MAX-ITERATION:
-=> H V C MAX-ITERATION.
-In other words: The inversion has failed, if the second value is
-equal to MAX-ITERATION
+step. It returns HVC if C_0 <= THRESHOLD or max(delta(H_n),
+delta(C_n)) falls below THRESHOLD.
+
+IF-REACH-MAX specifies the action to be taken if the loop reaches the
+MAX-ITERATION:
+:error: Error of type APPROXIMATION-ERROR is signaled.
+:negative: Three MOST-NEGATIVE-DOUBLE-FLOATs are returned.
+:return: Just returns HVC as it is.
 "
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum max-iteration))
   (with-double-float (lstar cstarab hab factor threshold)
-    (multiple-value-bind (init-h disused init-c)
-	(rough-lchab-to-mhvc lstar cstarab hab)
-      (declare (ignore disused))
-      (invert-mhvc-to-lchab lstar cstarab hab
-                            init-h init-c
-                            :max-iteration max-iteration
-                            :factor factor
-                            :threshold threshold))))
+    (let ((init-h (* hab #.(float 40/360 1d0)))
+	  (init-c (* cstarab #.(/ 5.5d0))))
+      (if (<= init-c threshold) ; returns the initial HVC, if achromatic
+          (values init-h
+                  (lstar-to-munsell-value lstar)
+                  init-c)
+          (invert-mhvc-to-lchab lstar cstarab hab
+                                init-h init-c
+                                :max-iteration max-iteration
+                                :if-reach-max if-reach-max
+                                :factor factor
+                                :threshold threshold)))))
 
-(defun lchab-to-munsell-illum-c (lstar cstarab hab &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
+(defun lchab-to-munsell-illum-c (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant C."
   (multiple-value-bind (h v c ite)
       (lchab-to-mhvc-illum-c lstar cstarab hab
                              :max-iteration max-iteration
+                             :if-reach-max if-reach-max
                              :factor factor
                              :threshold threshold)
     (values (mhvc-to-munsell h v c digits)
 	    ite)))
 
-(defun xyz-to-mhvc (x y z &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+(defun xyz-to-mhvc (x y z &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "Illuminant D65. doing Bradford transformation."
   (multiple-value-call #'lchab-to-mhvc-illum-c
     (multiple-value-call #'xyz-to-lchab
       (d65-to-c x y z)
       +illum-c+)
     :max-iteration max-iteration
+    :if-reach-max if-reach-max
     :factor factor
     :threshold threshold))
 
 
-(defun xyz-to-munsell (x y z &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6) (digits 2))
+(defun xyz-to-munsell (x y z &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant D65. doing Bradford transformation."
   (multiple-value-bind (m h v ite)
       (xyz-to-mhvc x y z
 		   :max-iteration max-iteration
+                   :if-reach-max if-reach-max
 		   :factor factor
 		   :threshold threshold)
     (values (mhvc-to-munsell m h v digits) ite)))
@@ -565,20 +592,23 @@ equal to MAX-ITERATION
 			   #+sbcl(when profile
 				   (sb-profile:report :print-no-call-list nil)
 				   (sb-profile:unprofile "DUFY"))))
-      (let ((qr (random qmax+1)) (qg (random qmax+1)) (qb (random qmax+1)))
+      (let ((qr (random qmax+1))
+            (qg (random qmax+1))
+            (qb (random qmax+1)))
 	(multiple-value-bind (lstar cstarab hab)
 	    (multiple-value-call #'xyz-to-lchab
 	      (multiple-value-call cat-func
 		(qrgb-to-xyz qr qg qb rgbspace))
 	      +illum-c+)
-	  (multiple-value-bind (h v c ite)
+	  (multiple-value-bind (h v c)
 	      (lchab-to-mhvc-illum-c lstar cstarab hab
                                      :max-iteration max-ite
+                                     :if-reach-max :error
                                      :factor 0.5d0)
-	    (declare (ignore h v c))
-	    (when (= ite max-ite)
+            (declare (ignore h c))
+	    (when (= v most-negative-double-float)
 	      (incf sum)
-	      (format t "~A ~A ~A, (~a ~a ~a) ~A~%" lstar cstarab hab qr qg qb ite))))))))
+	      (format t "~A ~A ~A, (~a ~a ~a)~%" lstar cstarab hab qr qg qb))))))))
 
 ;; doesn't converge:
 ;; LCH = 90.25015693115249d0 194.95626408656423d0 115.6958104971207d0

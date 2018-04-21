@@ -221,7 +221,7 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 			  ,,'to-illuminant)))))))
     (unless (and (symbolp from-illuminant)
                  (symbolp to-illuminant))
-      (error "FROM-ILLUMINANT and TO-ILLUMINANT must be symbol"))
+      (error "FROM-ILLUMINANT and TO-ILLUMINANT must be symbols"))
     `(progn
        (declaim (ftype (function (t t t)
 				 (values double-float double-float double-float &optional))

@@ -24,7 +24,7 @@
 	    (expt x /gamma)
 	    (- (expt (- x) /gamma))))))
 
-(defstruct (rgbspace (:constructor $make-rgbspace)
+(defstruct (rgbspace (:constructor %make-rgbspace)
 		     (:copier nil))
   "Structure of RGB space, including encoding characteristics"
   ;; primary coordinates in xyY space.
@@ -97,7 +97,7 @@ forcibly set to [0, 1]."
 	       (qmax (- (expt 2 bit-per-channel) 1))
 	       (qmax-float (float qmax 1d0))
 	       (len (- max min)))
-	  ($make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
+	  (%make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
 			  :illuminant illuminant
 			  :linearizer linearizer
 			  :delinearizer delinearizer

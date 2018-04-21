@@ -94,8 +94,7 @@
 		 circular-nearer
 		 circular-clamp
 		 circular-lerp
-		 circular-lerp-loose
-		 ))
+		 circular-lerp-loose))
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
   "(X - Y) mod DIVISOR."
   (mod (- x y) divisor))

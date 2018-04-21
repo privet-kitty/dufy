@@ -30,7 +30,7 @@ values are accepted."
 
 
 (defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
-  "In dufy, a spectrum is just a function which takes a real number as
+  "A spectrum is just a function which takes a real number as
 wavelength (nm) and returns a double-float.
 
 GEN-SPECTRUM returns a spectral power distribution
@@ -96,7 +96,7 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
 ;;; Observer
 ;;;
 
-(defstruct (observer (:constructor $make-observer))
+(defstruct (observer (:constructor %make-observer))
   "OBSERVER is a structure of color matching functions."
   (begin-wl 360 :type (integer 0))
   (end-wl 830 :type (integer 0))
@@ -162,17 +162,18 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 			 (let* ((wl$ (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
-				(idx (round (* (- wl$ frac) /band))))
+				(idx (round (* (- wl$ frac) /band)))
+                                (idx+1 (min (1+ idx) size)))
 			   (values (lerp coef
 					 (aref arr idx 0)
-					 (aref arr (min (+ idx 1) size) 0))
+					 (aref arr idx+1 0))
 				   (lerp coef
 					 (aref arr idx 1)
-					 (aref arr (min (+ idx 1) size) 1))
+					 (aref arr idx+1 1))
 				   (lerp coef
 					 (aref arr idx 2)
-					 (aref arr (min (+ idx 1) size) 2))))))))))
-    ($make-observer
+					 (aref arr idx+1 2))))))))))
+    (%make-observer
      :begin-wl begin-wl
      :end-wl end-wl
      :cmf-arr cmf-arr
@@ -287,7 +288,7 @@ f(x) = 0d0 otherwise.
 ;;; Standard Illuminant, XYZ, xyY
 ;;; The nominal range of Y is always [0, 1].
 
-(defstruct (illuminant (:constructor $make-illuminant)
+(defstruct (illuminant (:constructor %make-illuminant)
 		       (:copier nil))
   (small-x 0.0 :type double-float)
   (small-y 0.0 :type double-float)
@@ -321,14 +322,14 @@ case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the 
   (if (illuminant-no-spd-p illuminant)
       (let ((*print-array* nil))
 	(error (make-condition 'no-spd-error :illuminant illuminant)))
-      (spectrum-to-xyz-raw spectrum
-			   (illuminant-spectrum illuminant)
-			   (illuminant-observer illuminant)
-			   begin-wl
-			   end-wl
-			   band)))
+      (%spectrum-to-xyz spectrum
+                        (illuminant-spectrum illuminant)
+                        (illuminant-observer illuminant)
+                        begin-wl
+                        end-wl
+                        band)))
 
-(defun spectrum-to-xyz-raw (spectrum illum-spectrum observer &optional (begin-wl 360) (end-wl 830) (band 1))
+(defun %spectrum-to-xyz (spectrum illum-spectrum observer &optional (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1))
 	   (spectrum-function spectrum illum-spectrum))
   (let ((x 0d0) (y 0d0) (z 0d0) (max-y 0d0)
@@ -349,10 +350,10 @@ case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the 
 (defun bench-spectrum (&optional (num 50000) (illuminant +illum-c+))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum num))
-  #+sbcl(sb-ext:gc :full t)
-  (time (let ((spctrm (gen-illum-d-spectrum 4000)))
-	  (dotimes (idx num)
-	    (spectrum-to-xyz spctrm illuminant)))))
+  (time-after-gc
+    (let ((spctrm (gen-illum-d-spectrum 4000)))
+      (dotimes (idx num)
+        (spectrum-to-xyz spctrm illuminant)))))
 
 
 (let ((mat (make-array '(3 3)
@@ -362,11 +363,11 @@ case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the 
     "Used for XYZ-to-spectrum conversion."
     (declare (optimize (speed 3) (safety 1)))
     (multiple-value-bind (a00 a10 a20)
-	(spectrum-to-xyz-raw (observer-cmf-x observer) illum-spectrum observer)
+	(%spectrum-to-xyz (observer-cmf-x observer) illum-spectrum observer)
       (multiple-value-bind (a01 a11 a21)
-	  (spectrum-to-xyz-raw (observer-cmf-y observer) illum-spectrum observer)
+	  (%spectrum-to-xyz (observer-cmf-y observer) illum-spectrum observer)
 	(multiple-value-bind (a02 a12 a22)
-	    (spectrum-to-xyz-raw (observer-cmf-z observer) illum-spectrum observer)
+	    (%spectrum-to-xyz (observer-cmf-z observer) illum-spectrum observer)
 	  (setf (aref mat 0 0) a00
 		(aref mat 0 1) a01
 		(aref mat 0 2) a02
@@ -398,7 +399,7 @@ many."
 even if the given white point, (small-x, small-y), and SPD contradicts
 to each other."
   (multiple-value-bind (x y z) (xyy-to-xyz small-x small-y 1d0)
-    ($make-illuminant :small-x (float small-x 1d0)
+    (%make-illuminant :small-x (float small-x 1d0)
 		      :small-y (float small-y 1d0)
 		      :x (float x 1d0)
 		      :y (float y 1d0)
@@ -406,18 +407,19 @@ to each other."
 		      :spectrum (or spectrum #'empty-function)
 		      :observer observer
 		      :to-spectrum-matrix (if spectrum
-					      (calc-to-spectrum-matrix spectrum observer)
+					      (calc-to-spectrum-matrix spectrum
+                                                                       observer)
 					      +empty-matrix+))))
 
 (defun make-illuminant-by-spd (spectrum &optional (observer +obs-cie1931+))
   "Generates an illuminant based on a spectral power distribution. The
 white point is automatically calculated."
   (multiple-value-bind (x y z)
-      (spectrum-to-xyz-raw #'flat-spectrum spectrum observer)
+      (%spectrum-to-xyz #'flat-spectrum spectrum observer)
     (multiple-value-bind (small-x small-y disused)
 	(xyz-to-xyy x y z)
       (declare (ignore disused))
-      ($make-illuminant :small-x (float small-x 1d0)
+      (%make-illuminant :small-x (float small-x 1d0)
 			:small-y (float small-y 1d0)
 			:x (float x 1d0)
 			:y (float y 1d0)
