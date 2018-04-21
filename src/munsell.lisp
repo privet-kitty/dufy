@@ -329,18 +329,22 @@ since the Munsell Renotation Data is measured under the Illuminant C."
   "Usage Example:
 CL-USER> (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
 => (36.00799999982119d0 0.8999999761581421d0 3.5d0)
-Many other notations are acceptable as number designations; an ugly
-specification as follows are also available:
+
+Many other notations of numbers are acceptable; an ugly specification
+as follows are also available:
+
 CL-USER> (dufy:munsell-to-mhvc \"2d-2RP .9/ #x0ffffff\")
 => (36.008d0 0.8999999761581421d0 1.6777215d7)
+
 but the capital letters and  '/' are reserved:
+
 CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 => ERROR,
 "
   (let ((lst (let ((*read-default-float-format* 'double-float))
 	       (mapcar (compose (rcurry #'coerce 'double-float)
 				#'read-from-string)
-		       (remove "" (cl-ppcre:split "[^0-9.a-z#\-]+" munsellspec)
+		       (remove "" (cl-ppcre:split "[^0-9.a-z\-]+" munsellspec)
 			       :test #'string=)))))
     (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" munsellspec))
 	   (hue-number
