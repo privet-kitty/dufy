@@ -309,8 +309,9 @@ f(x) = 0d0 otherwise.
 	       :initform nil
 	       :accessor cond-illuminant))
   (:report (lambda (condition stream)
-	     (format stream "The illuminant has no spectrum: ~A"
-		     (cond-illuminant condition)))))
+             (let ((*print-array* nil))
+               (format stream "The illuminant has no spectrum: ~A"
+                       (cond-illuminant condition))))))
 
 (defvar +illum-e+) ; defined later
 (defvar +illum-c+)
@@ -320,8 +321,7 @@ f(x) = 0d0 otherwise.
   "Computes XYZ values from SPECTRUM in reflective and transmissive
 case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL, BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
   (if (illuminant-no-spd-p illuminant)
-      (let ((*print-array* nil))
-	(error (make-condition 'no-spd-error :illuminant illuminant)))
+      (error (make-condition 'no-spd-error :illuminant illuminant))
       (%spectrum-to-xyz spectrum
                         (illuminant-spectrum illuminant)
                         (illuminant-observer illuminant)
@@ -383,8 +383,7 @@ case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the 
   "Converts XYZ to spectrum, which is, of course, a spectrum among
 many."
   (if (illuminant-no-spd-p illuminant)
-      (let ((*print-array* nil))
-	(error (make-condition 'no-spd-error :illuminant illuminant)))
+      (error (make-condition 'no-spd-error :illuminant illuminant))
       (let ((observer (illuminant-observer illuminant)))
 	(multiple-value-bind (fac-x fac-y fac-z)
 	    (multiply-mat-vec (illuminant-to-spectrum-matrix illuminant) x y z)

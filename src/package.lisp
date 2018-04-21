@@ -26,6 +26,8 @@
 	      
 
 	      ;; xyz.lisp
+              :no-spd-error
+              
 	      :gen-spectrum
 	      :approximate-spectrum
 	      :gen-illum-d-spectrum
@@ -178,6 +180,10 @@
 			   :deltae00))
 
 	      ;; munsell.lisp
+              :invalid-mhvc-error
+              :munsellspec-parse-error
+              :large-approximation-error
+              
 	      :munsell-value-to-y
 	      :y-to-munsell-value
 	      :mhvc-out-of-mrd-p
