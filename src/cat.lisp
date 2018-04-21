@@ -219,6 +219,9 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 			    mat
 			    (,',target-to-xyz ,@',args ,,'from-illuminant))
 			  ,,'to-illuminant)))))))
+    (unless (and (symbolp from-illuminant)
+                 (symbolp to-illuminant))
+      (error "FROM-ILLUMINANT and TO-ILLUMINANT must be symbol"))
     `(progn
        (declaim (ftype (function (t t t)
 				 (values double-float double-float double-float &optional))
