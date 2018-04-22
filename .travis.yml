@@ -1,0 +1,39 @@
+language: lisp
+
+branches:
+  only:
+    - master
+    - develop
+
+env:
+  matrix:
+    - LISP=sbcl
+    - LISP=sbcl32
+    - LISP=ccl
+    - LISP=ccl32
+    - LISP=cmucl
+    - LISP=abcl
+    - LISP=allegro
+    - LISP=clisp
+    - LISP=ecl
+
+matrix:
+  allow_failures:
+    - env: LISP=cmucl
+    - env: LISP=ecl
+    - env: LISP=clisp
+    - env: LISP=allegro
+    - env: LISP=abcl
+
+
+install:
+  - curl -L https://github.com/luismbo/cl-travis/raw/master/install.sh | sh
+  - git clone --depth=1 git://github.com/edicl/cl-ppcre.git ~/lisp/cl-ppcre
+  - git clone https://gitlab.common-lisp.net/alexandria/alexandria.git ~/lisp/alexandria
+
+script:
+  - cl -e '(ql:quickload :dufy-test)
+           (unless (fiveam:run! :dufy-suite)
+             (uiop:quit 1))'
+
+sudo: required
