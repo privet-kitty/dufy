@@ -1,4 +1,4 @@
-language: lisp
+language: common-lisp
 
 branches:
   only:
@@ -6,34 +6,30 @@ branches:
     - develop
 
 env:
+  global:
+    - PATH=~/.roswell/bin:$PATH
   matrix:
-    - LISP=sbcl
-    - LISP=sbcl32
-    - LISP=ccl
-    - LISP=ccl32
-    - LISP=cmucl
-    - LISP=abcl
+    - LISP=sbcl-bin
+    - LISP=ccl-bin/1.11.5
     - LISP=allegro
-    - LISP=clisp
-    - LISP=ecl
+    - LISP=abcl
+#    - LISP=ecl/ECL-16.1.3
 
 matrix:
   allow_failures:
-    - env: LISP=cmucl
-    - env: LISP=ecl
-    - env: LISP=clisp
     - env: LISP=allegro
     - env: LISP=abcl
+#    - env: LISP=ecl/ECL-16.1.3
 
 
 install:
-  - curl -L https://github.com/luismbo/cl-travis/raw/master/install.sh | sh
+  - curl -L https://raw.githubusercontent.com/snmsts/roswell/release/scripts/install-for-ci.sh | sh
   - git clone --depth=1 git://github.com/edicl/cl-ppcre.git ~/lisp/cl-ppcre
   - git clone https://gitlab.common-lisp.net/alexandria/alexandria.git ~/lisp/alexandria
 
 script:
-  - cl -e '(ql:quickload :dufy-test)
-           (unless (fiveam:run! :dufy-suite)
-             (uiop:quit 1))'
+  - ros -s fiveam -e '(ql:quickload :dufy-test)
+                      (or (fiveam:run! :dufy-suite)
+                          (uiop:quit 1))'
 
 sudo: required
