@@ -1,5 +1,6 @@
 Dufy - Color Library for Common Lisp
 ====
+[![Build Status](https://travis-ci.org/privet-kitty/dufy.svg?branch=master)](https://travis-ci.org/privet-kitty/dufy)
 [![Quicklisp dist](http://quickdocs.org/badge/dufy.svg)](http://quickdocs.org/dufy/)
 
 Dufy is a library for exact color manipulation and conversion in various color spaces, which supports the following color models:
