@@ -136,6 +136,10 @@ and TO-ILLUMINANT in XYZ space."
           (multiply-mat-mat (cat-inv-matrix cat)
                             matrix1))))))
 
+(defun bench-cat (&optional (num 20000000))
+  (time-after-gc
+    (dotimes (i num)
+      (calc-cat-matrix +illum-c+ +illum-d65+))))
 
 (declaim (ftype (function * (function * (values double-float double-float double-float &optional))) gen-cat-function))
 (defun gen-cat-function (from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))

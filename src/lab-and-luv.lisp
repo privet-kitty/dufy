@@ -178,7 +178,8 @@
 (declaim (inline xyz-to-lchuv))
 (defun xyz-to-lchuv (x y z &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'luv-to-lchuv (xyz-to-luv x y z illuminant)))
+  (multiple-value-call #'luv-to-lchuv
+    (xyz-to-luv x y z illuminant)))
 
 (declaim (inline lchuv-to-xyz))
 (defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant +illum-d65+))

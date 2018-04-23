@@ -2,8 +2,7 @@
 (declaim (optimize (compilation-speed 0)))
 
 (defpackage dufy.package.definition
-  (:use :cl :alexandria)
-  (:export :gen-deltae-symbols))
+  (:use :cl :alexandria))
 (in-package :dufy.package.definition)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)

@@ -4,6 +4,10 @@
 
 (in-package :dufy)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter safe '(optimize (speed 3) (safety 1)))
+  (defparameter unsafe '(optimize (speed 3) (safety 0))))
+
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 
 (deftype single-valued-function () '(function * (values t &optional)))
@@ -49,7 +53,8 @@
 
 (defmacro time-after-gc (&body body)
   `(progn
-    #+sbcl(sb-ext:gc :full t)
+     #+sbcl(sb-ext:gc :full t)
+     #+ccl(ccl:gc)
     (time ,@body)))
 
 #+sbcl
@@ -253,13 +258,14 @@ THETA2] in a circle group."
 			(apply #'multiply-matrices (car mats) (cdr mats)))))
 
 
-(defun bench-mult-mat (&optional (num 3000000))
-  (time (let ((mat1 (make-array '(3 3)
-				:element-type 'double-float
-				:initial-contents '((1d0 2d0 3d0) (1d0 2d0 3d0) (4d0 5d0 6d0))))
-	      (mat2 (make-array '(3 3)
-				:element-type 'double-float
-				:initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 -1d0)))))
-	  (dotimes (x num)
-	    (dufy::multiply-matrices mat1 mat2)))))
+(defun bench-mult-mat (&optional (num 20000000))
+  (time-after-gc
+    (let ((mat1 (make-array '(3 3)
+                            :element-type 'double-float
+                            :initial-contents '((1d0 2d0 3d0) (1d0 2d0 3d0) (4d0 5d0 6d0))))
+          (mat2 (make-array '(3 3)
+                            :element-type 'double-float
+                            :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 -1d0)))))
+      (dotimes (x num)
+        (dufy::multiply-matrices mat1 mat2)))))
 
