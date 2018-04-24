@@ -265,6 +265,7 @@ http://www.color.org/chardata/rgb/scrgb-nl.xalter")
 
 (defparameter +wide-gamut+
   (make-rgbspace 0.7347d0 0.2653d0 0.1152d0 0.8264d0 0.1566d0 0.0177d0
+                 :illuminant +illum-d50+
 		 :linearizer (gen-linearizer #.(float 563/256 1d0))
 		 :delinearizer (gen-delinearizer #.(float 563/256 1d0)))
   "Wide-gamut RGB, 8-bit per channel.")
