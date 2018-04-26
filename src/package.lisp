@@ -33,7 +33,8 @@
 	      :spectrum-to-xyz
 	      :xyz-to-spectrum
 	      :bb-spectrum
-	      :optimal-spectrum
+	      :optimal-spectrum1
+              :optimal-spectrum2
 	      :flat-spectrum
 	      :spectrum-sum
 
@@ -207,5 +208,3 @@
 	      :xyz-to-munsell
 	      :*maximum-chroma*
 	      ))
-
-

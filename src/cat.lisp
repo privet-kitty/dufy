@@ -124,6 +124,7 @@ and TO-ILLUMINANT in XYZ space."
               (M-ratio (/ dest-M source-M))
               (S-ratio (/ dest-S source-S))
               (matrix1 (make-array '(3 3) :element-type 'double-float)))
+          (declare (dynamic-extent matrix1))
           (setf (aref matrix1 0 0) (* L-ratio (aref tmatrix 0 0)))
           (setf (aref matrix1 0 1) (* L-ratio (aref tmatrix 0 1)))
           (setf (aref matrix1 0 2) (* L-ratio (aref tmatrix 0 2)))

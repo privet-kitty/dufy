@@ -298,8 +298,9 @@ since the Munsell Renotation Data is measured under the Illuminant C."
     (mhvc-to-xyz hue40 value chroma)
     rgbspace))
 
-(declaim (inline mhvc-to-qrgb))
-(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp nil))
+(declaim (ftype (function * (values integer integer integer &optional)) mhvc-to-qrgb)
+         (inline mhvc-to-qrgb))
+(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp t))
   "The standard illuminant is D65: that of RGBSPACE must also be D65."
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'xyz-to-qrgb
@@ -344,9 +345,11 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (let ((lst (let ((*read-default-float-format* 'double-float))
 	       (mapcar (compose (rcurry #'coerce 'double-float)
 				#'read-from-string)
-		       (remove "" (cl-ppcre:split "[^0-9.a-z\-]+" munsellspec)
+		       (remove "" (ppcre:split "[^0-9.a-z\-]+"
+                                               munsellspec)
 			       :test #'string=)))))
-    (let* ((hue-name (cl-ppcre:scan-to-strings "[A-Z]+" munsellspec))
+    (let* ((hue-name (ppcre:scan-to-strings "[A-Z]+"
+                                            munsellspec))
 	   (hue-number
 	    (switch (hue-name :test #'string=)
 	      ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
@@ -405,7 +408,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
   (multiple-value-call #'xyz-to-xyy (munsell-to-xyz munsellspec)))
 
 
-(defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (clamp nil))
+(defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (clamp t))
   "Illuminant D65; the standard illuminant of RGBSPACE must also be D65."
   (multiple-value-call #'xyz-to-qrgb
     (munsell-to-xyz munsellspec)

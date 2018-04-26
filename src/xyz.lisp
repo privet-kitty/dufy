@@ -257,23 +257,23 @@ temperature."
     (/ (* 3.74183d-16 (expt wlm -5d0))
        (- (exp (/ 1.4388d-2 (* wlm (float temperature 1d0)))) 1d0))))
 
-(declaim (inline optimal-spectrum))
-(defun optimal-spectrum (wavelength-nm &optional (wl1 300d0) (wl2 830d0))
+(declaim (inline optimal-spectrum1 optimal-spectrum2))
+(defun optimal-spectrum1 (wavelength-nm &optional (wl1 300d0) (wl2 830d0))
   "Spectrum function of optimal colors:
-In the case wl1 <= wl2:
 f(x) = 1d0 if wl1 <= x <= wl2,
-f(x) = 0d0 otherwise.
-In the case wl1 > wl2:
-f(x) = 1d0 if x <=wl2 or wl1 <= x,
-f(x) = 0d0 otherwise.
-"
+f(x) = 0d0 otherwise."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((wl (float wavelength-nm 1d0))
-	(wl1 (float wl1 1d0))
-	(wl2 (float wl2 1d0)))
-    (if (<= wl1 wl2)
-	(if (<= wl1 wl wl2) 1d0 0d0)
-	(if (or (<= wl wl2) (<= wl1 wl)) 1d0 0d0))))
+  (if (<= wl1 wavelength-nm wl2) 1d0 0d0))
+
+(defun optimal-spectrum2 (wavelength-nm &optional (wl1 300d0) (wl2 830d0))
+  "Spectrum function of optimal colors:
+f(x) = 1d0 if x <=wl2 or wl1 <= x,
+f(x) = 0d0 otherwise."
+  (declare (optimize (speed 3) (safety 1)))
+  (if (or (<= wavelength-nm wl1)
+          (<= wl2 wavelength-nm))
+      1d0 0d0))
+
 
 (defun flat-spectrum (wavelength-nm)
   "(constantly 1d0)"
