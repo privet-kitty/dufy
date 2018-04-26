@@ -161,7 +161,8 @@ smaller than 10^-5."
               (mhvc-to-lchab-all-integer-case hue2 tmp-value half-chroma dark)
             (declare (ignore disused)
                      ((double-float 0d0 360d0) hab1 hab2))
-            (if (= hab1 hab2)
+            (if (or (= hab1 hab2)
+                    (>= (subtract-with-mod hab2 hab1 360d0) 180d0))   ; fix me
                 (values lstar cstarab1 hab1)
                 (let* ((hab (the (double-float 0d0 360d0)
                                  (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
@@ -179,7 +180,7 @@ smaller than 10^-5."
   (let ((hchroma1 (floor half-chroma))
 	(hchroma2 (ceiling half-chroma)))
     (if (= hchroma1 hchroma2)
-	(mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value (round half-chroma) dark)
+	(mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma1 dark)
 	(multiple-value-bind (lstar astar1 bstar1)
 	    (multiple-value-call #'lchab-to-lab
 	      (mhvc-to-lchab-value-chroma-integer-case hue40 tmp-value hchroma1 dark))
