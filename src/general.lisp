@@ -4,13 +4,14 @@
 
 (in-package :dufy)
 
+(declaim (inline rcurry))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter safe '(optimize (speed 3) (safety 1)))
   (defparameter unsafe '(optimize (speed 3) (safety 0))))
 
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 
-(deftype single-valued-function () '(function * (values t &optional)))
 (deftype spectrum-function () '(function * (values double-float &optional)))
 (deftype matrix33 () '(simple-array double-float (3 3)))
 

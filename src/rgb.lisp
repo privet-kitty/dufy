@@ -406,12 +406,14 @@ all the real values."
   (with-double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
 	  (qmax-float/len (rgbspace-qmax-float/len rgbspace))
-	  (clamper (if clamp
-		       (the function (rcurry #'clamp 0 (rgbspace-qmax rgbspace)))
-		       #'identity)))
-      (values (funcall clamper (round (* (- r min) qmax-float/len)))
-	      (funcall clamper (round (* (- g min) qmax-float/len)))
-	      (funcall clamper (round (* (- b min) qmax-float/len)))))))   
+	  (qmax (rgbspace-qmax rgbspace)))
+      (if clamp
+          (values (clamp (round (* (- r min) qmax-float/len)) 0 qmax)
+                  (clamp (round (* (- g min) qmax-float/len)) 0 qmax)
+                  (clamp (round (* (- b min) qmax-float/len)) 0 qmax))
+          (values (round (* (- r min) qmax-float/len))
+                  (round (* (- g min) qmax-float/len))
+                  (round (* (- b min) qmax-float/len)))))))
 
 
 (declaim (inline qrgb-to-rgb))

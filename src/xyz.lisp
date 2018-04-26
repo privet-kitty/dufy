@@ -121,7 +121,10 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		   #'(lambda (wl)
 		       (declare (optimize (speed 3) (safety 1)))
 		       (multiple-value-bind (quot rem)
-			   (floor (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
+			   (floor (- (clamp (float wl 1d0)
+                                            begin-wl-f
+                                            end-wl-f)
+                                     begin-wl-f))
 			 (lerp rem
 			       (aref arr quot num)
 			       (aref arr (min (1+ quot) size) num))))
@@ -129,7 +132,10 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 			  (/band (/ band)))
 		     #'(lambda (wl)
 			 (declare (optimize (speed 3) (safety 1)))
-			 (let* ((wl$ (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
+			 (let* ((wl$ (- (clamp (float wl 1d0)
+                                               begin-wl-f
+                                               end-wl-f)
+                                        begin-wl-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
 				(idx (round (* (- wl$ frac) /band))))
@@ -145,7 +151,10 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		   #'(lambda (wl)
 		       (declare (optimize (speed 3) (safety 1)))
 		       (multiple-value-bind (quot rem)
-			   (floor (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
+			   (floor (- (clamp (float wl 1d0)
+                                            begin-wl-f
+                                            end-wl-f)
+                                     begin-wl-f))
 			 (values (lerp rem
 				       (aref arr quot 0)
 				       (aref arr (min (1+ quot) size) 0))
@@ -159,7 +168,10 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 			  (/band (/ band)))
 		     #'(lambda (wl)
 			 (declare (optimize (speed 3) (safety 1)))
-			 (let* ((wl$ (- (clamp (float wl 1d0) begin-wl-f end-wl-f) begin-wl-f))
+			 (let* ((wl$ (- (clamp (float wl 1d0)
+                                               begin-wl-f
+                                               end-wl-f)
+                                        begin-wl-f))
 				(frac (mod wl$ band))
 				(coef (* frac /band))
 				(idx (round (* (- wl$ frac) /band)))
