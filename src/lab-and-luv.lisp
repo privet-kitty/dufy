@@ -17,7 +17,7 @@
 (defun xyz-to-lab (x y z &optional (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((fx (function-f (/ (float x 1d0) (illuminant-x illuminant))))
-	(fy (function-f (float y 1d0)))
+	(fy (function-f (/ (float y 1d0) (illuminant-y illuminant))))
 	(fz (function-f (/ (float z 1d0) (illuminant-z illuminant)))))
     (values (- (* 116d0 fy) 16d0)
 	    (* 500d0 (- fx fy))

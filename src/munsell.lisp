@@ -612,7 +612,7 @@ MAX-ITERATION:
 
 ;; doesn't converge:
 ;; LCH = 90.25015693115249d0 194.95626408656423d0 115.6958104971207d0
-;; (38754 63266 343) in ProPhoto, 16-bit
+;; in ProPhoto, 16-bit
 
 (defun test-inverter3 (&optional (rgbspace +srgb+))
   "For devel."
