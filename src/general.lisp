@@ -61,10 +61,11 @@
 #+sbcl
 (defmacro with-profile (&body body)
   "For devel."
-  `(progn (sb-profile:profile "DUFY")
-	  ,@body
-	  (sb-profile:report :print-no-call-list nil)
-	  (sb-profile:unprofile "DUFY")))
+  `(unwind-protect
+        (progn (sb-profile:profile "DUFY")
+               ,@body
+               (sb-profile:report :print-no-call-list nil))
+     (sb-profile:unprofile "DUFY")))
 
 
 
