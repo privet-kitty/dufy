@@ -128,17 +128,17 @@ In the second example, a conversion from CIELAB to quantized RGB, `xyz-to-qrgb` 
 
 Out of which gamut, however? By default, `xyz-to-qrgb` (and all other RGB converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
 
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+srgb+)  ; sRGB
+    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+srgb+ :clamp nil)  ; sRGB
     => -169
        255
        255
 
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+adobe+) ; Adobe RGB
+    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+adobe+ :clamp nil) ; Adobe RGB
     => 2
        255
        255
        
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+bg-srgb-10+) ; bg-sRGB (10 bit)
+    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+bg-srgb-10+ :clamp nil) ; bg-sRGB (10 bit)
     => 47
        893
        893
