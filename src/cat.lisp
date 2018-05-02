@@ -53,7 +53,9 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 (defparameter +cat02+
   (make-cat '((0.7328d0 0.4296d0 -0.1624d0)
 	      (-0.7036d0 1.6975d0 0.0061d0)
-	      (0.0030d0 0.0136d0 0.9834d0))))
+	      (0.0030d0 0.0136d0 0.9834d0)))
+  "Note that the CAT function returned by gen-cat-function and +cat02+
+  is different from the one in CIECAM02.")
 
 
 (declaim (inline xyz-to-lms))
