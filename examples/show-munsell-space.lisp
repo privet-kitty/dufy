@@ -4,7 +4,8 @@
 (deftype sint nil '(integer #.(- (expt 10 9)) #.(expt 10 9)))
 
 (defun draw-srgb-in-munsell (&optional (size 300) (framerate 10) (bg-color sdl:*black*))
-  "Renders the sRGB space in the Munsell space."
+  "Graphical demonstration with SDL. Renders the sRGB space in the
+Munsell space."
   (declare (optimize (speed 3) (safety 1))
            (type uint size framerate))
   (let* ((value100 0)

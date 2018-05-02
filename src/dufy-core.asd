@@ -1,4 +1,4 @@
-;;;; dufy.asd -*- Mode: Lisp;-*-
+;;;; dufy-core.asd -*- Mode: Lisp;-*-
 
 (cl:in-package :asdf)
 
