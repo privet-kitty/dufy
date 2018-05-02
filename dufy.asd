@@ -8,19 +8,7 @@
   :author "Hugo I."
   :license "MIT"
   :serial t
-  :depends-on (:cl-ppcre :alexandria)
-  :components ((:module "dat")
-	       (:module "src"
-		:components
-		((:file "package")
-		 (:file "fundamental-data")
-		 (:file "general")
-		 (:file "xyz")
-		 (:file "rgb")
-		 (:file "lab-and-luv")
-		 (:file "cat")
-		 (:file "deltae")
-		 (:file "munsell-renotation-data")
-		 (:file "munsell"))))
+  :depends-on (:dufy-core :dufy-munsell)
+  :components ((:module "dat"))
   :in-order-to ((test-op (test-op dufy-test))))
 
