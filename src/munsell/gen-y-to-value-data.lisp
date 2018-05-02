@@ -1,8 +1,10 @@
 ;;; This is a script file which generates fundamental data and saves them as a .lisp file.
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (asdf:load-system :alexandria))
+  (asdf:load-system :alexandria)
+  (asdf:load-system :dufy-develop))
 
+(use-package :dufy.develop)
 
 (defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
 (defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy-munsell) :munsell)))
@@ -44,35 +46,6 @@
 	  (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
 	     (* r (aref y-to-munsell-value-arr y2)))))))
 
-
-
-(defun array-to-list (array)
-  (let* ((dimensions (array-dimensions array))
-         (depth      (1- (length dimensions)))
-         (indices    (make-list (1+ depth) :initial-element 0)))
-    (labels ((recurse (n)
-               (loop for j below (nth n dimensions)
-                     do (setf (nth n indices) j)
-                     collect (if (= n depth)
-                                 (apply #'aref array indices)
-                               (recurse (1+ n))))))
-      (recurse 0))))
-
-(defun print-make-array (var-name array &optional (stream t) (declaration t))
-  (let ((typ (array-element-type array))
-	(dims (array-dimensions array)))
-    (when declaration
-      (prin1 `(declaim (type (simple-array ,typ ,dims)
-			     ,(intern (string-upcase var-name))))
-	     stream)
-      (terpri stream))
-    (format stream "(defparameter ~a ~% #." var-name)
-    (prin1 `(make-array (quote ,dims)
-			:element-type (quote ,typ)
-			:initial-contents (quote ,(array-to-list array)))
-	   stream)
-    (princ ")" stream)
-    (terpri stream)))
 
 (with-open-file (out obj-path
 		     :direction :output
