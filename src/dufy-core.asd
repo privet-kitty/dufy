@@ -8,7 +8,7 @@
   :components ((:module "core"
 		:components
 		((:file "package")
-		 (:file "fundamental-data")
+		 (:file "cmf-data")
 		 (:file "general")
 		 (:file "xyz")
 		 (:file "rgb")

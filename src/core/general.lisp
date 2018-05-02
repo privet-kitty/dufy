@@ -2,7 +2,7 @@
 ;;; General routines and constants
 ;;;
 
-(in-package :dufy)
+(in-package :dufy.core)
 
 (declaim (inline rcurry))
 
@@ -269,5 +269,5 @@ THETA2] in a circle group."
                             :element-type 'double-float
                             :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 -1d0)))))
       (dotimes (x num)
-        (dufy::multiply-matrices mat1 mat2)))))
+        (multiply-matrices mat1 mat2)))))
 

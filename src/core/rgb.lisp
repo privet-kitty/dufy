@@ -1,4 +1,4 @@
-(in-package :dufy)
+(in-package :dufy.core)
 
 ;;;
 ;;; RGB Color Space

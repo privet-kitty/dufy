@@ -2,7 +2,7 @@
 ;;; Munsell Color System
 ;;;
 
-(in-package :dufy)
+(in-package :dufy.munsell)
 
 ;; The bradford transformations between D65 and C are frequently used here.
 (declaim (inline c-to-d65))
@@ -62,7 +62,7 @@ formula is based on ASTM D1535-08e1:"
 
 (defun munsell-value-to-lstar (v)
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
-  (- (* 116d0 (function-f (munsell-value-to-y v))) 16d0))
+  (- (* 116d0 (dufy.core::function-f (munsell-value-to-y v))) 16d0))
 
 (defun munsell-value-to-achromatic-xyy (v)
   "Illuminant C."

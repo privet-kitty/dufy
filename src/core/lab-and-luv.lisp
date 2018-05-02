@@ -2,7 +2,7 @@
 ;;; L*a*b*
 ;;;
 
-(in-package :dufy)
+(in-package :dufy.core)
 
 (declaim (inline function-f)
 	 (ftype (function * double-float) function-f))

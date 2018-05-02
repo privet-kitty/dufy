@@ -1,9 +1,8 @@
 (cl:in-package :cl-user)
-(declaim (optimize (compilation-speed 0)))
 
-(defpackage dufy.package.definition
-  (:use :cl :alexandria))
-(in-package :dufy.package.definition)
+(defpackage dufy.package.def.core
+  (:use :cl))
+(in-package :dufy.package.def.core)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun gen-deltae-symbols (name)
@@ -13,8 +12,8 @@
 		      (intern (format nil "~:@(~A-~A~)" term name) :keyword))
 		  '(qrgb xyz)))))
 
-(defpackage dufy
-  (:use :common-lisp :alexandria)
+(defpackage dufy.core
+  (:use :cl :alexandria)
   #.`(:export :nearly=
 	      :nearly<=
 	      :nearly-equal
@@ -174,37 +173,7 @@
 	      :lchuv-to-xyz
 
 	      ;; deltae.lisp
-	      ,@(mappend #'gen-deltae-symbols
-			 '(:deltae
-			   :deltae94
-			   :deltae00))
-
-	      ;; munsell.lisp
-              :invalid-mhvc-error
-              :munsellspec-parse-error
-              :large-approximation-error
-              
-	      :munsell-value-to-y
-	      :y-to-munsell-value
-	      :mhvc-out-of-mrd-p
-	      :mhvc-to-xyy
-	      :mhvc-to-xyz
-	      :mhvc-to-xyz-illum-c
-	      :mhvc-to-lrgb
-	      :mhvc-to-qrgb
-	      :mhvc-to-lchab-illum-c
-	      :mhvc-to-munsell
-	      :munsell-to-mhvc
-	      :munsell-out-of-mrd-p
-	      :munsell-to-lchab-illum-c
-	      :munsell-to-xyz
-	      :munsell-to-xyz-illum-c
-	      :munsell-to-xyy
-	      :munsell-to-qrgb
-	      :max-chroma-in-mrd
-	      :lchab-to-mhvc-illum-c
-	      :lchab-to-munsell-illum-c
-	      :xyz-to-mhvc
-	      :xyz-to-munsell
-	      :*maximum-chroma*
-	      ))
+	      ,@(alexandria:mappend #'gen-deltae-symbols
+                                    '(:deltae
+                                      :deltae94
+                                      :deltae00))))

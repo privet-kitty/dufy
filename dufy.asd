@@ -9,6 +9,8 @@
   :license "MIT"
   :serial t
   :depends-on (:dufy-core :dufy-munsell)
-  :components ((:module "dat"))
+  :components ((:module "dat")
+               (:module "src"
+                        :components ((:file "package"))))
   :in-order-to ((test-op (test-op dufy-test))))
 
