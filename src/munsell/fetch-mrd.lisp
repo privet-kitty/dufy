@@ -152,7 +152,7 @@
 Note: The data with value=0 are substituted with the data with
 value=0.2."
   (cond ((= chroma 0)
-	 (multiple-value-list (dufy::munsell-value-to-achromatic-xyy value)))
+	 (multiple-value-list (dufy.munsell::munsell-value-to-achromatic-xyy value)))
 	((= value 0)
 	 (funcall #'(lambda (lst)
 		      (if (null lst)
