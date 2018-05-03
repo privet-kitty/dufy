@@ -11,6 +11,6 @@
   :depends-on (:dufy-core :dufy-munsell)
   :components ((:module "dat")
                (:module "src"
-                        :components ((:file "package"))))
+                :components ((:file "package"))))
   :in-order-to ((test-op (test-op dufy-test))))
 

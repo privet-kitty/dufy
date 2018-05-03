@@ -4,8 +4,6 @@
 
 (in-package :dufy.core)
 
-(declaim (inline rcurry))
-
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter safe '(optimize (speed 3) (safety 1)))
   (defparameter unsafe '(optimize (speed 3) (safety 0))))
@@ -236,7 +234,7 @@ THETA2] in a circle group."
 (defmacro dotimes-unroll ((var count &optional result) &body body)
   `(block nil
      ,@(loop for i from 0 below count
-	  collect `(let ((,var ,i)) ,@body))
+             collect `(let ((,var ,i)) ,@body))
      ,result))
 
 (declaim (inline multiply-mat-mat))
@@ -246,10 +244,10 @@ THETA2] in a circle group."
   (let ((ret-mat (make-array '(3 3) :element-type 'double-float)))
     (dotimes-unroll (i 3)
       (dotimes-unroll (j 3)
-	(setf (aref ret-mat i j)
-	      (+ (* (aref mat1 i 0) (aref mat2 0 j))
-		 (* (aref mat1 i 1) (aref mat2 1 j))
-		 (* (aref mat1 i 2) (aref mat2 2 j))))))
+        (setf (aref ret-mat i j)
+              (+ (* (aref mat1 i 0) (aref mat2 0 j))
+                 (* (aref mat1 i 1) (aref mat2 1 j))
+                 (* (aref mat1 i 2) (aref mat2 2 j))))))
     ret-mat))
 
 (defun multiply-matrices (mat1 &rest mats)
@@ -262,12 +260,12 @@ THETA2] in a circle group."
 
 (defun bench-mult-mat (&optional (num 20000000))
   (time-after-gc
-    (let ((mat1 (make-array '(3 3)
-                            :element-type 'double-float
-                            :initial-contents '((1d0 2d0 3d0) (1d0 2d0 3d0) (4d0 5d0 6d0))))
-          (mat2 (make-array '(3 3)
-                            :element-type 'double-float
-                            :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 -1d0)))))
-      (dotimes (x num)
-        (multiply-matrices mat1 mat2)))))
+   (let ((mat1 (make-array '(3 3)
+                           :element-type 'double-float
+                           :initial-contents '((1d0 2d0 3d0) (1d0 2d0 3d0) (4d0 5d0 6d0))))
+         (mat2 (make-array '(3 3)
+                           :element-type 'double-float
+                           :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 -1d0)))))
+     (dotimes (x num)
+       (multiply-matrices mat1 mat2)))))
 

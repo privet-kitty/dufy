@@ -85,9 +85,9 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
       (gen-spectrum
        (let ((arr (make-array (1+ partitions) :element-type 'double-float)))
 	 (loop for i from 0 to partitions
-	    for wl = (lerp (/ i partitions-f) begin-wl end-wl)
-	    do (setf (aref arr i) (funcall spectrum wl))
-	    finally (return arr)))
+               for wl = (lerp (/ i partitions-f) begin-wl end-wl)
+               do (setf (aref arr i) (funcall spectrum wl))
+               finally (return arr)))
        begin-wl
        end-wl))))
 
@@ -242,11 +242,11 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 	   (arr (make-array (1+ (- end-wl begin-wl))
 			    :element-type 'double-float
 			    :initial-element 0d0)))
-      (loop for wl from begin-wl to end-wl do
-	   (setf (aref arr (- wl begin-wl))
-		 (+ (funcall +s0-func+ wl)
-		    (* m1 (funcall +s1-func+ wl))
-		    (* m2 (funcall +s2-func+ wl)))))
+      (loop for wl from begin-wl to end-wl
+            do (setf (aref arr (- wl begin-wl))
+                     (+ (funcall +s0-func+ wl)
+                        (* m1 (funcall +s1-func+ wl))
+                        (* m2 (funcall +s2-func+ wl)))))
       arr)))
 
 (defun gen-illum-d-spectrum (temperature)
@@ -258,7 +258,7 @@ temperature."
 
 (defun spectrum-sum (spectrum &optional (begin-wl 300) (end-wl 830) (band 1))
   (loop for wl from begin-wl to end-wl by band
-     sum (funcall spectrum wl)))
+        sum (funcall spectrum wl)))
 
 (declaim (inline bb-spectrum))
 (defun bb-spectrum (wavelength-nm &optional (temperature 5000d0))
@@ -347,14 +347,14 @@ case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the 
   (let ((x 0d0) (y 0d0) (z 0d0) (max-y 0d0)
 	(cmf (observer-cmf observer)))
     (declare (double-float x y z max-y))
-    (loop for wl from begin-wl to end-wl by band do
-	 (let ((p (funcall illum-spectrum wl))
-	       (reflec (funcall spectrum wl)))
-	   (multiple-value-bind (x-fac y-fac z-fac) (funcall cmf wl)
-	     (incf x (* x-fac p reflec))
-	     (incf y (* y-fac p reflec))
-	     (incf z (* z-fac p reflec))
-	     (incf max-y (* y-fac p)))))
+    (loop for wl from begin-wl to end-wl by band
+          do (let ((p (funcall illum-spectrum wl))
+                   (reflec (funcall spectrum wl)))
+               (multiple-value-bind (x-fac y-fac z-fac) (funcall cmf wl)
+                 (incf x (* x-fac p reflec))
+                 (incf y (* y-fac p reflec))
+                 (incf z (* z-fac p reflec))
+                 (incf max-y (* y-fac p)))))
     (let ((factor (/ max-y)))
       (values (* x factor) (* y factor) (* z factor)))))
 
