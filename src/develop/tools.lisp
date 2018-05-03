@@ -10,13 +10,13 @@
   (let* ((dimensions (array-dimensions array))
          (indices (make-list (length dimensions) :initial-element 0)))
     (labels ((recurse (dimensions-rest indices-rest)
-               (loop for idx below (car dimensions-rest)
+               (loop for idx of-type fixnum below (car dimensions-rest)
                   do (setf (car indices-rest) idx)
                   collect (if (null (cdr dimensions-rest))
                               (apply #'aref array indices)
                               (recurse (cdr dimensions-rest)
                                        (cdr indices-rest))))))
-       (recurse dimensions indices))))
+      (recurse dimensions indices))))
 
 
 (defun print-make-array (var-name array &optional (stream t) (declaration t) (load-time-value nil))
