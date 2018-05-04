@@ -1,10 +1,5 @@
 (cl:in-package :cl-user)
 
-(defpackage dufy.package.def.munsell
-  (:use :cl))
-(in-package :dufy.package.def.munsell)
-
-
 (defpackage dufy.munsell
   (:use :cl :dufy.core :alexandria)
   (:import-from :dufy.core
