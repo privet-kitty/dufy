@@ -4,7 +4,7 @@
 
 (asdf:defsystem :dufy-develop
   :serial t
-  :depends-on (:alexandria)
+  :depends-on (:alexandria :clgplot)
   :components ((:module "develop"
                         :components
                         ((:file "tools")))))

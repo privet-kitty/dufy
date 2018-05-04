@@ -1,8 +1,13 @@
+;;;
+;;; Frequently used functions in development
+;;;
+
+
 (cl:in-package :cl-user)
 
 (defpackage dufy.develop
   (:use :cl)
-  (:export :print-make-array))
+  (:export :print-make-array :plot-spectrum))
 
 (in-package :dufy.develop)
 
@@ -34,3 +39,11 @@
                          :element-type (quote ,typ)
                          :initial-contents (quote ,(array-to-list array)))
             (if load-time-value " t)" ""))))
+
+
+
+(defun plot-spectrum (spectrum &optional (band 5) (begin 360) (end 830))
+  "Plots a spectrum function with gnuplot."
+  (let ((x-lst (loop for x from begin to end by band collect x)))
+    (clgp:plot (mapcar spectrum x-lst)
+               :x-seq x-lst)))
