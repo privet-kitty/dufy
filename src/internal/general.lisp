@@ -1,15 +1,15 @@
 ;;;
-;;; Frequently used functions in development
+;;; General functions and macros
 ;;;
 
 
 (cl:in-package :cl-user)
 
-(defpackage dufy.develop
+(defpackage dufy.internal
   (:use :cl)
-  (:export :print-make-array :plot-spectrum))
+  (:export :print-make-array))
 
-(in-package :dufy.develop)
+(in-package :dufy.internal)
 
 (defun array-to-list (array)
   (let* ((dimensions (array-dimensions array))
@@ -42,8 +42,8 @@
 
 
 
-(defun plot-spectrum (spectrum &optional (band 5) (begin 360) (end 830))
-  "Plots a spectrum function with gnuplot."
-  (let ((x-lst (loop for x from begin to end by band collect x)))
-    (clgp:plot (mapcar spectrum x-lst)
-               :x-seq x-lst)))
+;; (defun plot-spectrum (spectrum &optional (band 5) (begin 360) (end 830))
+;;   "Plots a spectrum function with gnuplot."
+;;   (let ((x-lst (loop for x from begin to end by band collect x)))
+;;     (clgp:plot (mapcar spectrum x-lst)
+;;                :x-seq x-lst)))

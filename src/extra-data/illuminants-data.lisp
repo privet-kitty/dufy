@@ -18,7 +18,7 @@
 ;; data from source 1, because other white point values in dufy exactly
 ;; match the values as in Wikipedia.
 
-(in-package :dufy.extra.data)
+(in-package :dufy.extra-data)
 
 (defparameter +illum-d55+ (make-illuminant 0.33242d0 0.34743d0
 					   (gen-illum-d-spectrum #.(* 5500 (/ 1.43880d0 1.438)))))

@@ -1,6 +1,6 @@
 (cl:in-package :cl-user)
 
-(defpackage dufy.extra.data
+(defpackage dufy.extra-data
   (:use :common-lisp :dufy.core)
   #.`(:export
       :+illum-d55+

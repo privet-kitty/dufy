@@ -80,16 +80,15 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
 	   (spectrum-function spectrum))
   (with-double-float (begin-wl end-wl band)
     (let* ((partitions (max 2 (round (/ (- end-wl begin-wl) band))))
-	   (partitions-f (float partitions 1d0)))
+	   (partitions-f (float partitions 1d0))
+           (arr (make-array (1+ partitions) :element-type 'double-float)))
       (declare (fixnum partitions))
-      (gen-spectrum
-       (let ((arr (make-array (1+ partitions) :element-type 'double-float)))
-	 (loop for i from 0 to partitions
-               for wl = (lerp (/ i partitions-f) begin-wl end-wl)
-               do (setf (aref arr i) (funcall spectrum wl))
-               finally (return arr)))
-       begin-wl
-       end-wl))))
+      (gen-spectrum (loop for i from 0 to partitions
+                          for wl = (lerp (/ i partitions-f) begin-wl end-wl)
+                          do (setf (aref arr i) (funcall spectrum wl))
+                          finally (return arr))
+                    begin-wl
+                    end-wl))))
 
 
 ;;;
@@ -331,7 +330,9 @@ f(x) = 0d0 otherwise."
 (defun spectrum-to-xyz (spectrum &optional (illuminant +illum-e+) (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1)))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
-case. The function SPECTRUM must be defined at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL, BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
+case. The function SPECTRUM must be defined at least in [BEGIN-WL,
+END-WL]; the SPECTRUM is called for BEGIN-WL, BEGIN-WL + BAND,
+BEGIN-WL + 2*BAND, ..., END-WL."
   (if (illuminant-no-spd-p illuminant)
       (error (make-condition 'no-spd-error :illuminant illuminant))
       (%spectrum-to-xyz spectrum
@@ -456,13 +457,16 @@ white point is automatically calculated."
   #.(make-array 107
 		:element-type 'double-float
 		:initial-contents '(0.0d0 0.0d0 0.0d0 0.0d0 0.0d0 0.20d0 0.40d0 1.55d0 2.70d0 4.85d0 7.00d0 9.95d0 12.90d0 17.20d0 21.40d0 27.5d0 33.00d0 39.92d0 47.40d0 55.17d0 63.30d0 71.81d0 80.60d0 89.53d0 98.10d0 105.80d0 112.40d0 117.75d0 121.50d0 123.45d0 124.00d0 123.60d0 123.10d0 123.30d0 123.80d0 124.09d0 123.90d0 122.92d0 120.70d0 116.90d0 112.10d0 106.98d0 102.30d0 98.81d0 96.90d0 96.78d0 98.00d0 99.94d0 102.10d0 103.95d0 105.20d0 105.67d0 105.30d0 104.11d0 102.30d0 100.15d0 97.80d0 95.43d0 93.20d0 91.22d0 89.70d0 88.83d0 88.40d0 88.19d0 88.10d0 88.06d0 88.00d0 87.86d0 87.80d0 87.99d0 88.20d0 88.20d0 87.90d0 87.22d0 86.30d0 85.30d0 84.00d0 82.21d0 80.20d0 78.24d0 76.30d0 74.36d0 72.40d0 70.40d0 68.30d0 66.30d0 64.40d0 62.80d0 61.50d0 60.20d0 59.20d0 58.50d0 58.10d0 58.00d0 58.20d0 58.50d0 59.10d0 78.91d0 79.55d0 76.48d0 73.40d0 68.66d0 63.92d0 67.35d0 70.78d0 72.61d0 74.44d0)))
-(defparameter +illum-c+ (make-illuminant 0.31006d0 0.31616d0
-					 (gen-spectrum +illum-c-arr+ 300 830)))
+(defparameter +illum-c+
+  (make-illuminant 0.31006d0 0.31616d0
+                   (gen-spectrum +illum-c-arr+ 300 830)))
 
-(defparameter +illum-d50+ (make-illuminant 0.34567d0 0.35850d0
-					   (gen-illum-d-spectrum #.(* 5000 (/ 1.4388d0 1.438)))))
-(defparameter +illum-d65+ (make-illuminant 0.31271d0 0.32902d0
-					   (gen-illum-d-spectrum #.(* 6500 (/ 1.43880d0 1.438)))))
+(defparameter +illum-d50+
+  (make-illuminant 0.34567d0 0.35850d0
+                   (gen-illum-d-spectrum #.(* 5000 (/ 1.4388d0 1.438)))))
+(defparameter +illum-d65+
+  (make-illuminant 0.31271d0 0.32902d0
+                   (gen-illum-d-spectrum #.(* 6500 (/ 1.43880d0 1.438)))))
 (defparameter +illum-e+ (make-illuminant #.(float 1/3 1d0)
 					 #.(float 1/3 1d0)
 					 #'flat-spectrum))
