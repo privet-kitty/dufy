@@ -13,7 +13,7 @@
    :nearly=
    :nearly<=
    :nearly-equal
-   :subtract-with-mode
+   :subtract-with-mod
    :circular-nearer
    :circular-clamp
    :circular-lerp-loose
