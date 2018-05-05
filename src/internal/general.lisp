@@ -2,14 +2,12 @@
 ;;; General functions and macros
 ;;;
 
-
-(cl:in-package :cl-user)
-
-(defpackage dufy.internal
-  (:use :cl)
-  (:export :print-make-array))
-
 (in-package :dufy.internal)
+
+
+;;;
+;;; For preprocessing of data
+;;;
 
 (defun array-to-list (array)
   (let* ((dimensions (array-dimensions array))
@@ -47,3 +45,167 @@
 ;;   (let ((x-lst (loop for x from begin to end by band collect x)))
 ;;     (clgp:plot (mapcar spectrum x-lst)
 ;;                :x-seq x-lst)))
+
+
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter safe '(optimize (speed 3) (safety 1)))
+  (defparameter unsafe '(optimize (speed 3) (safety 0))))
+
+(define-constant TWO-PI (float (+ PI PI) 1d0))
+
+
+
+(defmacro subseq-values (start end number form)
+  (let ((vars (loop for i from 0 below number collect (gensym))))
+    `(multiple-value-bind ,vars ,form
+       (declare (ignore ,@(subseq vars 0 start)
+                        ,@(subseq vars end number)))
+       (values ,@(subseq vars start end)))))
+
+
+(defmacro dotimes-unroll ((var count &optional result) &body body)
+  `(block nil
+     ,@(loop for i from 0 below count
+             collect `(let ((,var ,i)) ,@body))
+     ,result))
+
+(defmacro with-double-float (vars &body body)
+  "Ensures that variables are double-float."
+  (labels ((expand (var-lst)
+	     (if (null var-lst)
+		 nil
+		 (cons `(,(car var-lst) (float ,(car var-lst) 1d0))
+		       (expand (cdr var-lst))))))
+    `(let ,(expand vars)
+       (declare (type double-float ,@vars))
+       ,@body)))
+
+
+
+;;;
+;;; For benchmark
+;;;
+
+(defmacro simple-time (&body body)
+  "For devel. Returns (internal real) time"
+  (let ((start (gensym)))
+    `(let ((,start (get-internal-real-time)))
+       ,@body
+       (/ (float (- (get-internal-real-time) ,start) 1d0)
+	  internal-time-units-per-second))))
+
+
+(defmacro time-after-gc (&body body)
+  `(progn
+     #+sbcl(sb-ext:gc :full t)
+     #+ccl(ccl:gc)
+    (time ,@body)))
+
+#+sbcl
+(defmacro with-profile (&body body)
+  "For devel."
+  `(unwind-protect
+        (progn (sb-profile:profile "DUFY")
+               ,@body
+               (sb-profile:report :print-no-call-list nil))
+     (sb-profile:unprofile "DUFY")))
+
+
+
+;;;
+;;; Comparison operators
+;;; (used mainly for test)
+;;;
+
+(defun nearly= (threshold number &rest more-numbers)
+  (if (null more-numbers)
+      t
+      (and (<= (abs (- number (car (the cons more-numbers)))) threshold)
+	   (apply #'nearly= threshold more-numbers))))
+
+(defun nearly-equal (threshold lst1 lst2)
+  (if (null lst1)
+      t
+      (and (nearly= threshold (car lst1) (car lst2))
+	   (nearly-equal threshold (cdr lst1) (cdr lst2)))))
+
+(defun nearly<= (threshold number &rest more-numbers)
+  (if (null more-numbers)
+      t
+      (and (<= (- number (car (the cons more-numbers))) threshold)
+	   (apply #'nearly<= threshold more-numbers))))
+
+
+
+
+;;;
+;;; Some arithmetic in a circle group
+;;;
+
+
+(declaim (inline subtract-with-mod
+		 circular-nearer
+		 circular-clamp
+		 circular-lerp
+		 circular-lerp-loose))
+(defun subtract-with-mod (x y &optional (divisor TWO-PI))
+  "(X - Y) mod DIVISOR."
+  (mod (- x y) divisor))
+
+(defun circular-nearer (theta1 x theta2 &optional (perimeter TWO-PI))
+  "Compares counterclockwise distances between THETA1 and X and
+between X and THETA2; returns THETA1 or THETA2, whichever is nearer."
+  (if (<= (subtract-with-mod x theta1 perimeter)
+	  (subtract-with-mod theta2 x perimeter))
+      theta1
+      theta2))
+
+(defun circular-clamp (number min max &optional (perimeter TWO-PI))
+  "A clamp function in a circle group. If NUMBER is not in
+the (counterclockwise) closed interval [MIN, MAX], CIRCULAR-CLAMP
+returns MIN or MAX, whichever is nearer to NUMBER."
+  (let ((number$ (mod number perimeter))
+	(min$ (mod min perimeter))
+	(max$ (mod max perimeter)))
+    (if (<= min$ max$)
+	(if (<= min$ number$ max$)
+	    number$ ; [min, number, max]
+	    (circular-nearer max$ number$ min$))   ; [min, max, number] or [number, min, max]
+	(if (or (<= number$ max$)  (<= min$ number$))
+	    number$ ;[number, max, min] or [max, min, number]
+	    (circular-nearer max$ number$ min$))))) ; [max, number, min]
+
+(defun circular-lerp-loose (coef theta1 theta2 &optional (perimeter TWO-PI))
+  "Counterclockwise linear interpolation from THETA1 to THETA2 in a
+circle group. There is a possibility that the return value slightly
+exceeds the interval [THETA1, THETA2], due to floating-point error. If
+that is incovenient, use CIRCULAR-LERP instead."
+  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+    (mod (+ theta1 (* dtheta coef)) perimeter)))
+
+(defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))
+  "Counterclockwise linear interpolation from THETA1 to THETA2 in a
+circle group. It doesn't exceed the given interval from THETA1 to
+THETA2, if COEF is in [0, 1]. It is, however, slower than
+CIRCULAR-LERP-LOOSE."
+  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+    (circular-clamp (+ theta1 (* dtheta coef))
+		    theta1
+		    theta2
+		    perimeter)))
+
+(defun circular-member (x theta1 theta2 &optional (perimeter TWO-PI))
+  "Returns true, if X is in the counterclockwise closed interval [THETA1,
+THETA2] in a circle group."
+  (let ((x-m (mod x perimeter))
+	(theta1-m (mod theta1 perimeter))
+	(theta2-m (mod theta2 perimeter)))
+    (if (<= theta1-m theta2-m)
+	(and (<= theta1-m x-m)
+	     (<= x-m theta2))
+	(or (<= theta1-m x-m)
+	    (<= x-m theta2)))))
+
+
+

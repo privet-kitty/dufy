@@ -4,12 +4,11 @@
 
 (defsystem :dufy-core
   :serial t
-  :depends-on (:alexandria)
+  :depends-on (:alexandria :dufy-internal)
   :components ((:module "core"
 		:components
 		((:file "package")
 		 (:file "cmf-data")
-		 (:file "general")
 		 (:file "xyz")
 		 (:file "rgb")
 		 (:file "lab-and-luv")

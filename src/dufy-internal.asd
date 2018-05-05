@@ -6,6 +6,8 @@
   :serial t
   :depends-on (:alexandria)
   :components ((:module "internal"
-                        :components
-                        ((:file "general")))))
+                :components
+                ((:file "package")
+                 (:file "general")
+                 (:file "matrix")))))
 

@@ -1,11 +1,7 @@
 (cl:in-package :cl-user)
 
 (defpackage dufy.munsell
-  (:use :cl :dufy.core :alexandria)
-  (:import-from :dufy.core
-                :with-double-float
-                :subtract-with-mod
-                :time-after-gc)
+  (:use :cl :dufy.core :dufy.internal :alexandria)
   (:export :invalid-mhvc-error
            :munsellspec-parse-error
            :large-approximation-error

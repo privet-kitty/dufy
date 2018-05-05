@@ -29,6 +29,8 @@ values are accepted."
 	  (values (/ x sum) (/ y sum) y)))))
 
 
+(deftype spectrum-function () '(function * (values double-float &optional)))
+
 (defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
   "A spectrum is just a function which takes a real number as
 wavelength (nm) and returns a double-float.
@@ -292,6 +294,9 @@ f(x) = 0d0 otherwise."
   (declare (ignore wavelength-nm))
   1d0)
 
+(defun empty-spectrum ()
+  "Used instead of NIL."
+  0d0)
 
 
 
@@ -306,14 +311,14 @@ f(x) = 0d0 otherwise."
   (x 0.0 :type double-float)
   (y 0.0 :type double-float)
   (z 0.0 :type double-float)
-  (spectrum #'empty-function :type spectrum-function)
+  (spectrum #'empty-spectrum :type spectrum-function)
   (observer +obs-cie1931+ :type observer)
   ;; used for xyz-to-spectrum conversion
   (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
 
 (declaim (inline illuminant-no-spd-p))
 (defun illuminant-no-spd-p (illuminant)
-  (eq #'empty-function (illuminant-spectrum illuminant)))
+  (eq #'empty-spectrum (illuminant-spectrum illuminant)))
 
 (define-condition no-spd-error (simple-error)
   ((illuminant :initarg :illuminant
@@ -416,7 +421,7 @@ to each other."
 		      :x (float x 1d0)
 		      :y (float y 1d0)
 		      :z (float z 1d0)
-		      :spectrum (or spectrum #'empty-function)
+		      :spectrum (or spectrum #'empty-spectrum)
 		      :observer observer
 		      :to-spectrum-matrix (if spectrum
 					      (calc-to-spectrum-matrix spectrum
