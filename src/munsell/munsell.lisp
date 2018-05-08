@@ -2,7 +2,7 @@
 ;;; Munsell Color System
 ;;;
 
-(in-package :dufy.munsell)
+(in-package :dufy-munsell)
 
 ;; The bradford transformations between D65 and C are frequently used here.
 (declaim (inline c-to-d65))
@@ -62,7 +62,7 @@ formula is based on ASTM D1535-08e1:"
 
 (defun munsell-value-to-lstar (v)
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
-  (- (* 116d0 (dufy.core::function-f (munsell-value-to-y v))) 16d0))
+  (- (* 116d0 (dufy-core::function-f (munsell-value-to-y v))) 16d0))
 
 (defun munsell-value-to-achromatic-xyy (v)
   "Illuminant C."
@@ -490,9 +490,9 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
       (:error
        (error (make-condition 'large-approximation-error
                               :message "INVERT-MHVC-TO-LCHAB reached MAX-ITERATION without achieving sufficient accuracy.")))
-      (:negative (values most-negative-double-float
-                         most-negative-double-float
-                         most-negative-double-float))
+      (:negative (values least-negative-double-float
+                         least-negative-double-float
+                         least-negative-double-float))
       (:return (values (mod tmp-hue40 40d0) v tmp-c)))))
 
 
@@ -514,7 +514,7 @@ max(delta(H_n), delta(C_n)) falls below THRESHOLD.
 IF-REACH-MAX specifies the action to be taken if the loop reaches the
 MAX-ITERATION:
 :error: Error of type DUFY:LARGE-APPROXIMATION-ERROR is signaled.
-:negative: Three MOST-NEGATIVE-DOUBLE-FLOATs are returned.
+:negative: Three LEAST-NEGATIVE-DOUBLE-FLOATs are returned.
 :return: Just returns HVC as it is.
 "
   (declare (optimize (speed 3) (safety 1))
@@ -606,7 +606,7 @@ MAX-ITERATION:
                                                :max-iteration 300
                                                :if-reach-max :negative
                                                :factor 0.5d0)))
-            (when (= result most-negative-double-float)
+            (when (= result least-negative-double-float)
 	      (incf sum)
 	      (format t "~A ~A ~A, (~a ~a ~a)~%" lstar cstarab hab qr qg qb))))))))
 
@@ -627,7 +627,7 @@ MAX-ITERATION:
                           :if-reach-max :negative
                           :max-iteration 200
                           :threshold 1.0d-3)))
-	    (when (= result most-negative-double-float)
+	    (when (= result least-negative-double-float)
 	      (incf sum)
 	      (format t "(~a ~a ~a)~%" qr qg qb))))))
     (float (/ sum (* 256 256 256)) 1d0)))

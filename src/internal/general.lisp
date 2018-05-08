@@ -2,7 +2,7 @@
 ;;; General functions and macros
 ;;;
 
-(in-package :dufy.internal)
+(in-package :dufy-internal)
 
 
 ;;;
@@ -10,6 +10,7 @@
 ;;;
 
 (defun array-to-list (array)
+  "array->list coercion"
   (let* ((dimensions (array-dimensions array))
          (indices (make-list (length dimensions) :initial-element 0)))
     (labels ((recurse (dimensions-rest indices-rest)
@@ -57,6 +58,7 @@
 
 
 (defmacro subseq-values (start end number form)
+  "analogous to NTH-VALUE"
   (let ((vars (loop for i from 0 below number collect (gensym))))
     `(multiple-value-bind ,vars ,form
        (declare (ignore ,@(subseq vars 0 start)
@@ -176,14 +178,6 @@ returns MIN or MAX, whichever is nearer to NUMBER."
 	    number$ ;[number, max, min] or [max, min, number]
 	    (circular-nearer max$ number$ min$))))) ; [max, number, min]
 
-(defun circular-lerp-loose (coef theta1 theta2 &optional (perimeter TWO-PI))
-  "Counterclockwise linear interpolation from THETA1 to THETA2 in a
-circle group. There is a possibility that the return value slightly
-exceeds the interval [THETA1, THETA2], due to floating-point error. If
-that is incovenient, use CIRCULAR-LERP instead."
-  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
-    (mod (+ theta1 (* dtheta coef)) perimeter)))
-
 (defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
 circle group. It doesn't exceed the given interval from THETA1 to
@@ -194,6 +188,14 @@ CIRCULAR-LERP-LOOSE."
 		    theta1
 		    theta2
 		    perimeter)))
+
+(defun circular-lerp-loose (coef theta1 theta2 &optional (perimeter TWO-PI))
+  "Counterclockwise linear interpolation from THETA1 to THETA2 in a
+circle group. There is a possibility that the return value slightly
+exceeds the interval [THETA1, THETA2], due to floating-point error. If
+that is incovenient, use CIRCULAR-LERP instead."
+  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+    (mod (+ theta1 (* dtheta coef)) perimeter)))
 
 (defun circular-member (x theta1 theta2 &optional (perimeter TWO-PI))
   "Returns true, if X is in the counterclockwise closed interval [THETA1,

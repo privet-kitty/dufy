@@ -1,7 +1,7 @@
 (cl:in-package :cl-user)
 
-(defpackage dufy.munsell
-  (:use :cl :dufy.core :dufy.internal :alexandria)
+(defpackage dufy-munsell
+  (:use :cl :dufy-core :dufy-internal :alexandria)
   (:export :invalid-mhvc-error
            :munsellspec-parse-error
            :large-approximation-error

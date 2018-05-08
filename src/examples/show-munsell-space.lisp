@@ -1,7 +1,9 @@
-(in-package :dufy.examples)
+(in-package :dufy-examples)
 
 (deftype uint nil '(integer 0 #.(expt 10 9)))
 (deftype sint nil '(integer #.(- (expt 10 9)) #.(expt 10 9)))
+
+(setf lparallel:*kernel* (lparallel:make-kernel 4))
 
 (defun draw-srgb-in-munsell (&optional (size 300) (framerate 10) (bg-color sdl:*black*))
   "Graphical demonstration with SDL. Renders the sRGB space in the
@@ -24,7 +26,7 @@ Munsell space."
                          (atan delta-y delta-x))))
              (coord-to-mhvc (i j)
                (multiple-value-bind (r theta) (polar i j)
-                 (values (- 20 (* theta #.(/ 40 dufy.core::two-pi)))
+                 (values (- 20 (* theta #.(/ 40 dufy-core::two-pi)))
                          (* value100 0.1d0)
                          (* max-chroma (/ r radius))))))
       (declare (inline coord-to-mhvc polar))
@@ -46,7 +48,7 @@ Munsell space."
           (:idle ()
                  (when (<= value100 100)
                    (sdl:clear-display bg-color)
-                   (dotimes (i size)
+                   (lparallel:pdotimes (i size)
                      (dotimes (j size)
                        (multiple-value-bind (qr qg qb)
                            (multiple-value-call #'dufy:mhvc-to-qrgb

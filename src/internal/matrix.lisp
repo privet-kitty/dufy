@@ -1,4 +1,4 @@
-(in-package :dufy.internal)
+(in-package :dufy-internal)
 
 ;;;
 ;;; Matrix operations

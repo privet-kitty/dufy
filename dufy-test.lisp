@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage dufy-test
-  (:use :cl :fiveam :dufy :dufy.internal :alexandria :cl-csv :parse-float))
+  (:use :cl :fiveam :dufy :dufy-internal :alexandria :cl-csv :parse-float))
 (in-package :dufy-test)
 
 (def-suite :dufy-suite)
@@ -184,8 +184,8 @@
     (is (nearly-equal 1d-4
 		      xyy
 		      (multiple-value-list
-		       (multiple-value-call #'dufy.core::lchab-to-xyy
-			 (apply (rcurry #'dufy.core::xyy-to-lchab *illum-d55-10*)
+		       (multiple-value-call #'dufy-core::lchab-to-xyy
+			 (apply (rcurry #'dufy-core::xyy-to-lchab *illum-d55-10*)
 				xyy)
 			 *illum-d55-10*)))))
   (dolist (xyz *xyz-set*)

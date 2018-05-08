@@ -1,4 +1,4 @@
-(in-package :dufy.core)
+(in-package :dufy-core)
 
 ;; define delta-E functions for L*a*b*, xyz and qrgb
 (defmacro defdeltae (name args &body body)
@@ -14,8 +14,8 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
     (let* ((main-args (subseq args 0 6))
 	   (sub-args-with-key (subseq args 6))
 	   (sub-args (cdr sub-args-with-key))
-	   (qrgb-name (intern (format nil "QRGB-~A" name) :dufy.core))
-	   (xyz-name (intern (format nil "XYZ-~A" name) :dufy.core)))
+	   (qrgb-name (intern (format nil "QRGB-~A" name) :dufy-core))
+	   (xyz-name (intern (format nil "XYZ-~A" name) :dufy-core)))
       `(progn
 	 ;; for L*a*b*
 	 (declaim (inline ,name))

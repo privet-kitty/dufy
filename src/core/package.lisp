@@ -12,8 +12,8 @@
 		      (intern (format nil "~:@(~A-~A~)" term name) :keyword))
 		  '(qrgb xyz)))))
 
-(defpackage dufy.core
-  (:use :cl :alexandria :dufy.internal)
+(defpackage dufy-core
+  (:use :cl :alexandria :dufy-internal)
   #.`(:export  ;; xyz.lisp
       :no-spd-error
       

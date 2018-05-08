@@ -1,7 +1,7 @@
 
 (cl:in-package :cl-user)
 
-(defpackage dufy.internal
+(defpackage dufy-internal
   (:use :cl :alexandria)
   (:export
    :print-make-array

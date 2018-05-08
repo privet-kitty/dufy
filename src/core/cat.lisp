@@ -2,7 +2,7 @@
 ;;; LMS, chromatic adaptation
 ;;;
 
-(in-package :dufy.core)
+(in-package :dufy-core)
 
 (defstruct (cat (:constructor $make-cat))
   "Model of chromatic adaptation transformation. Currently only linear
@@ -158,8 +158,8 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
   (declare (optimize (speed 3) (safety 1)))
   (macrolet ((gen-lambda (args repr)
 	       (let* ((term (symbol-name repr))
-		      (xyz-to-repr (intern (format nil "XYZ-TO-~A" term) :dufy.core))
-		      (repr-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy.core)))
+		      (xyz-to-repr (intern (format nil "XYZ-TO-~A" term) :dufy-core))
+		      (repr-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy-core)))
 		 `#'(lambda ,args
 		      (with-double-float ,args
 			(multiple-value-call #',xyz-to-repr
@@ -197,8 +197,8 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
   (macrolet ((def-converter (args target)
 	       (let* ((term (symbol-name target))
-		      (xyz-to-target (intern (format nil "XYZ-TO-~A" term) :dufy.core))
-		      (target-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy.core)))
+		      (xyz-to-target (intern (format nil "XYZ-TO-~A" term) :dufy-core))
+		      (target-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy-core)))
 		 ``(defun ,,'name ,',args
 		     (declare (optimize (speed 3) (safety 1)))
 		     (let ((mat (load-time-value
