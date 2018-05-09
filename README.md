@@ -51,8 +51,7 @@ The latest version can also be installed with quicklisp:
 
 If you want to use ASDF directly without quicklisp, you should put the directory of dufy to an appropriate location and do `(asdf:load-system :dufy)`.
 
-# Usage
-## Basics
+# Basic Usage
 ![Tree of Direct Converters](https://g.gravizo.com/source/converter_tree?https%3A%2F%2Fraw.githubusercontent.com%2Fprivet-kitty%2Fdufy%2Fdevelop%2FREADME.md)
 
 <details> 
@@ -159,56 +158,12 @@ Likewise most converters regard the implicit illuminant as D65. You can also spe
        1.0000000000000004d0
 
 
-## Munsell Color System
-Dufy can handle the Munsell color system in the same way as other color spaces:
+# Modules
+Dufy consists of several independent modules:
+- dufy
+  - dufy-core
+  - dufy-munsell
+- dufy-extra-data
+- dufy-examples
 
-    * (dufy:munsell-to-xyz "3.2R 4.5/6.1")
-    => 0.19362651748394688d0
-       0.15142718526032797d0
-       0.12281280741243561d0
-       
-    * (dufy:munsell-to-xyz "3.2R 4.5/86.1")
-    => 1.7829826744317545d0
-       0.13203741531162577d0
-       -0.02903836122088697d0
-
-The converters are based on [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php). In the second example `munsell-to-xyz` extrapolate the colors far out of the data (and the MacAdam limits, of course), which is meaningless in many cases but will be necessary to process the boundary colors.
-
-    * (dufy:munsell-to-mhvc "3.2R 4.5/6.1")
-    => 1.28d0
-       4.5d0
-       6.1d0
-       
-    * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
-    => 0.19362651748394688d0
-       0.15142718526032797d0
-       0.12281280741243561d0
-
-`munsell` is the standard string notation of Munsell color. `mhvc` is its three-number expression, which will be easier to deal with in some cases. A hue number of `mhvc` corresponds to a hue string of `munsell` as follows:
-
-| Hue in `mhvc` | Hue in `munsell` |
-| -------------------- | --------------------- | 
-| 0 to 4 | 10RP (=0R) to 10R (=0YR) |
-| 4 to 8 | 10R (=0YR) to 10YR (=0Y) |
-| ... | ... |
-| 36 to 40 | 10P (=0RP) to 10RP (=0R) |
-
-The hue of of `mhvc` is a circle group: i.e. hues outside the interval [0, 40] are acceptable:
-
-    * (dufy:mhvc-to-munsell -400.0 4.5 6.1) ; the same as (0.0 4.5 6.1)
-    => "0.00R 4.50/6.10"
-    
-There are some more points to remember: First, since the [Munsell renotation data](https://www.rit.edu/cos/colorscience/rc_munsell_renotation.php) is measured not with illuminant D65, but with C, the converters like `mhvc-to-xyz` do the (Bradford) transformation from C to D65. If you want to use a direct converter with illuminant C, for e.g. accuracy or efficiency, the converters with suffix `-illum-c` are available under illuminant C: `munsell-to-lchab-illum-c`, `lchab-to-munsell-illum-c`, `mhvc-to-lchab-illum-c`, `lchab-to-mhvc-illum-c`, `munsell-to-xyz-illum-c`, `mhvc-to-xyz-illum-c`. 
-
-Second, if you want to know the gamut of the Munsell renotation data, you can find the maximum chroma for a given hue and value by `max-chroma-in-mrd`:
-
-    * (dufy:max-chroma-in-mrd 1.28 4.5) ; V = 1.28, C = 4.5
-    => 24
-    * (dufy:mhvc-to-xyz 1.28 4.5 6.1)
-    => 0.19362651667300654d0
-       0.1514271852669221d0
-       0.12281280847832986d0 ; interpolated, since 6.1 < 24
-    * (dufy:mhvc-to-xyz 1.28 4.5 24.1)
-    => 0.378725146277375d0
-       0.14933867420177885d0
-       0.05430213863814263d0 ; extrapolated, since 24.1 > 24
+Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy-core` instead of `dufy` in some cases.
