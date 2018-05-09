@@ -78,6 +78,7 @@
       :+bg-srgb-10+ :+bg-srgb-12+ :+bg-srgb-16+
       :+scrgb-16+ :+scrgb-nl+
       :+adobe+ :+adobe-16+
+      :+cie-rgb+
       :+ntsc1953+ :+pal/secam+
       :+prophoto+ :+prophoto-12+ :+prophoto-16+
       :+wide-gamut+

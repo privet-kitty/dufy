@@ -252,6 +252,10 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
   "scRGB-nl, IEC 61966-2-2:2003
 http://www.color.org/chardata/rgb/scrgb-nl.xalter")
 
+(defparameter +cie-rgb+
+  (dufy:make-rgbspace 0.7347d0 0.2653d0 0.2738d0 0.7174d0 0.1666d0 0.0089d0
+                      :illuminant dufy:+illum-e+)
+  "CIE RGB (1931), no gamma-correction, 8-bit per channel.")
 
 (defparameter +adobe+
   (make-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
