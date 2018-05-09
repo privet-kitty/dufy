@@ -253,8 +253,8 @@ http://www.color.org/chardata/rgb/scrgb.xalter")
 http://www.color.org/chardata/rgb/scrgb-nl.xalter")
 
 (defparameter +cie-rgb+
-  (dufy:make-rgbspace 0.7347d0 0.2653d0 0.2738d0 0.7174d0 0.1666d0 0.0089d0
-                      :illuminant dufy:+illum-e+)
+  (make-rgbspace 0.7347d0 0.2653d0 0.2738d0 0.7174d0 0.1666d0 0.0089d0
+                      :illuminant +illum-e+)
   "CIE RGB (1931), no gamma-correction, 8-bit per channel.")
 
 (defparameter +adobe+
