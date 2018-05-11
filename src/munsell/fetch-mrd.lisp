@@ -7,9 +7,9 @@
   (require :babel)
   (require :dufy)
   (require :alexandria)
-  (require :dufy-develop))
+  (require :dufy-internal))
 
-(use-package :dufy.develop)
+(use-package :dufy-internal)
 
 (defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
 (defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy-munsell) :munsell)))
@@ -134,7 +134,7 @@
 	    (let ((rows nil))
 	      (dolist (row munsell-renotation-data)
 		(if (and (= (first row) hue)
-			 (dufy:nearly= 0.0001d0 (second row) (* value$ 0.2d0)))
+			 (nearly= 0.0001d0 (second row) (* value$ 0.2d0)))
 		    (push (third row) rows)))
 	      (apply #'max rows))))))
 
@@ -163,7 +163,7 @@ value=0.2."
 			  (append (subseq lst 3 5) '(0d0))))
 		  (find-if #'(lambda (row)
 			       (and (= (mod (first row) 40) (mod hue-num 40))
-				    (dufy:nearly= 0.001d0 (second row) 0.2d0)
+				    (nearly= 0.001d0 (second row) 0.2d0)
 				    (= (third row) chroma)))
 			   munsell-renotation-data)))
 	(t
@@ -173,7 +173,7 @@ value=0.2."
 			  (subseq lst 3 6)))
 		  (find-if #'(lambda (row)
 			       (and (= (mod (first row) 40) (mod hue-num 40))
-				    (dufy:nearly= 0.001d0 (second row) value)
+				    (nearly= 0.001d0 (second row) value)
 				    (= (third row) chroma)))
 			   munsell-renotation-data)))))
 

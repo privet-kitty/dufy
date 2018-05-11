@@ -2,9 +2,9 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (asdf:load-system :alexandria)
-  (asdf:load-system :dufy-develop))
+  (asdf:load-system :dufy-internal))
 
-(use-package :dufy.develop)
+(use-package :dufy-internal)
 
 (defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
 (defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy-munsell) :munsell)))
