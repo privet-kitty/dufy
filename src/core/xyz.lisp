@@ -306,11 +306,11 @@ f(x) = 0d0 otherwise."
 
 (defstruct (illuminant (:constructor %make-illuminant)
 		       (:copier nil))
-  (small-x 0.0 :type double-float)
-  (small-y 0.0 :type double-float)
-  (x 0.0 :type double-float)
-  (y 0.0 :type double-float)
-  (z 0.0 :type double-float)
+  (small-x 0d0 :type double-float)
+  (small-y 0d0 :type double-float)
+  (x 0d0 :type double-float)
+  (y 0d0 :type double-float)
+  (z 0d0 :type double-float)
   (spectrum #'empty-spectrum :type spectrum-function)
   (observer +obs-cie1931+ :type observer)
   ;; used for xyz-to-spectrum conversion
@@ -417,11 +417,11 @@ many."
     
 	    
 (defun make-illuminant (small-x small-y &optional spectrum (observer +obs-cie1931+))
-  "Generates an illuminant based on a white point or SPD. If small-x
-or small-y are nil, they are automatically calculated based on the
+  "Generates an illuminant with a white point or/and SPD. If small-x
+and small-y are nil, they are automatically calculated based on the
 spectrum. Note that no error occurs, even if the given white point and
 SPD contradicts to each other."
-  (if (or (null small-x) (null small-y))
+  (if (and (null small-x) (null small-y))
       (if (null spectrum)
           (error "At least one of white point or SPD must be specified to make illuminant.")
           (make-illuminant-by-spd spectrum observer))
@@ -438,7 +438,7 @@ SPD contradicts to each other."
                                                                            observer)
                                                   +empty-matrix+)))))
 
-(defun make-illuminant-by-spd (spectrum &optional (observer +obs-cie1931+))
+(defun make-illuminant-by-spd (spectrum observer)
   (multiple-value-bind (x y z)
       (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer)
     (multiple-value-bind (small-x small-y disused)
@@ -452,6 +452,19 @@ SPD contradicts to each other."
 			:spectrum spectrum
 			:observer observer
 			:to-spectrum-matrix (calc-to-spectrum-matrix spectrum observer)))))
+
+(defmacro defilluminant (name small-x small-y &optional spectrum (observer '+obs-cie1931+))
+  "Only for static use"
+  (if (and (null small-x) (null small-y))
+      (multiple-value-bind (sx sy y)
+          (multiple-value-call #'xyz-to-xyy
+            (spectrum-to-xyz-primitive #'flat-spectrum
+                                       (eval spectrum)
+                                       (eval observer)))
+        (declare (ignore y))
+        `(defparameter ,name (make-illuminant ,sx ,sy ,spectrum ,observer)))
+      `(defparameter ,name (make-illuminant ,small-x small-y ,spectrum ,observer))))
+
 
 (defparameter +illum-a+
   (make-illuminant 0.44757d0 0.40745d0
