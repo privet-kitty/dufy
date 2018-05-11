@@ -335,26 +335,28 @@ f(x) = 0d0 otherwise."
 (defun spectrum-to-xyz (spectrum &optional (illuminant +illum-e+) (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1)))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
-case. The function SPECTRUM must be defined at least in [BEGIN-WL,
-END-WL]; the SPECTRUM is called for BEGIN-WL, BEGIN-WL + BAND,
-BEGIN-WL + 2*BAND, ..., END-WL."
+case. The function SPECTRUM, a spectral reflectance, must be defined
+at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL,
+BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
   (if (illuminant-no-spd-p illuminant)
       (error (make-condition 'no-spd-error :illuminant illuminant))
-      (%spectrum-to-xyz spectrum
-                        (illuminant-spectrum illuminant)
-                        (illuminant-observer illuminant)
-                        begin-wl
-                        end-wl
-                        band)))
+      (spectrum-to-xyz-primitive spectrum
+                                 (illuminant-spectrum illuminant)
+                                 (illuminant-observer illuminant)
+                                 begin-wl
+                                 end-wl
+                                 band)))
 
-(defun %spectrum-to-xyz (spectrum illum-spectrum observer &optional (begin-wl 360) (end-wl 830) (band 1))
+(defun spectrum-to-xyz-primitive (spectrum illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
+  "SPECTRUM: spectral reflectance (or transmittance)
+ILLUMINANT-SPD: SPD of illuminant"
   (declare (optimize (speed 3) (safety 1))
-	   (spectrum-function spectrum illum-spectrum))
+	   (spectrum-function spectrum illuminant-spd))
   (let ((x 0d0) (y 0d0) (z 0d0) (max-y 0d0)
 	(cmf (observer-cmf observer)))
     (declare (double-float x y z max-y))
     (loop for wl from begin-wl to end-wl by band
-          do (let* ((p (funcall illum-spectrum wl))
+          do (let* ((p (funcall illuminant-spd wl))
                     (reflec (funcall spectrum wl))
                     (factor (* p reflec)))
                (multiple-value-bind (x-match y-match z-match) (funcall cmf wl)
@@ -380,15 +382,15 @@ BEGIN-WL + 2*BAND, ..., END-WL."
 (let ((mat (make-array '(3 3)
 		       :element-type 'double-float
 		       :initial-element 0d0)))
-  (defun calc-to-spectrum-matrix (illum-spectrum observer)
+  (defun calc-to-spectrum-matrix (illuminant-spd observer)
     "Used for XYZ-to-spectrum conversion."
     (declare (optimize (speed 3) (safety 1)))
     (multiple-value-bind (a00 a10 a20)
-	(%spectrum-to-xyz (observer-cmf-x observer) illum-spectrum observer)
+	(spectrum-to-xyz-primitive (observer-cmf-x observer) illuminant-spd observer)
       (multiple-value-bind (a01 a11 a21)
-	  (%spectrum-to-xyz (observer-cmf-y observer) illum-spectrum observer)
+	  (spectrum-to-xyz-primitive (observer-cmf-y observer) illuminant-spd observer)
 	(multiple-value-bind (a02 a12 a22)
-	    (%spectrum-to-xyz (observer-cmf-z observer) illum-spectrum observer)
+	    (spectrum-to-xyz-primitive (observer-cmf-z observer) illuminant-spd observer)
 	  (setf (aref mat 0 0) a00
 		(aref mat 0 1) a01
 		(aref mat 0 2) a02
@@ -435,7 +437,7 @@ to each other."
   "Generates an illuminant based on a spectral power distribution. The
 white point is automatically calculated."
   (multiple-value-bind (x y z)
-      (%spectrum-to-xyz #'flat-spectrum spectrum observer)
+      (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer)
     (multiple-value-bind (small-x small-y disused)
 	(xyz-to-xyy x y z)
       (declare (ignore disused))

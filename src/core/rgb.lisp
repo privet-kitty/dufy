@@ -57,7 +57,6 @@
   (qmax-float/len 255d0 :type double-float))
 
 
-
 (defun make-rgbspace (xr yr xg yg xb yb &key (illuminant +illum-d65+) (lmin 0d0) (lmax 1d0) (linearizer (rcurry #'float 1d0)) (delinearizer (rcurry #'float 1d0)) (bit-per-channel 8) (force-normal nil))
   "LINEARIZER and DELINEARIZER must be (FUNCTION * DOUBLE-FLOAT).
 If FORCE-NORMAL is T, the nominal range of gamma-corrected value is

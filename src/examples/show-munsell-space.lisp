@@ -34,7 +34,8 @@ Munsell space."
       (sdl:with-init ()
         (sdl:window size size
                     :bpp 32
-                    :title-caption "sRGB in Munsell space")
+                    :title-caption "sRGB in Munsell space"
+                    :sw t)
         (sdl:initialise-default-font sdl:*font-10x20*)
         (sdl:clear-display bg-color)
         (setf (sdl:frame-rate) framerate)
