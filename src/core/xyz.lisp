@@ -416,26 +416,29 @@ many."
 		 (* fac-z (funcall (observer-cmf-z observer) wl))))))))
     
 	    
-(defun make-illuminant (small-x small-y &optional (spectrum nil) (observer +obs-cie1931+))
-  "Generates an illuminant based on a white point. No error occurs,
-even if the given white point, (small-x, small-y), and SPD contradicts
-to each other."
-  (multiple-value-bind (x y z) (xyy-to-xyz small-x small-y 1d0)
-    (%make-illuminant :small-x (float small-x 1d0)
-		      :small-y (float small-y 1d0)
-		      :x (float x 1d0)
-		      :y (float y 1d0)
-		      :z (float z 1d0)
-		      :spectrum (or spectrum #'empty-spectrum)
-		      :observer observer
-		      :to-spectrum-matrix (if spectrum
-					      (calc-to-spectrum-matrix spectrum
-                                                                       observer)
-					      +empty-matrix+))))
+(defun make-illuminant (small-x small-y &optional spectrum (observer +obs-cie1931+))
+  "Generates an illuminant based on a white point or SPD. If small-x
+or small-y are nil, they are automatically calculated based on the
+spectrum. Note that no error occurs, even if the given white point and
+SPD contradicts to each other."
+  (if (or (null small-x) (null small-y))
+      (if (null spectrum)
+          (error "At least one of white point or SPD must be specified to make illuminant.")
+          (make-illuminant-by-spd spectrum observer))
+      (multiple-value-bind (x y z) (xyy-to-xyz small-x small-y 1d0)
+        (%make-illuminant :small-x (float small-x 1d0)
+                          :small-y (float small-y 1d0)
+                          :x (float x 1d0)
+                          :y (float y 1d0)
+                          :z (float z 1d0)
+                          :spectrum (or spectrum #'empty-spectrum)
+                          :observer observer
+                          :to-spectrum-matrix (if spectrum
+                                                  (calc-to-spectrum-matrix spectrum
+                                                                           observer)
+                                                  +empty-matrix+)))))
 
 (defun make-illuminant-by-spd (spectrum &optional (observer +obs-cie1931+))
-  "Generates an illuminant based on a spectral power distribution. The
-white point is automatically calculated."
   (multiple-value-bind (x y z)
       (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer)
     (multiple-value-bind (small-x small-y disused)
@@ -446,7 +449,7 @@ white point is automatically calculated."
 			:x (float x 1d0)
 			:y (float y 1d0)
 			:z (float z 1d0)
-			:spectrum (or spectrum #'flat-spectrum)
+			:spectrum spectrum
 			:observer observer
 			:to-spectrum-matrix (calc-to-spectrum-matrix spectrum observer)))))
 

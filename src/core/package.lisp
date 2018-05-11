@@ -52,7 +52,7 @@
       :illuminant-observer
       :illuminant-has-spectrum
       :make-illuminant
-      :make-illuminant-by-spd
+      ;; :make-illuminant-by-spd
       :+illum-a+ :+illum-e+
       :+illum-c+ :+illum-d50+ :+illum-d65+
       :gen-cat-function
