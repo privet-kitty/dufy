@@ -295,14 +295,10 @@ f(x) = 0d0 otherwise."
   1d0)
 
 (defun empty-spectrum ()
-  "Used instead of NIL."
+  "Used internally instead of NIL."
   0d0)
 
 
-
-
-;;; Standard Illuminant, XYZ, xyY
-;;; The nominal range of Y is always [0, 1].
 
 (defstruct (illuminant (:constructor %make-illuminant)
 		       (:copier nil))
@@ -379,27 +375,27 @@ ILLUMINANT-SPD: SPD of illuminant"
         (spectrum-to-xyz spctrm illuminant)))))
 
 
-(let ((mat (make-array '(3 3)
-		       :element-type 'double-float
-		       :initial-element 0d0)))
-  (defun calc-to-spectrum-matrix (illuminant-spd observer)
-    "Used for XYZ-to-spectrum conversion."
-    (declare (optimize (speed 3) (safety 1)))
+(defun calc-to-spectrum-matrix (illuminant-spd observer)
+  "Used for XYZ-to-spectrum conversion."
+  (declare (optimize (speed 3) (safety 1)))
+  (let ((mat (load-time-value
+              (make-array '(3 3) :element-type 'double-float
+                                 :initial-element 0d0))))
     (multiple-value-bind (a00 a10 a20)
-	(spectrum-to-xyz-primitive (observer-cmf-x observer) illuminant-spd observer)
+        (spectrum-to-xyz-primitive (observer-cmf-x observer) illuminant-spd observer)
       (multiple-value-bind (a01 a11 a21)
-	  (spectrum-to-xyz-primitive (observer-cmf-y observer) illuminant-spd observer)
-	(multiple-value-bind (a02 a12 a22)
-	    (spectrum-to-xyz-primitive (observer-cmf-z observer) illuminant-spd observer)
-	  (setf (aref mat 0 0) a00
-		(aref mat 0 1) a01
-		(aref mat 0 2) a02
-		(aref mat 1 0) a10
-		(aref mat 1 1) a11
-		(aref mat 1 2) a12
-		(aref mat 2 0) a20
-		(aref mat 2 1) a21
-		(aref mat 2 2) a22))))
+          (spectrum-to-xyz-primitive (observer-cmf-y observer) illuminant-spd observer)
+        (multiple-value-bind (a02 a12 a22)
+            (spectrum-to-xyz-primitive (observer-cmf-z observer) illuminant-spd observer)
+          (setf (aref mat 0 0) a00
+                (aref mat 0 1) a01
+                (aref mat 0 2) a02
+                (aref mat 1 0) a10
+                (aref mat 1 1) a11
+                (aref mat 1 2) a12
+                (aref mat 2 0) a20
+                (aref mat 2 1) a21
+                (aref mat 2 2) a22))))
     (invert-matrix33 mat)))
 
 (defun xyz-to-spectrum (x y z &optional (illuminant +illum-e+))
@@ -420,7 +416,14 @@ many."
   "Generates an illuminant with a white point or/and SPD. If small-x
 and small-y are nil, they are automatically calculated based on the
 spectrum. Note that no error occurs, even if the given white point and
-SPD contradicts to each other."
+SPD contradicts to each other.
+
+> (make-illuminant 0.3333 0.3333 #'flat-spectrum)
+=> illuminant with SPD
+> (make-illuminant nil nil #'flat-spectrum)
+=> illuminant with SPD (the same as above)
+> (make-illuminant 0.3333 0.3333 nil)
+=> illuminant without SPD"
   (if (and (null small-x) (null small-y))
       (if (null spectrum)
           (error "At least one of white point or SPD must be specified to make illuminant.")
@@ -453,17 +456,17 @@ SPD contradicts to each other."
 			:observer observer
 			:to-spectrum-matrix (calc-to-spectrum-matrix spectrum observer)))))
 
-(defmacro defilluminant (name small-x small-y &optional spectrum (observer '+obs-cie1931+))
-  "Only for static use"
-  (if (and (null small-x) (null small-y))
-      (multiple-value-bind (sx sy y)
-          (multiple-value-call #'xyz-to-xyy
-            (spectrum-to-xyz-primitive #'flat-spectrum
-                                       (eval spectrum)
-                                       (eval observer)))
-        (declare (ignore y))
-        `(defparameter ,name (make-illuminant ,sx ,sy ,spectrum ,observer)))
-      `(defparameter ,name (make-illuminant ,small-x small-y ,spectrum ,observer))))
+;; (defmacro defilluminant (name small-x small-y &optional spectrum (observer '+obs-cie1931+))
+;;   "Only for static use"
+;;   (if (and (null small-x) (null small-y))
+;;       (multiple-value-bind (sx sy y)
+;;           (multiple-value-call #'xyz-to-xyy
+;;             (spectrum-to-xyz-primitive #'flat-spectrum
+;;                                        (eval spectrum)
+;;                                        (eval observer)))
+;;         (declare (ignore y))
+;;         `(defparameter ,name (make-illuminant ,sx ,sy ,spectrum ,observer)))
+;;       `(defparameter ,name (make-illuminant ,small-x small-y ,spectrum ,observer))))
 
 
 (defparameter +illum-a+

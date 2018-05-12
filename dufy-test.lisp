@@ -28,7 +28,7 @@
   '((1d0 0d0 0d0) (0.1d0 0.2d0 0.3d0) (-0.5d0 0d0 0.5d0)))
 
 (defparameter *illum-d55-10*
-  (make-illuminant-by-spd (gen-illum-d-spectrum #.(* 5500 (/ 1.43880d0 1.438))) +obs-cie1964+))
+  (make-illuminant nil nil (gen-illum-d-spectrum #.(* 5500 (/ 1.43880d0 1.438))) +obs-cie1964+))
 
 
 (defparameter *lchuv-set*
@@ -56,7 +56,7 @@
 							  :type 'double-float)
 						  row)))
      by #'cddr
-     collect (append (subseq row1 0 3) (subseq row2 0 3) (last row1))))
+     collect (nconc (subseq row1 0 3) (subseq row2 0 3) (last row1))))
 
 ;;;
 ;;; Test Codes
