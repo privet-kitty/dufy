@@ -10,6 +10,7 @@
 		((:file "package")
 		 (:file "cmf-data")
 		 (:file "xyz")
+                 (:file "illuminants-data")
 		 (:file "rgb")
 		 (:file "lab-and-luv")
 		 (:file "cat")

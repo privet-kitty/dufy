@@ -54,13 +54,13 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
   (make-cat '((0.7328d0 0.4296d0 -0.1624d0)
 	      (-0.7036d0 1.6975d0 0.0061d0)
 	      (0.0030d0 0.0136d0 0.9834d0)))
-  "Note that the CAT function returned by gen-cat-function and +cat02+
-  is different from the one in CIECAM02.")
+  "Note that the CAT function returned by (gen-cat-function illum-foo
+  illum-bar :cat +cat02+) is different from the one in CIECAM02.")
 
 
 (declaim (inline xyz-to-lms))
 (defun xyz-to-lms (x y z &key (illuminant nil) (cat +bradford+))
-  "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
+  "Note: The default illuminant is **not** D65. If ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (x y z)
@@ -85,7 +85,7 @@ the transform is virtually equivalent to that of illuminant E. "
 
 (declaim (inline lms-to-xyz))
 (defun lms-to-xyz (l m s &key (illuminant nil) (cat +bradford+))
-  "Note: The default illuminant is **not** D65; if ILLUMINANT is NIL,
+  "Note: The default illuminant is **not** D65. If ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (l m s)
@@ -115,12 +115,12 @@ and TO-ILLUMINANT in XYZ space."
     (multiple-value-bind (source-L source-M source-S)
         (multiply-mat-vec tmatrix
                           (illuminant-x from-illuminant)
-                          (illuminant-y from-illuminant)
+                          1d0
                           (illuminant-z from-illuminant))
       (multiple-value-bind (dest-L dest-M dest-S)
           (multiply-mat-vec tmatrix
                             (illuminant-x to-illuminant)
-                            (illuminant-y to-illuminant)
+                            1d0
                             (illuminant-z to-illuminant))
         (let ((L-ratio (/ dest-L source-L))
               (M-ratio (/ dest-M source-M))
@@ -188,8 +188,8 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 
 (defmacro def-cat-function (name from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
   "DEF-macro of GEN-CAT-FUNCTION.
-> (def-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
-> (d65-to-e 0.9504d0 1.0d0 1.0889d0)
+ (def-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
+ (d65-to-e 0.9504d0 1.0d0 1.0889d0)
 => 0.9999700272441295d0
 0.999998887365445d0
 0.9999997282885571d0
@@ -246,6 +246,7 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 
 (declaim (inline calc-cat-matrix-for-lrgb))
 (defun calc-cat-matrix-for-lrgb (from-rgbspace to-rgbspace &optional (cat +bradford+))
+  "Linear transformation: LRGB -> XYZ -> XYZ -> LRGB"
   (multiply-matrices (rgbspace-from-xyz-matrix to-rgbspace)
 		     (calc-cat-matrix (rgbspace-illuminant from-rgbspace)
 				      (rgbspace-illuminant to-rgbspace)
@@ -254,10 +255,12 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 
 (defun gen-rgbspace-changer (from-rgbspace to-rgbspace &optional (target :lrgb) (cat +bradford+))
   "Returns a function for changing RGB working space.
-> (funcall (gen-rgbspace-changer +srgb+ +adobe+ :rgb) 0 1 0)
+
+ (funcall (gen-rgbspace-changer +srgb+ +adobe+ :rgb) 0 1 0)
 => 0.28488056007809415d0
 1.0000000000000002d0
 0.041169364382683385d0 ; change from sRGB to Adobe RGB.
+
 TARGET can be :LRGB, :RGB, :QRGB or :INT.
 
 Note about clamping:

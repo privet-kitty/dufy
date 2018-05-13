@@ -74,7 +74,7 @@ forcibly set to [0, 1]."
       (multiple-value-bind (sr sg sb)
 	  (multiply-mat-vec (invert-matrix33 coordinates)
 			    (illuminant-x illuminant)
-			    (illuminant-y illuminant)
+			    1d0
 			    (illuminant-z illuminant))
 	(let* ((mat
 		(make-array '(3 3)

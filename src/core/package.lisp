@@ -15,7 +15,8 @@
 (defpackage dufy-core
   (:use :cl :alexandria :dufy-internal)
   #.`(:export  ;; xyz.lisp
-      :no-spd-error
+      :xyy-to-xyz
+      :xyz-to-xyy
       
       :gen-spectrum
       :approximate-spectrum
@@ -39,20 +40,16 @@
       :observer-end-wl
       :+obs-cie1931+
       :+obs-cie1964+
-      
-      :xyy-to-xyz
-      :xyz-to-xyy
+
+      :no-spd-error
       :illuminant
-      :illuminant-small-x
-      :illuminant-small-y
       :illuminant-x
-      :illuminant-y
       :illuminant-z
       :illuminant-spectrum
       :illuminant-observer
       :illuminant-has-spectrum
+      :illuminant-xy
       :make-illuminant
-      ;; :make-illuminant-by-spd
       :+illum-a+ :+illum-e+
       :+illum-c+ :+illum-d50+ :+illum-d65+
       :gen-cat-function

@@ -52,7 +52,7 @@ spectrum-seq '(simple-array double-float (*)))."
 	 (end-wl-f (float end-wl 1d0)))
     (if (= size (- end-wl begin-wl))
 	;; If SPECTRUM-SEQ is defined just for each integer,
-	;; the spectrum function is simpler:
+	;; the spectrum function is simpler and more efficient:
 	#'(lambda (wl-nm)
 	    (declare (optimize (speed 3) (safety 1)))
 	    (multiple-value-bind (quot rem)
@@ -86,7 +86,9 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
            (arr (make-array (1+ partitions) :element-type 'double-float)))
       (declare (fixnum partitions))
       (gen-spectrum (loop for i from 0 to partitions
-                          for wl = (lerp (/ i partitions-f) begin-wl end-wl)
+                          for wl = (lerp (/ i partitions-f)
+                                         begin-wl
+                                         end-wl)
                           do (setf (aref arr i) (funcall spectrum wl))
                           finally (return arr))
                     begin-wl
@@ -116,7 +118,8 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
   "Generates an observer based on CMF arrays, which must
 be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
   (labels ((gen-cmf-1 (arr num &optional (begin-wl 360) (end-wl 830))
-	     ;; verbose, almost equivalent to GEN-SPECTRUM
+	     ;; fix me
+             ;; verbose, almost equivalent to GEN-SPECTRUM
 	     (declare ((simple-array double-float (* 3)) arr))
 	     (let* ((size (- (array-dimension arr 0) 1))
 		    (begin-wl-f (float begin-wl 1d0))
@@ -222,42 +225,46 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 		:element-type 'double-float
 		:initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0)))
 
-(declaim (type spectrum-function +s0-func+ +s1-func+ +s2-func+))
-(defparameter +s0-func+ (gen-spectrum +s0-arr+ 300 830))
-(defparameter +s1-func+ (gen-spectrum +s1-arr+ 300 830))
-(defparameter +s2-func+ (gen-spectrum +s2-arr+ 300 830))
 
 (defun make-illum-d-spectrum-array (temperature &optional (begin-wl 300) (end-wl 830))
   (declare (optimize (speed 3) (safety 1)))
   (check-type begin-wl fixnum)
   (check-type end-wl fixnum)
-  (labels ((calc-xd (temp)
-	     (let ((/temp (/ temp)))
-	       (if (<= temp 7000d0)
-		   (+ 0.244063d0 (* /temp (+ 0.09911d3 (* /temp (+ 2.9678d6 (* /temp -4.607d9))))))
-		   (+ 0.237040d0 (* /temp (+ 0.24748d3 (* /temp (+ 1.9018d6 (* /temp -2.0064d9)))))))))
-	   (calc-yd (xd)
-	     (+ -0.275d0 (* xd (+ 2.870d0 (* xd -3d0))))))
-    (let* ((xd (calc-xd (float temperature 1d0)))
-	   (yd (calc-yd xd))
-	   (m (+ 0.0241d0 (* xd 0.2562d0) (* yd -0.7341d0)))
-	   (m1 (/ (+ -1.3515d0 (* xd -1.7703d0) (* yd 5.9114d0)) m))
-	   (m2 (/ (+ 0.03d0 (* xd -31.4424d0) (* yd 30.0717d0)) m))
-	   (arr (make-array (1+ (- end-wl begin-wl))
-			    :element-type 'double-float
-			    :initial-element 0d0)))
-      (loop for wl from begin-wl to end-wl
-            do (setf (aref arr (- wl begin-wl))
-                     (+ (funcall +s0-func+ wl)
-                        (* m1 (funcall +s1-func+ wl))
-                        (* m2 (funcall +s2-func+ wl)))))
-      arr)))
+  (let ((s0-func (load-time-value (gen-spectrum +s0-arr+ 300 830) t))
+        (s1-func (load-time-value (gen-spectrum +s1-arr+ 300 830) t))
+        (s2-func (load-time-value (gen-spectrum +s2-arr+ 300 830) t)))
+    (declare (type spectrum-function s0-func s1-func s2-func))
+    (labels ((calc-xd (temp)
+               (let ((/temp (/ temp)))
+                 (if (<= temp 7000d0)
+                     (+ 0.244063d0 (* /temp (+ 0.09911d3 (* /temp (+ 2.9678d6 (* /temp -4.607d9))))))
+                     (+ 0.237040d0 (* /temp (+ 0.24748d3 (* /temp (+ 1.9018d6 (* /temp -2.0064d9)))))))))
+             (calc-yd (xd)
+               (+ -0.275d0 (* xd (+ 2.870d0 (* xd -3d0))))))
+      (let* ((xd (calc-xd (float temperature 1d0)))
+             (yd (calc-yd xd))
+             (m (+ 0.0241d0 (* xd 0.2562d0) (* yd -0.7341d0)))
+             (m1 (/ (+ -1.3515d0 (* xd -1.7703d0) (* yd 5.9114d0)) m))
+             (m2 (/ (+ 0.03d0 (* xd -31.4424d0) (* yd 30.0717d0)) m))
+             (arr (make-array (1+ (- end-wl begin-wl))
+                              :element-type 'double-float
+                              :initial-element 0d0)))
+        (loop for wl from begin-wl to end-wl
+              do (setf (aref arr (- wl begin-wl))
+                       (+ (funcall s0-func wl)
+                          (* m1 (funcall s1-func wl))
+                          (* m2 (funcall s2-func wl)))))
+        arr))))
 
-(defun gen-illum-d-spectrum (temperature)
+(defun gen-illum-d-spectrum (temperature &key rectify)
   "Generates the spectrum of the illuminant series D for a given
-temperature."
-  (gen-spectrum (make-illum-d-spectrum-array temperature 300 830)
-		300 830))
+temperature. If RECTIFY is t, the temperature multiplied by (/
+1.43880 1.438) is used instead. (roughly 6504K for 6500K, etc.)"
+  (let ((temp (if rectify
+                  (* temperature #.(/ 1.43880d0 1.438d0))
+                  temperature)))
+    (gen-spectrum (make-illum-d-spectrum-array temp 300 830)
+                  300 830)))
 
 
 (defun spectrum-sum (spectrum &optional (begin-wl 300) (end-wl 830) (band 1))
@@ -290,10 +297,9 @@ f(x) = 0d0 otherwise."
           (<= wl2 wavelength-nm))
       1d0 0d0))
 
-
 (defun flat-spectrum (wavelength-nm)
   "(constantly 1d0)"
-  (declare (optimize (speed 3) (safety 1)))
+  (declare (optimize (speed 3) (safety 0)))
   (declare (ignore wavelength-nm))
   1d0)
 
@@ -303,17 +309,29 @@ f(x) = 0d0 otherwise."
 
 
 
+;;;
+;;; Illuminant, White Point
+;;;
+
 (defstruct (illuminant (:constructor %make-illuminant)
-		       (:copier nil))
-  (small-x 0d0 :type double-float)
-  (small-y 0d0 :type double-float)
-  (x 0d0 :type double-float)
-  (y 0d0 :type double-float)
-  (z 0d0 :type double-float)
+                       (:copier nil))
+  (x 1d0 :type double-float)
+  (z 1d0 :type double-float)
   (spectrum #'empty-spectrum :type spectrum-function)
   (observer +obs-cie1931+ :type observer)
-  ;; used for xyz-to-spectrum conversion
+  ;; used in xyz-to-spectrum conversion
   (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
+
+(defun illuminant-xy (illuminant)
+  "Returns the xy chromacity coordinates of the given illuminant."
+  (declare (optimize (speed 3) (safety 1))
+           (type illuminant illuminant))
+  (let* ((x (illuminant-x illuminant))
+         (z (illuminant-z illuminant))
+         (sum (+ x 1d0 z)))
+      (if (= sum 0)
+          (values 0d0 0d0)
+          (values (/ x sum) (/ sum)))))
 
 (declaim (inline illuminant-no-spd-p))
 (defun illuminant-no-spd-p (illuminant)
@@ -370,6 +388,7 @@ ILLUMINANT-SPD: SPD of illuminant"
 
 
 (defun bench-spectrum (&optional (num 50000) (illuminant +illum-c+))
+  "For devel."
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum num))
   (time-after-gc
@@ -407,99 +426,49 @@ many."
   (if (illuminant-no-spd-p illuminant)
       (error (make-condition 'no-spd-error :illuminant illuminant))
       (let ((observer (illuminant-observer illuminant)))
-	(multiple-value-bind (fac-x fac-y fac-z)
-	    (multiply-mat-vec (illuminant-to-spectrum-matrix illuminant) x y z)
-	  #'(lambda (wl)
-	      (+ (* fac-x (funcall (observer-cmf-x observer) wl))
-		 (* fac-y (funcall (observer-cmf-y observer) wl))
-		 (* fac-z (funcall (observer-cmf-z observer) wl))))))))
+        (multiple-value-bind (fac-x fac-y fac-z)
+            (multiply-mat-vec (illuminant-to-spectrum-matrix illuminant) x y z)
+          #'(lambda (wl)
+              (+ (* fac-x (funcall (observer-cmf-x observer) wl))
+                 (* fac-y (funcall (observer-cmf-y observer) wl))
+                 (* fac-z (funcall (observer-cmf-z observer) wl))))))))
     
 	    
-(defun make-illuminant (small-x small-y &optional spectrum (observer +obs-cie1931+))
-  "Generates an illuminant with a white point or/and SPD. If small-x
-and small-y are nil, they are automatically calculated based on the
-spectrum. Note that no error occurs, even if the given white point and
-SPD contradicts to each other.
+(defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil))
+  "Generates an illuminant with an SPD. Though the white point (X,
+1d0, Z) is automatically calculated if X and Z are nil, you can
+designate X and Z explicitly. Note that no error occurs, even if the
+given white point and SPD contradicts to each other.
 
-> (make-illuminant 0.3333 0.3333 #'flat-spectrum)
-=> illuminant with SPD
-> (make-illuminant nil nil #'flat-spectrum)
-=> illuminant with SPD (the same as above)
-> (make-illuminant 0.3333 0.3333 nil)
-=> illuminant without SPD"
-  (if (and (null small-x) (null small-y))
-      (if (null spectrum)
-          (error "At least one of white point or SPD must be specified to make illuminant.")
-          (make-illuminant-by-spd spectrum observer))
-      (multiple-value-bind (x y z) (xyy-to-xyz small-x small-y 1d0)
-        (%make-illuminant :small-x (float small-x 1d0)
-                          :small-y (float small-y 1d0)
-                          :x (float x 1d0)
-                          :y (float y 1d0)
-                          :z (float z 1d0)
-                          :spectrum (or spectrum #'empty-spectrum)
-                          :observer observer
-                          :to-spectrum-matrix (if spectrum
-                                                  (calc-to-spectrum-matrix spectrum
-                                                                           observer)
-                                                  +empty-matrix+)))))
+ (make-illuminant :x 1.0 :z 1.0 :spectrum #'flat-spectrum)
+ (make-illuminant :spectrum #'flat-spectrum)
+;; => almost same illuminants
 
-(defun make-illuminant-by-spd (spectrum observer)
-  (multiple-value-bind (x y z)
-      (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer)
-    (multiple-value-bind (small-x small-y disused)
-	(xyz-to-xyy x y z)
-      (declare (ignore disused))
-      (%make-illuminant :small-x (float small-x 1d0)
-			:small-y (float small-y 1d0)
-			:x (float x 1d0)
-			:y (float y 1d0)
-			:z (float z 1d0)
-			:spectrum spectrum
-			:observer observer
-			:to-spectrum-matrix (calc-to-spectrum-matrix spectrum observer)))))
+If X and Y are NIL and COMPILE-TIME is T, the second form is
+transformed into the first form at compile time."
+  (declare (ignore compile-time))
+  (macrolet ((make (x z)
+               `(%make-illuminant
+                 :x (float ,x 1d0)
+                 :z (float ,z 1d0)
+                 :spectrum spectrum
+                 :observer observer
+                 :to-spectrum-matrix (calc-to-spectrum-matrix spectrum
+                                                              observer))))
+    (if (and (null x) (null z))
+        (multiple-value-bind (x y z)
+            (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer)
+          (declare (ignore y))
+          (make x z))
+        (make x z))))
 
-;; (defmacro defilluminant (name small-x small-y &optional spectrum (observer '+obs-cie1931+))
-;;   "Only for static use"
-;;   (if (and (null small-x) (null small-y))
-;;       (multiple-value-bind (sx sy y)
-;;           (multiple-value-call #'xyz-to-xyy
-;;             (spectrum-to-xyz-primitive #'flat-spectrum
-;;                                        (eval spectrum)
-;;                                        (eval observer)))
-;;         (declare (ignore y))
-;;         `(defparameter ,name (make-illuminant ,sx ,sy ,spectrum ,observer)))
-;;       `(defparameter ,name (make-illuminant ,small-x small-y ,spectrum ,observer))))
-
-
-(defparameter +illum-a+
-  (make-illuminant 0.44757d0 0.40745d0
-		   #'(lambda (wl)
-		       (declare (optimize (speed 3) (safety 1)))
-		       (let ((wl (float wl 1d0)))
-			 (check-type wl (double-float 0d0))
-			 (* 100d0
-			    (expt (/ 560d0 wl) 5)
-			    (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
-			       (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0)))))))
-			  
-(defparameter +illum-b+ (make-illuminant 0.34842d0 0.35161d0)) ; no spd
-
-(defparameter +illum-c-arr+
-  #.(make-array 107
-		:element-type 'double-float
-		:initial-contents '(0.0d0 0.0d0 0.0d0 0.0d0 0.0d0 0.20d0 0.40d0 1.55d0 2.70d0 4.85d0 7.00d0 9.95d0 12.90d0 17.20d0 21.40d0 27.5d0 33.00d0 39.92d0 47.40d0 55.17d0 63.30d0 71.81d0 80.60d0 89.53d0 98.10d0 105.80d0 112.40d0 117.75d0 121.50d0 123.45d0 124.00d0 123.60d0 123.10d0 123.30d0 123.80d0 124.09d0 123.90d0 122.92d0 120.70d0 116.90d0 112.10d0 106.98d0 102.30d0 98.81d0 96.90d0 96.78d0 98.00d0 99.94d0 102.10d0 103.95d0 105.20d0 105.67d0 105.30d0 104.11d0 102.30d0 100.15d0 97.80d0 95.43d0 93.20d0 91.22d0 89.70d0 88.83d0 88.40d0 88.19d0 88.10d0 88.06d0 88.00d0 87.86d0 87.80d0 87.99d0 88.20d0 88.20d0 87.90d0 87.22d0 86.30d0 85.30d0 84.00d0 82.21d0 80.20d0 78.24d0 76.30d0 74.36d0 72.40d0 70.40d0 68.30d0 66.30d0 64.40d0 62.80d0 61.50d0 60.20d0 59.20d0 58.50d0 58.10d0 58.00d0 58.20d0 58.50d0 59.10d0 78.91d0 79.55d0 76.48d0 73.40d0 68.66d0 63.92d0 67.35d0 70.78d0 72.61d0 74.44d0)))
-(defparameter +illum-c+
-  (make-illuminant 0.31006d0 0.31616d0
-                   (gen-spectrum +illum-c-arr+ 300 830)))
-
-(defparameter +illum-d50+
-  (make-illuminant 0.34567d0 0.35850d0
-                   (gen-illum-d-spectrum #.(* 5000 (/ 1.4388d0 1.438)))))
-(defparameter +illum-d65+
-  (make-illuminant 0.31271d0 0.32902d0
-                   (gen-illum-d-spectrum #.(* 6500 (/ 1.43880d0 1.438)))))
-(defparameter +illum-e+ (make-illuminant #.(float 1/3 1d0)
-					 #.(float 1/3 1d0)
-					 #'flat-spectrum))
+(define-compiler-macro make-illuminant (&whole form &key x z spectrum (observer '+obs-cie1931+) (compile-time nil))
+  (if (and compile-time (null x) (null z))
+      (multiple-value-bind (x y z)
+          (spectrum-to-xyz-primitive #'flat-spectrum
+                                     (eval spectrum)
+                                     (eval observer))
+        (declare (ignore y))
+        `(make-illuminant :x ,x :z ,z :spectrum ,spectrum :observer ,observer))
+      form))
 

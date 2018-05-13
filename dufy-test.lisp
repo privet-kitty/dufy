@@ -28,7 +28,8 @@
   '((1d0 0d0 0d0) (0.1d0 0.2d0 0.3d0) (-0.5d0 0d0 0.5d0)))
 
 (defparameter *illum-d55-10*
-  (make-illuminant nil nil (gen-illum-d-spectrum #.(* 5500 (/ 1.43880d0 1.438))) +obs-cie1964+))
+  (make-illuminant :spectrum (gen-illum-d-spectrum 5500 :rectify t)
+                   :observer +obs-cie1964+))
 
 
 (defparameter *lchuv-set*
@@ -65,8 +66,7 @@
 (test test-spectrum
   (is (nearly-equal 1d-4
 		    '(0.33411d0 0.34877)
-		    (list (illuminant-small-x *illum-d55-10*)
-			  (illuminant-small-y *illum-d55-10*))))
+		    (multiple-value-list (illuminant-xy *illum-d55-10*))))
   (is (nearly-equal 1d-3
 		    '(0.95047d0 1d0 1.08883d0)
 		    (multiple-value-list
