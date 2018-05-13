@@ -108,6 +108,9 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
   (cmf-z nil :type spectrum-function)
   (cmf nil :type (function * (values double-float double-float double-float &optional))))
 
+(defmethod print-object ((obs observer) stream)
+  (let ((*print-array* nil))
+    (call-next-method)))
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
   "Generates an observer based on CMF arrays, which must
