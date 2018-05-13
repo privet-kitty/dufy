@@ -235,7 +235,7 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 	     (let ((/temp (/ temp)))
 	       (if (<= temp 7000d0)
 		   (+ 0.244063d0 (* /temp (+ 0.09911d3 (* /temp (+ 2.9678d6 (* /temp -4.607d9))))))
-		   (+ 0.234040d0 (* /temp (+ 0.24748d3 (* /temp (+ 1.9018d6 (* /temp -2.0064d9)))))))))
+		   (+ 0.237040d0 (* /temp (+ 0.24748d3 (* /temp (+ 1.9018d6 (* /temp -2.0064d9)))))))))
 	   (calc-yd (xd)
 	     (+ -0.275d0 (* xd (+ 2.870d0 (* xd -3d0))))))
     (let* ((xd (calc-xd (float temperature 1d0)))
