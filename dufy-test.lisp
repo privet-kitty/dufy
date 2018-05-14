@@ -235,13 +235,13 @@
 		       (multiple-value-call #'munsell-to-xyz
 			 (nth-value 0 (apply (rcurry #'xyz-to-munsell :digits 6)
 					     xyz)))))))
-  (is (nearly-equal 1d-9
+  (is (nearly-equal 1d-4
                     '(0.6355467107666922d0 0.06136344507966737d0 0.004921707437403791d0)
                     (multiple-value-list (munsell-to-xyz "2.3R 3.1/50.1"))))
-  (is (nearly-equal 1d-9
+  (is (nearly-equal 1d-4
                     '(0.09212673811227157d0 0.06799167763718869d0 0.05724974585563483d0)
                     (multiple-value-list (munsell-to-xyz "2.3R 3.1/5.1"))))
-  (is (nearly-equal 1d-9
+  (is (nearly-equal 1d-4
                     '(0.0014506484808043598d0 0.0011663458924852145d0 0.0014582198016197035d0)
                     (multiple-value-list (munsell-to-xyz "2.3R 0.1/0.2"))))
   (is (nearly-equal 1d-9
