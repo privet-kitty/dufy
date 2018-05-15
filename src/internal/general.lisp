@@ -1,10 +1,10 @@
 ;;;
-;;; General functions and macros
+;;; General definitions, functions and macros
 ;;;
 
 (in-package :dufy-internal)
 
-
+(defparameter *dat-dir-path* (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
 ;;;
 ;;; For preprocessing of data
 ;;;

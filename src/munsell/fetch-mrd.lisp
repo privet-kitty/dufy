@@ -11,20 +11,17 @@
 
 (use-package :dufy-internal)
 
-(defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
-(defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy-munsell) :munsell)))
-(defparameter dat-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
-
+(defparameter this-dir-path (uiop:pathname-directory-pathname *load-pathname*))
 
 (defparameter dat-url "http://www.rit-mcsl.org/MunsellRenotation/all.dat")
 (defparameter dat-txt (babel:octets-to-string (drakma:http-request dat-url) :encoding :ascii))
 
 (defun make-adjustable-string (s)
-               (make-array (length s)
-                           :fill-pointer (length s)
-                           :adjustable t
-                           :initial-contents s
-                           :element-type (array-element-type s)))
+  (make-array (length s)
+              :fill-pointer (length s)
+              :adjustable t
+              :initial-contents s
+              :element-type (array-element-type s)))
 
 (defun subseq-if (predicate sequence &rest args)
   (let ((len (length sequence))
@@ -53,19 +50,19 @@
   (read-line in) ; the first row is the label of the data
   (let ((*read-default-float-format* 'double-float))
     (loop
-       (let* ((hue (read in nil))
-	      (value (read in nil))
-	      (chroma (read in nil))
-	      (x (read in nil))
-	      (y (read in nil))
-	      (largey (read in nil)))
-	 (declare (ignore largey))
-	 (if (null hue)
-	     (return)
-	     (unless (<= y 0) ; non-positive y gives too high chroma
-	       (let ((row (list hue value chroma x y
-				(dufy:munsell-value-to-y value))))
-		 (push row munsell-renotation-data))))))))
+      (let* ((hue (read in nil))
+             (value (read in nil))
+             (chroma (read in nil))
+             (x (read in nil))
+             (y (read in nil))
+             (largey (read in nil)))
+        (declare (ignore largey))
+        (if (null hue)
+            (return)
+            (unless (<= y 0) ; non-positive y gives too high chroma
+              (let ((row (list hue value chroma x y
+                               (dufy:munsell-value-to-y value))))
+                (push row munsell-renotation-data))))))))
 
 (let ((quantized-data nil))
   (dolist (x munsell-renotation-data)
@@ -248,7 +245,7 @@ value=0.2."
 
 
 (defun main (obj-filename)
-  (let ((obj-path (merge-pathnames obj-filename src-dir-path)))
+  (let ((obj-path (merge-pathnames obj-filename this-dir-path)))
     (with-open-file (out obj-path
 			 :direction :output
 			 :if-exists :supersede)
