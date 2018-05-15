@@ -39,7 +39,6 @@
   (make-illuminant :spectrum (gen-illum-d-spectrum 6500 :rectify t)
                    :compile-time t))
 
-(defparameter +illum-e+ (make-illuminant :x #.(float 1/3 1d0)
-					 :z #.(float 1/3 1d0)
+(defparameter +illum-e+ (make-illuminant :x 1d0 :z 1d0
 					 :spectrum #'flat-spectrum))
 
