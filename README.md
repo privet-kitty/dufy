@@ -18,7 +18,7 @@ Dufy is a library for exact color manipulation and conversion in various color s
 
 Dufy can deal with the following concepts:
 
-* Standard illuminant: C, D65, etc. A new illuminant can be defined by white point or SPD.
+* Illuminant: C, D65, etc. A new illuminant can be defined by white point or SPD.
 * RGB space: sRGB, Adobe RGB, scRGB, etc.  A new RGB space can be defined by primary coordinates, illuminant, method of gamma correction, bit per channel and other encoding characteristics.
 * Observer (Color Matching Functions): CIE 1931 2&deg; Standard Observer, CIE 1964 10&deg;. Other observer model can be defined by color matching data.
 * Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000.
@@ -40,7 +40,7 @@ The easiest way to install dufy is to use [quicklisp](https://www.quicklisp.org/
 
     * (ql:quickload :dufy)
 
-The latest version can also be installed with quicklisp:
+The latest version in this repository can also be installed with quicklisp:
 
     $ cd ~/quicklisp/local-projects   # the path is held in ql:*local-project-directories*
     $ git clone git@github.com:privet-kitty/dufy.git
@@ -104,58 +104,64 @@ converter_tree
 
 The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns multiple numbers:
 
-    * (dufy:lab-to-xyz 87.07 -78.15 -20.51)  ; L*=87.07, a*=-78.15, b*=-20.51
-    => 0.3731384408806708d0 ; X
-       0.701492216468595d0  ; Y
-       1.060034922742541d0  ; Z
-       
-    * (multiple-value-call #'dufy:xyz-to-qrgb
-        (dufy:lab-to-xyz 87.07 -78.15 -20.51)
-        :clamp nil)
-    => -169 ; R
-       255  ; G
-       255  ; B
+```lisp
+(dufy:lab-to-xyz 87.07 -78.15 -20.51)  ; L*=87.07, a*=-78.15, b*=-20.51
+;; => 0.3731384408806708d0 ; X
+;;    0.701492216468595d0  ; Y
+;;    1.060034922742541d0  ; Z
+   
+(multiple-value-call #'dufy:xyz-to-qrgb
+  (dufy:lab-to-xyz 87.07 -78.15 -20.51)
+  :clamp nil)
+;; => -169 ; R
+;;    255  ; G
+;;    255  ; B
 
-    * (multiple-value-call #'dufy:xyz-to-qrgb
-        (dufy:lab-to-xyz 87.07 -78.15 -20.51)
-        :clamp t)
-    => 0    ; R
-       255  ; G
-       255  ; B
+(multiple-value-call #'dufy:xyz-to-qrgb
+  (dufy:lab-to-xyz 87.07 -78.15 -20.51)
+  :clamp t)
+;; => 0    ; R
+;;    255  ; G
+;;    255  ; B
+```
 
 In the second example, a conversion from CIELAB to quantized RGB, `xyz-to-qrgb` returns a negative R value, which means the color is out of gamut; it is clamped in the third example.
 
 Out of which gamut, however? By default, `xyz-to-qrgb` (and all other RGB converters) regard it as sRGB (D65). You can specify the RGB space explicitly:
 
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+srgb+ :clamp nil)  ; sRGB
-    => -169
-       255
-       255
+```lisp
+(dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+srgb+ :clamp nil)  ; sRGB
+;; => -169
+;;    255
+;;    255
 
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+adobe+ :clamp nil) ; Adobe RGB
-    => 2
-       255
-       255
-       
-    * (dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+bg-srgb-10+ :clamp nil) ; bg-sRGB (10 bit)
-    => 47
-       893
-       893
-    ;; In the Adobe RGB space and bg-sRGB space the color is within gamut.
+(dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+adobe+ :clamp nil) ; Adobe RGB
+;; => 2
+;;    255
+;;    255
+   
+(dufy:xyz-to-qrgb 0.37314 0.70144 1.0601 :rgbspace dufy:+bg-srgb-10+ :clamp nil) ; bg-sRGB (10 bit)
+;; => 47
+;;    893
+;;    893
+;; In the Adobe RGB space and bg-sRGB space the color is within gamut.
+```
 
 Likewise most converters regard the implicit illuminant as D65. You can also specify it explicitly:
 
-    * (dufy:luv-to-xyz 100 0 0)                  ; Illuminant D65 
-    * (dufy:luv-to-xyz 100 0 0 dufy:+illum-d65+) ; Illuminant D65
-    => 0.9504285453771808d0
-       1.0d0
-       1.0889003707981282d0
-    ;; the white point of standard illuminant D65
+```lisp
+(dufy:luv-to-xyz 100 0 0)                  ; Illuminant D65 
+(dufy:luv-to-xyz 100 0 0 dufy:+illum-d65+) ; Illuminant D65
+;; => 0.9504285453771808d0
+;;    1.0d0
+;;    1.0889003707981282d0
+;; the white point of standard illuminant D65
 
-    * (dufy:luv-to-xyz 100 0 0 dufy:+illum-e+)   ; Illuminant E
-    => 0.9999999999999999d0
-       1.0d0
-       1.0000000000000004d0
+(dufy:luv-to-xyz 100 0 0 dufy:+illum-e+)   ; Illuminant E
+;; => 0.9999999999999999d0
+;;    1.0d0
+;;    1.0000000000000004d0
+```
 
 
 # Modules
