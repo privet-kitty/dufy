@@ -6,11 +6,9 @@
 
 (use-package :dufy-internal)
 
-(defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
-(defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy-core) :core)))
-(defparameter dat-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
+(defparameter this-dir-path (uiop:pathname-directory-pathname *load-pathname*))
 (defparameter obj-name "cmf-data.lisp")
-(defparameter obj-path (merge-pathnames (pathname obj-name) src-dir-path))
+(defparameter obj-path (merge-pathnames (pathname obj-name) this-dir-path))
 
 
 (defparameter cmf-arr-cie1931
@@ -31,8 +29,10 @@
 		
 	
 
-(fill-color-matching-arr cmf-arr-cie1931 (merge-pathnames #P"cmf-cie1931.csv" dat-dir-path))
-(fill-color-matching-arr cmf-arr-cie1964 (merge-pathnames #P"cmf-cie1964.csv" dat-dir-path))
+(fill-color-matching-arr cmf-arr-cie1931
+                         (merge-pathnames #P"cmf-cie1931.csv" *dat-dir-path*))
+(fill-color-matching-arr cmf-arr-cie1964
+                         (merge-pathnames #P"cmf-cie1964.csv" *dat-dir-path*))
 
 
 (with-open-file (out obj-path

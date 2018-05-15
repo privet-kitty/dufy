@@ -6,36 +6,36 @@
 
 (use-package :dufy-internal)
 
-(defparameter base-dir-path (make-pathname :directory (pathname-directory *load-pathname*)))
-(defparameter src-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy-munsell) :munsell)))
-(defparameter dat-dir-path (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
+(defparameter this-dir-path (uiop:pathname-directory-pathname *load-pathname*))
 (defparameter obj-name "y-to-value-data.lisp")
-(defparameter obj-path (merge-pathnames (pathname obj-name) src-dir-path))
+(defparameter obj-path (merge-pathnames (pathname obj-name) this-dir-path))
 
 
 ;; convert munsell value to Y in [0, 1]
 (defun munsell-value-to-y (v)
   (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0))
 
-(defun root-finding (func rhs a b threshold)
-  (let* ((mid (* 0.5d0 (+ a b)))
+(defun find-root (func rhs min max threshold)
+  "bisection method"
+  (let* ((mid (* 0.5d0 (+ min max)))
 	 (lhs (funcall func mid))
 	 (delta (abs (- lhs rhs))))
     (if (<= delta threshold)
 	mid
 	(if (> lhs rhs)
-	    (root-finding func rhs a mid threshold)
-	    (root-finding func rhs mid b threshold)))))
+	    (find-root func rhs min mid threshold)
+	    (find-root func rhs mid max threshold)))))
 
-(defparameter y-to-munsell-value-arr (make-array 1001 :element-type 'double-float :initial-element 0.0d0))
+(defparameter y-to-munsell-value-arr
+  (make-array 1001 :element-type 'double-float :initial-element 0.0d0))
 
 (setf (aref y-to-munsell-value-arr 0) 0.0d0)
 (setf (aref y-to-munsell-value-arr 1000) 10.0d0)
-(loop for y from 1 to 999 do
-  (setf (aref y-to-munsell-value-arr y)
-	(root-finding #'munsell-value-to-y (* y 0.001d0) 0 10 1.0d-6)))
+(loop for y from 1 to 999
+      do (setf (aref y-to-munsell-value-arr y)
+               (find-root #'munsell-value-to-y (* y 0.001d0) 0 10 1.0d-6)))
 
-;; y should be in [0,1]
+;; For test in devel. Y should be in [0,1].
 (defun y-to-munsell-value (y)
   (let* ((y1000 (* (alexandria:clamp y 0 1) 1000))
 	 (y1 (floor y1000))

@@ -4,6 +4,7 @@
 (defpackage dufy-internal
   (:use :cl :alexandria)
   (:export
+   :*dat-dir-path*
    :print-make-array
    :with-double-float
    :time-after-gc
