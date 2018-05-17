@@ -46,15 +46,15 @@
   ;; nominal range of gamma-corrected values
   (min 0d0 :type double-float)
   (max 1d0 :type double-float)
-  (len 1d0 :type double-float) ; length of the interval [min, max]
+  (length 1d0 :type double-float) ; length of the interval [min, max]
   (normal t :type boolean) ; t, if min = 0d0 and max = 1d0
 
   ;; quantization
   (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
   (qmax 255 :type (integer 1 #.most-positive-fixnum) :read-only t) ; max. of quantized values
   (qmax-float 255d0 :type double-float)
-  (len/qmax-float (float 1/255 1d0) :type double-float)
-  (qmax-float/len 255d0 :type double-float))
+  (length/qmax-float (float 1/255 1d0) :type double-float)
+  (qmax-float/length 255d0 :type double-float))
 
 
 (defun make-rgbspace (xr yr xg yg xb yb &key (illuminant +illum-d65+) (lmin 0d0) (lmax 1d0) (linearizer (rcurry #'float 1d0)) (delinearizer (rcurry #'float 1d0)) (bit-per-channel 8) (force-normal nil))
@@ -106,13 +106,13 @@ forcibly set to [0, 1]."
 			  :lmax lmax
 			  :min min
 			  :max max
-			  :len len
+			  :length len
 			  :normal normal
 			  :bit-per-channel bit-per-channel
 			  :qmax qmax
 			  :qmax-float qmax-float
-			  :qmax-float/len (/ qmax-float len)
-			  :len/qmax-float (/ len qmax-float)))))))
+			  :qmax-float/length (/ qmax-float len)
+			  :length/qmax-float (/ len qmax-float)))))))
 
 (defvar +srgb+) ; later defined
 
@@ -408,15 +408,15 @@ all the real values."
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
-	  (qmax-float/len (rgbspace-qmax-float/len rgbspace))
+	  (qmax-float/length (rgbspace-qmax-float/length rgbspace))
 	  (qmax (rgbspace-qmax rgbspace)))
       (if clamp
-          (values (clamp (round (* (- r min) qmax-float/len)) 0 qmax)
-                  (clamp (round (* (- g min) qmax-float/len)) 0 qmax)
-                  (clamp (round (* (- b min) qmax-float/len)) 0 qmax))
-          (values (round (* (- r min) qmax-float/len))
-                  (round (* (- g min) qmax-float/len))
-                  (round (* (- b min) qmax-float/len)))))))
+          (values (clamp (round (* (- r min) qmax-float/length)) 0 qmax)
+                  (clamp (round (* (- g min) qmax-float/length)) 0 qmax)
+                  (clamp (round (* (- b min) qmax-float/length)) 0 qmax))
+          (values (round (* (- r min) qmax-float/length))
+                  (round (* (- g min) qmax-float/length))
+                  (round (* (- b min) qmax-float/length)))))))
 
 
 (declaim (inline qrgb-to-rgb))
@@ -424,10 +424,10 @@ all the real values."
   (declare (optimize (speed 3) (safety 1))
 	   (integer qr qg qb))
   (let ((min (rgbspace-min rgbspace))
-	(len/qmax-float (rgbspace-len/qmax-float rgbspace)))
-    (values (+ min (* qr len/qmax-float))
-	    (+ min (* qg len/qmax-float))
-	    (+ min (* qb len/qmax-float)))))
+	(length/qmax-float (rgbspace-length/qmax-float rgbspace)))
+    (values (+ min (* qr length/qmax-float))
+	    (+ min (* qg length/qmax-float))
+	    (+ min (* qb length/qmax-float)))))
 
 
 (declaim (inline lrgb-to-qrgb))

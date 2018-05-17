@@ -4,9 +4,7 @@
 
 (in-package :dufy-core)
 
-
-(declaim (inline xyy-to-xyz))
-(defun xyy-to-xyz (small-x small-y y)
+(define-primary-converter xyy xyz ()
   "xyY to XYZ. The nominal range of Y is [0, 1], though all real
 values are accepted."
   (declare (optimize (speed 3) (safety 1)))
@@ -17,8 +15,7 @@ values are accepted."
 		y
 		(/ (* (- 1d0 small-x small-y) y) small-y)))))
 
-(declaim (inline xyz-to-xyy))
-(defun xyz-to-xyy (x y z)
+(define-primary-converter xyz xyy ()
   "XYZ to xyY. The nominal range of Y is [0, 1], though all real
 values are accepted."
   (declare (optimize (speed 3) (safety 1)))
@@ -349,7 +346,7 @@ f(x) = 0d0 otherwise."
 (defvar +illum-e+) ; defined later
 (defvar +illum-c+)
 
-(defun spectrum-to-xyz (spectrum &optional (illuminant +illum-e+) (begin-wl 360) (end-wl 830) (band 1))
+(define-primary-converter spectrum xyz (&key (illuminant +illum-e+) (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1)))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
 case. The function SPECTRUM, a spectral reflectance, must be defined
@@ -394,7 +391,7 @@ ILLUMINANT-SPD: SPD of illuminant"
   (time-after-gc
     (let ((spctrm (gen-illum-d-spectrum 4000)))
       (dotimes (idx num)
-        (spectrum-to-xyz spctrm illuminant)))))
+        (spectrum-to-xyz spctrm :illuminant illuminant)))))
 
 
 (defun calc-to-spectrum-matrix (illuminant-spd observer)
@@ -420,7 +417,7 @@ ILLUMINANT-SPD: SPD of illuminant"
                 (aref mat 2 2) a22))))
     (invert-matrix33 mat)))
 
-(defun xyz-to-spectrum (x y z &optional (illuminant +illum-e+))
+(define-primary-converter xyz spectrum (&key (illuminant +illum-e+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among
 many."
   (if (illuminant-no-spd-p illuminant)
@@ -429,6 +426,7 @@ many."
         (multiple-value-bind (fac-x fac-y fac-z)
             (multiply-mat-vec (illuminant-to-spectrum-matrix illuminant) x y z)
           #'(lambda (wl)
+              (declare (optimize (speed 3) (safety 1)))
               (+ (* fac-x (funcall (observer-cmf-x observer) wl))
                  (* fac-y (funcall (observer-cmf-y observer) wl))
                  (* fac-z (funcall (observer-cmf-z observer) wl))))))))

@@ -8,6 +8,7 @@
   :components ((:module "core"
 		:components
 		((:file "package")
+                 (:file "colorspace")
 		 (:file "cmf-data")
 		 (:file "xyz")
                  (:file "illuminants-data")
