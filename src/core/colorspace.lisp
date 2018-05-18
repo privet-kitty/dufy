@@ -90,6 +90,10 @@ clamp::= :always-clamped | :clampable | nil
 
 (defun get-primary-converter (from-term to-term)
   (gethash (list from-term to-term) *primary-converter-table*))
+(defun get-primary-converter-fsymbol (from-term to-term)
+  (primary-converter-fsymbol (gethash (list from-term to-term)
+                                      *primary-converter-table*)))
+
 (defun print-primary-converter-table ()
   (format t "#<HASH-TABLE ~%")
   (maphash-values #'(lambda (val) (format t "~S~%" val))
@@ -185,72 +189,94 @@ clamp::= :always-clamped | :clampable | nil
 
 (defmacro define-primary-converter (begin-term dest-term args &body body)
   "Defines FOO-TOO-BAR function as a primary converter."
-  (let* ((begin-key (make-keyword begin-term))
-         (dest-key (make-keyword dest-term))
-         (fname (gen-converter-name begin-key dest-key)))
+  (assert (and (symbolp begin-term) (symbolp dest-term) (listp args)))
+  (let* ((begin-term (make-keyword begin-term))
+         (dest-term (make-keyword dest-term))
+         (fname (gen-converter-name begin-term dest-term)))
     `(progn
        (declaim (inline ,fname)
-                (ftype (function * (values ,@(get-arg-types dest-key) &optional))))
-       (defun ,fname ,args
+                (ftype (function * (values ,@(get-arg-types dest-term) &optional))))
+       (defun ,fname ,(append (get-args begin-term) args)
          ,@body)
-       (add-primary-converter ,begin-key ,dest-key
+       (add-primary-converter ,begin-term ,dest-term
                               ',args))))
+
 
 (defun converter-clamp-p (term1 term2)
   (and (not (eql (get-clamp term1) :always-clamped))
        (eql (get-clamp term2) :clampable)))
 
 (defun get-local-illuminant-key (term1 term2)
-  (let ((illum-key1 (get-illuminant term1))
-        (illum-key2 (get-illuminant term2)))
-    (cond ((or (eql illum-key1 :rgbspace) (eql illum-key2 :rgbspace))
-           :rgbspace)
-          ((or (eql illum-key1 :illuminant) (eql illum-key2 :illuminant))
-           :illuminant)
-          (t nil))))
+  (let* ((conv (get-primary-converter term1 term2))
+         (key-args (primary-converter-key-args conv)))
+    (or (find :rgbspace key-args)
+        (find :illuminant key-args))))
 
-(defun gen-global-key-args (term1 term2)
-  (let ((key-args nil))
-    (when (converter-clamp-p term1 term2)
-      (push '(clamp t) key-args))
-    key-args))
+(defun get-global-illuminant-key (terms)
+  (let ((illum-keys (loop for (term1 term2) on terms
+                          until (null term2)
+                          collect (get-local-illuminant-key term1 term2))))
+    (or (find :rgbspace illum-keys)
+        (find :illuminant illum-keys))))
+
+(defun sane-symbol (symb)
+  (intern (symbol-name symb) *package*))
+
+(defun gen-global-key-args (terms)
+  (remove nil
+          (list
+           (let ((illum-key (get-global-illuminant-key terms)))
+             (case illum-key
+               (:rgbspace (list (sane-symbol illum-key) '+srgb+))
+               (:illuminant (list (sane-symbol illum-key) '+illum-d65+)))))))
 
 (defun gen-last-key-args (term1 term2)
-  (let ((key-args nil))
-    (when (converter-clamp-p term1 term2)
-      (push :clamp key-args))
-    key-args))
+  (when (converter-clamp-p term1 term2)
+    (list :clamp (intern "CLAMP" *package*))))
 
 (defun expand-key-args (arg-lst)
   (mappend #'(lambda (key)
-               (list key (intern (symbol-name key))))
+               (list key (sane-symbol key)))
            arg-lst))
 
+(defun gen-local-key-args (term1 term2)
+  (expand-key-args
+   (remove nil
+           (list (get-local-illuminant-key term1 term2)))))
+
 (defmacro defconverter (begin-term dest-term &key (fname (gen-converter-name begin-term dest-term)))
-  (let* ((global-fname fname)
+  (let* ((begin-term (make-keyword begin-term))
+         (dest-term (make-keyword dest-term))
+         (global-fname fname)
          (chain (get-converter-chain begin-term dest-term))
-         (global-key-args (gen-global-key-args begin-term dest-term))
-         (last-key-args (gen-last-key-args begin-term dest-term)))
+         (global-key-args (gen-global-key-args chain)))
+    (assert (>= (length chain) 3)
+            (chain)
+            "The length of converters path is ~a. It should be greater than 3."
+            (length chain))
     (labels ((expand (term-lst code)
-               (let* ((term1 (first term-lst))
-                      (term2 (second term-lst))
-                      (name (gen-converter-name term1 term2)))
-                 (cond ((null (cdr term-lst)) code)
-                       ((null code)
-                        (expand (cdr term-lst)
-                                `(,name ,@(get-args term1))))
-                       ((eql term2 dest-term)
-                        (expand (cdr term-lst)
-                                `(multiple-value-call #',name
-                                   ,code
-                                   ,@(expand-key-args last-key-args))))
-                       (t (expand (cdr term-lst)
-                                  `(multiple-value-call #',name
-                                     ,code)))))))
+               (if (null (cdr term-lst))
+                   code
+                   (let* ((term1 (first term-lst))
+                          (term2 (second term-lst))
+                          (name (get-primary-converter-fsymbol term1 term2)))
+                     (cond ((null code)
+                            (expand (cdr term-lst)
+                                    `(,name ,@(get-args term1)
+                                            ,@(gen-local-key-args term1 term2))))
+                           ((eql term2 dest-term)
+                            (expand (cdr term-lst)
+                                    `(multiple-value-call #',name
+                                       ,code
+                                       ,@(gen-local-key-args term1 term2))))
+                           (t (expand (cdr term-lst)
+                                      `(multiple-value-call #',name
+                                         ,code
+                                         ,@(gen-local-key-args term1 term2)))))))))
       `(progn
-         (declaim (inline ,global-fname))
+         (declaim (inline ,global-fname)
+                  (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional))))
          (defun ,global-fname (,@(get-args begin-term)
                                &key ,@global-key-args)
            (declare (optimize (speed 3) (safety 1)))
            ,(expand chain nil))))))
-

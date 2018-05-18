@@ -116,16 +116,14 @@ forcibly set to [0, 1]."
 
 (defvar +srgb+) ; later defined
 
-(declaim (inline xyz-to-lrgb))
-(defun xyz-to-lrgb (x y z &optional (rgbspace +srgb+))
+(define-primary-converter xyz lrgb (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
 		    (float x 1d0)
 		    (float y 1d0)
 		    (float z 1d0)))
 
-(declaim (inline lrgb-to-xyz))
-(defun lrgb-to-xyz (lr lg lb &optional (rgbspace +srgb+))
+(define-primary-converter lrgb xyz (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
 		    (float lr 1d0)
@@ -144,7 +142,7 @@ are nil, it is just a copier."
 		       (multiple-value-bind (small-x small-y y)
 			   (multiple-value-call #'xyz-to-xyy
 			     (multiple-value-call ca-func
-			       (lrgb-to-xyz r g b rgbspace)))
+			       (lrgb-to-xyz r g b :rgbspace rgbspace)))
 			 (declare (ignore y))
 			 (list small-x small-y))))
 	      (append (get-new-xy 1 0 0)
@@ -348,16 +346,14 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
   (declare (optimize (speed 3) (safety 1)))
   (funcall (rgbspace-delinearizer rgbspace) (float x 1d0)))
 
-(declaim (inline lrgb-to-rgb))
-(defun lrgb-to-rgb (lr lg lb &optional (rgbspace +srgb+))
+(define-primary-converter lrgb rgb (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((delin (rgbspace-delinearizer rgbspace)))
     (values (funcall delin (float lr 1d0))
 	    (funcall delin (float lg 1d0))
 	    (funcall delin (float lb 1d0)))))
 
-(declaim (inline rgb-to-lrgb))
-(defun rgb-to-lrgb (r g b &optional (rgbspace +srgb+))
+(define-primary-converter rgb lrgb (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((lin (rgbspace-linearizer rgbspace)))
     (values (funcall lin (float r 1d0))
