@@ -59,14 +59,42 @@ clamp::= :always-clamped | :clampable | nil
                   *colorspace-table*)
   (format t ">~%"))
 
-(defun add-primary-converter (from-term to-term &optional (bidirectional t))
+(defparameter *primary-converter-table* (make-hash-table :test 'equal))
+
+(defun gen-converter-name (from-term to-term)
+  (intern (format nil "~A-TO-~A" from-term to-term) *package*))
+
+(defun get-key-args (lambda-list)
+  (mapcar #'(lambda (x) (make-keyword (if (consp x)
+                                          (first x)
+                                          x)))
+          (cdr (member '&key lambda-list))))
+
+(defstruct (primary-converter (:constructor make-primary-converter
+                                  (from-term to-term lambda-list
+                                   &aux (key-args (get-key-args lambda-list))
+                                     (fsymbol (gen-converter-name from-term to-term)))))
+  (from-term nil :type symbol)
+  (to-term nil :type symbol)
+  (fsymbol nil :type symbol)
+  (lambda-list nil :type list)
+  (key-args nil :type list))
+
+(defun add-primary-converter (from-term to-term lambda-list)
   (let ((from-space (get-colorspace from-term))
         (to-space (get-colorspace to-term)))
     (assert (and from-space to-space))
     (pushnew to-term (colorspace-neighbors from-space))
-    (when bidirectional
-      (pushnew from-term (colorspace-neighbors to-space)))))
+    (setf (gethash (list from-term to-term) *primary-converter-table*)
+          (make-primary-converter from-term to-term lambda-list))))
 
+(defun get-primary-converter (from-term to-term)
+  (gethash (list from-term to-term) *primary-converter-table*))
+(defun print-primary-converter-table ()
+  (format t "#<HASH-TABLE ~%")
+  (maphash-values #'(lambda (val) (format t "~S~%" val))
+                  *primary-converter-table*)
+  (format t ">~%"))
 
 (defstruct queue list tail)
 (defun enqueue (obj queue)
@@ -155,9 +183,6 @@ clamp::= :always-clamped | :clampable | nil
 ;; (add-primary-converter :hsl :rgb)
 
 
-(defun gen-converter-name (from-term to-term)
-  (intern (format nil "~A-TO-~A" from-term to-term) *package*))
-
 (defmacro define-primary-converter (begin-term dest-term args &body body)
   "Defines FOO-TOO-BAR function as a primary converter."
   (let* ((begin-key (make-keyword begin-term))
@@ -168,7 +193,8 @@ clamp::= :always-clamped | :clampable | nil
                 (ftype (function * (values ,@(get-arg-types dest-key) &optional))))
        (defun ,fname ,args
          ,@body)
-       (add-primary-converter ,begin-key ,dest-key nil))))
+       (add-primary-converter ,begin-key ,dest-key
+                              ',args))))
 
 (defun converter-clamp-p (term1 term2)
   (and (not (eql (get-clamp term1) :always-clamped))
@@ -200,8 +226,8 @@ clamp::= :always-clamped | :clampable | nil
                (list key (intern (symbol-name key))))
            arg-lst))
 
-(defmacro defconverter (begin-term dest-term)
-  (let* ((global-fname (gen-converter-name begin-term dest-term))
+(defmacro defconverter (begin-term dest-term &key (fname (gen-converter-name begin-term dest-term)))
+  (let* ((global-fname fname)
          (chain (get-converter-chain begin-term dest-term))
          (global-key-args (gen-global-key-args begin-term dest-term))
          (last-key-args (gen-last-key-args begin-term dest-term)))
@@ -227,3 +253,4 @@ clamp::= :always-clamped | :clampable | nil
                                &key ,@global-key-args)
            (declare (optimize (speed 3) (safety 1)))
            ,(expand chain nil))))))
+
