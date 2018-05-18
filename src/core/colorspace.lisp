@@ -195,7 +195,7 @@ clamp::= :always-clamped | :clampable | nil
          (fname (gen-converter-name begin-term dest-term)))
     `(progn
        (declaim (inline ,fname)
-                (ftype (function * (values ,@(get-arg-types dest-term) &optional))))
+                (ftype (function * (values ,@(get-arg-types dest-term) &optional)) ,fname))
        (defun ,fname ,(append (get-args begin-term) args)
          ,@body)
        (add-primary-converter ,begin-term ,dest-term
@@ -206,6 +206,9 @@ clamp::= :always-clamped | :clampable | nil
   (and (not (eql (get-clamp term1) :always-clamped))
        (eql (get-clamp term2) :clampable)))
 
+(defun global-clamp-p (terms)
+  (converter-clamp-p (car (last terms 2))
+                     (car (last terms))))
 (defun get-local-illuminant-key (term1 term2)
   (let* ((conv (get-primary-converter term1 term2))
          (key-args (primary-converter-key-args conv)))
@@ -219,6 +222,14 @@ clamp::= :always-clamped | :clampable | nil
     (or (find :rgbspace illum-keys)
         (find :illuminant illum-keys))))
 
+(defun need-rgbspace-to-illuminant-p (terms)
+  (let ((illum-keys (loop for (term1 term2) on terms
+                          until (null term2)
+                          collect (get-local-illuminant-key term1 term2))))
+    (and (find :rgbspace illum-keys)
+         (find :illuminant illum-keys))))
+
+
 (defun sane-symbol (symb)
   (intern (symbol-name symb) *package*))
 
@@ -228,11 +239,13 @@ clamp::= :always-clamped | :clampable | nil
            (let ((illum-key (get-global-illuminant-key terms)))
              (case illum-key
                (:rgbspace (list (sane-symbol illum-key) '+srgb+))
-               (:illuminant (list (sane-symbol illum-key) '+illum-d65+)))))))
+               (:illuminant (list (sane-symbol illum-key) '+illum-d65+))))
+           (when (global-clamp-p terms)
+             (list (sane-symbol :clamp) t)))))
 
-(defun gen-last-key-args (term1 term2)
-  (when (converter-clamp-p term1 term2)
-    (list :clamp (intern "CLAMP" *package*))))
+(defun gen-last-key-args (terms)
+  (when (global-clamp-p terms)
+    (list :clamp (sane-symbol :clamp))))
 
 (defun expand-key-args (arg-lst)
   (mappend #'(lambda (key)
@@ -249,7 +262,8 @@ clamp::= :always-clamped | :clampable | nil
          (dest-term (make-keyword dest-term))
          (global-fname fname)
          (chain (get-converter-chain begin-term dest-term))
-         (global-key-args (gen-global-key-args chain)))
+         (global-key-args (gen-global-key-args chain))
+         (last-key-args (gen-last-key-args chain)))
     (assert (>= (length chain) 3)
             (chain)
             "The length of converters path is ~a. It should be greater than 3."
@@ -261,22 +275,30 @@ clamp::= :always-clamped | :clampable | nil
                           (term2 (second term-lst))
                           (name (get-primary-converter-fsymbol term1 term2)))
                      (cond ((null code)
-                            (expand (cdr term-lst)
+                            (expand (cdr term-lst) ; first conversion
                                     `(,name ,@(get-args term1)
                                             ,@(gen-local-key-args term1 term2))))
-                           ((eql term2 dest-term)
+                           ((eql term2 dest-term) ; last conversion
                             (expand (cdr term-lst)
                                     `(multiple-value-call #',name
                                        ,code
-                                       ,@(gen-local-key-args term1 term2))))
-                           (t (expand (cdr term-lst)
+                                       ,@(gen-local-key-args term1 term2)
+                                       ,@last-key-args)))
+                           (t (expand (cdr term-lst) ; intermediate conversion
                                       `(multiple-value-call #',name
                                          ,code
                                          ,@(gen-local-key-args term1 term2)))))))))
       `(progn
          (declaim (inline ,global-fname)
-                  (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional))))
+                  (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-fname))
          (defun ,global-fname (,@(get-args begin-term)
                                &key ,@global-key-args)
            (declare (optimize (speed 3) (safety 1)))
-           ,(expand chain nil))))))
+           ,(if (need-rgbspace-to-illuminant-p chain)
+                `(let ((,(sane-symbol 'illuminant)
+                         (dufy-core:rgbspace-illuminant ,(sane-symbol 'rgbspace))))
+                   (declare (ignorable ,(sane-symbol 'illuminant)))
+                   ,(expand chain nil))
+                (expand chain nil)))))))
+
+;; (defconverter xyy lrgb)

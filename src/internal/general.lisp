@@ -102,7 +102,19 @@
   `(progn
      #+sbcl(sb-ext:gc :full t)
      #+ccl(ccl:gc)
-    (time ,@body)))
+     (time ,@body)))
+
+(defmacro stime-after-gc (&body body)
+  `(progn
+     #+sbcl(sb-ext:gc :full t)
+     #+ccl(ccl:gc)
+     (simple-time ,@body)))
+
+(defmacro time-median (num &body body)
+  (let ((i (gensym)))
+    `(alexandria:median
+      (loop for ,i below ,num
+            collect (stime-after-gc ,@body)))))
 
 #+sbcl
 (defmacro with-profile (&body body)

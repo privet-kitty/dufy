@@ -8,6 +8,8 @@
    :print-make-array
    :with-double-float
    :time-after-gc
+   :stime-after-gc
+   :time-median
    :with-profile
 
    :two-pi

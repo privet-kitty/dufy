@@ -364,26 +364,37 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
   "Returns true, if at least one of R, G and B is outside the interval
 [RGBSPACE-MIN - THRESHOLD, RGBSPACE-MAX + THRESHOLD]"
   (declare (optimize (speed 3) (safety 1)))
-  (let ((threshold (float threshold 1d0)))
+  (with-double-float (threshold)
     (let ((inf (- (rgbspace-min rgbspace) threshold))
 	  (sup (+ (rgbspace-max rgbspace) threshold)))
       (not (and (<= inf r sup)
 		(<= inf g sup)
 		(<= inf b sup))))))
 
-(declaim (inline xyz-to-rgb))
-(defun xyz-to-rgb (x y z &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'lrgb-to-rgb
-    (xyz-to-lrgb (float x 1d0) (float y 1d0) (float z 1d0) rgbspace)
-    rgbspace))
+(defconverter xyz rgb)
+;; (declaim (inline xyz-to-rgb))
+;; (defun xyz-to-rgb (x y z &key (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'lrgb-to-rgb
+;;     (xyz-to-lrgb (float x 1d0) (float y 1d0) (float z 1d0)
+;;                  :rgbspace rgbspace)
+;;     :rgbspace rgbspace))
 
-(declaim (inline rgb-to-xyz))
-(defun rgb-to-xyz (r g b &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'lrgb-to-xyz
-    (rgb-to-lrgb (float r 1d0) (float g 1d0) (float b 1d0) rgbspace)
-    rgbspace))
+
+(defun bench-xyz-to-rgb (&optional (num 5000000))
+  (time-median 10
+    (dotimes (i num)
+      (xyz-to-rgb 0.1 0.2 0.3))))
+
+(defconverter rgb xyz)
+;; (declaim (inline rgb-to-xyz))
+;; (defun rgb-to-xyz (r g b &key (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'lrgb-to-xyz
+;;     (rgb-to-lrgb (float r 1d0) (float g 1d0) (float b 1d0)
+;;                  :rgbspace rgbspace)
+;;     :rgbspace rgbspace))
+
 
 
 (declaim (inline qrgb-out-of-gamut-p))
@@ -396,8 +407,7 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 	      (<= inf qg sup)
 	      (<= inf qb sup)))))
 
-(declaim (inline rgb-to-qrgb))
-(defun rgb-to-qrgb (r g b &key (rgbspace +srgb+) (clamp t))
+(define-primary-converter rgb qrgb (&key (rgbspace +srgb+) (clamp t))
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1], typically) to {0, 1,
 ..., RGBSPACE-QMAX} ({0, 1, ..., 255}, typically), though it accepts
 all the real values."
@@ -415,8 +425,7 @@ all the real values."
                   (round (* (- b min) qmax-float/length)))))))
 
 
-(declaim (inline qrgb-to-rgb))
-(defun qrgb-to-rgb (qr qg qb &optional (rgbspace +srgb+))
+(define-primary-converter qrgb rgb (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer qr qg qb))
   (let ((min (rgbspace-min rgbspace))
@@ -425,43 +434,54 @@ all the real values."
 	    (+ min (* qg length/qmax-float))
 	    (+ min (* qb length/qmax-float)))))
 
-
-(declaim (inline lrgb-to-qrgb))
-(defun lrgb-to-qrgb (lr lg lb &key (rgbspace +srgb+) (clamp t))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-qrgb
-    (lrgb-to-rgb (float lr 1d0) (float lg 1d0) (float lb 1d0) rgbspace)
-    :rgbspace rgbspace
-    :clamp clamp))
-
-(declaim (inline qrgb-to-lrgb))
-(defun qrgb-to-lrgb (qr qg qb &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1))
-	   (integer qr qg qb))
-  (multiple-value-call #'rgb-to-lrgb
-    (qrgb-to-rgb qr qg qb rgbspace)
-    rgbspace))
+(defconverter lrgb qrgb)
+;; (declaim (inline lrgb-to-qrgb))
+;; (defun lrgb-to-qrgb (lr lg lb &key (rgbspace +srgb+) (clamp t))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-qrgb
+;;     (lrgb-to-rgb (float lr 1d0) (float lg 1d0) (float lb 1d0)
+;;                  :rgbspace rgbspace)
+;;     :rgbspace rgbspace
+;;     :clamp clamp))
 
 
-(declaim (inline xyz-to-qrgb))
-(defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (clamp t))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-qrgb
-    (xyz-to-rgb (float x 1d0) (float y 1d0) (float z 1d0) rgbspace)
-    :rgbspace rgbspace
-    :clamp clamp))
-
-(declaim (inline qrgb-to-xyz))
-(defun qrgb-to-xyz (qr qg qb &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1))
-	   (integer qr qg qb))
-  (multiple-value-call #'rgb-to-xyz
-    (qrgb-to-rgb qr qg qb rgbspace)
-    rgbspace))
+(defconverter qrgb lrgb)
+;; (declaim (inline qrgb-to-lrgb))
+;; (defun qrgb-to-lrgb (qr qg qb &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1))
+;;            (integer qr qg qb))
+;;   (multiple-value-call #'rgb-to-lrgb
+;;     (qrgb-to-rgb qr qg qb :rgbspace rgbspace)
+;;     :rgbspace rgbspace))
 
 
-(declaim (inline qrgb-to-int))
-(defun qrgb-to-int (qr qg qb &optional (rgbspace +srgb+))
+(defun bench-qrgb-to-lrgb (&optional (num 8000000))
+  (time-median 10
+    (dotimes (i num)
+      (qrgb-to-lrgb 100 200 50))))
+
+
+(defconverter xyz qrgb)
+;; (declaim (inline xyz-to-qrgb))
+;; (defun xyz-to-qrgb (x y z &key (rgbspace +srgb+) (clamp t))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-qrgb
+;;     (xyz-to-rgb (float x 1d0) (float y 1d0) (float z 1d0) rgbspace)
+;;     :rgbspace rgbspace
+;;     :clamp clamp))
+
+
+(defconverter qrgb xyz)
+;; (declaim (inline qrgb-to-xyz))
+;; (defun qrgb-to-xyz (qr qg qb &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1))
+;; 	   (integer qr qg qb))
+;;   (multiple-value-call #'rgb-to-xyz
+;;     (qrgb-to-rgb qr qg qb rgbspace)
+;;     rgbspace))
+
+
+(define-primary-converter qrgb int (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer qr qg qb))
   (let ((bpc (rgbspace-bit-per-channel rgbspace))
@@ -470,8 +490,7 @@ all the real values."
        (ash (clamp qg 0 qmax) bpc)
        (clamp qb 0 qmax))))
 
-(declaim (inline int-to-qrgb))
-(defun int-to-qrgb (int &optional (rgbspace +srgb+))
+(define-primary-converter int qrgb (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer int))
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
@@ -519,59 +538,66 @@ all the real values."
 		     (logand (ash int -bpc) qmax)
 		     (logand int qmax))))))
 
-(defun bench-qrgb (&optional (num 5000000))
-  (time-after-gc (dotimes (i num)
-		   (multiple-value-call #'qrgb-to-int
-		     (int-to-qrgb (random #.(expt 2 64)) +bg-srgb-16+)
-		     +bg-srgb-16+))))
+(defun bench-qrgb (&optional (num 10000000))
+  (time-median 10 (dotimes (i num)
+                    (multiple-value-call #'qrgb-to-int
+                      (int-to-qrgb (random #.(expt 2 64))
+                                   :rgbspace +bg-srgb-16+)
+                      :rgbspace +bg-srgb-16+))))
 
 
 
-(declaim (inline int-to-rgb))
-(defun int-to-rgb (int &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'qrgb-to-rgb
-    (int-to-qrgb int rgbspace)
-    rgbspace))
+(defconverter int rgb)
+;; (declaim (inline int-to-rgb))
+;; (defun int-to-rgb (int &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'qrgb-to-rgb
+;;     (int-to-qrgb int rgbspace)
+;;     rgbspace))
 
-(declaim (inline rgb-to-int))
-(defun rgb-to-int (r g b &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (r g b)
-    (multiple-value-call #'qrgb-to-int
-      (rgb-to-qrgb r g b :rgbspace rgbspace)
-      rgbspace)))
-
-
-(declaim (inline int-to-lrgb))
-(defun int-to-lrgb (int &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'qrgb-to-lrgb
-    (int-to-qrgb int rgbspace)
-    rgbspace))
-
-(declaim (inline lrgb-to-int))
-(defun lrgb-to-int (lr lg lb &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-int
-    (lrgb-to-rgb (float lr 1d0) (float lg 1d0) (float lb 1d0) rgbspace)
-    rgbspace))
+(defconverter rgb int)
+;; (declaim (inline rgb-to-int))
+;; (defun rgb-to-int (r g b &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (with-double-float (r g b)
+;;     (multiple-value-call #'qrgb-to-int
+;;       (rgb-to-qrgb r g b :rgbspace rgbspace)
+;;       rgbspace)))
 
 
-(declaim (inline int-to-xyz))
-(defun int-to-xyz (int &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1))
-	   (integer int))
-  (multiple-value-call #'qrgb-to-xyz
-    (int-to-qrgb int rgbspace)
-    rgbspace))
+(defconverter int lrgb)
+;; (declaim (inline int-to-lrgb))
+;; (defun int-to-lrgb (int &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'qrgb-to-lrgb
+;;     (int-to-qrgb int rgbspace)
+;;     rgbspace))
 
-(declaim (inline xyz-to-int))
-(defun xyz-to-int (x y z &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'qrgb-to-int
-    (xyz-to-qrgb (float x 1d0) (float y 1d0) (float z 1d0) :rgbspace rgbspace)
-    rgbspace))
+(defconverter lrgb int)
+;; (declaim (inline lrgb-to-int))
+;; (defun lrgb-to-int (lr lg lb &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-int
+;;     (lrgb-to-rgb (float lr 1d0) (float lg 1d0) (float lb 1d0) rgbspace)
+;;     rgbspace))
+
+
+(defconverter int xyz)
+;; (declaim (inline int-to-xyz))
+;; (defun int-to-xyz (int &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1))
+;; 	   (integer int))
+;;   (multiple-value-call #'qrgb-to-xyz
+;;     (int-to-qrgb int rgbspace)
+;;     rgbspace))
+
+(defconverter xyz int)
+;; (declaim (inline xyz-to-int))
+;; (defun xyz-to-int (x y z &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'qrgb-to-int
+;;     (xyz-to-qrgb (float x 1d0) (float y 1d0) (float z 1d0) :rgbspace rgbspace)
+;;     rgbspace))
 
 
 
@@ -588,7 +614,7 @@ all the real values."
 	(sat (float sat 1d0))
 	(val (float val 1d0)))
     (let* ((c (* val sat))
-	   (h-prime (* hue #.(float 1/60 1d0)))
+	   (h-prime (* hue 1/60))
 	   (h-prime-int (floor h-prime))
 	   (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
 	   (base (- val c)))
