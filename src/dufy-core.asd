@@ -15,5 +15,6 @@
 		 (:file "rgb")
 		 (:file "lab-and-luv")
 		 (:file "cat")
+                 (:file "rgbspaces-data")
 		 (:file "deltae")))))
 

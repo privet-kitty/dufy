@@ -3,6 +3,22 @@
 ;;;
 ;;; RGB Color Space
 ;;;
+(define-colorspace rgb ((r double-float)
+                        (g double-float)
+                        (b double-float))
+  :illuminant :rgbspace)
+(define-colorspace lrgb ((lr double-float)
+                         (lg double-float)
+                         (lb double-float))
+  :illuminant :rgbspace)
+(define-colorspace qrgb ((qr integer)
+                         (qg integer)
+                         (qb integer))
+  :illuminant :rgbspace
+  :clamp :clampable)
+(define-colorspace int ((int integer))
+  :illuminant :rgbspace
+  :clamp :always-clamped)
 
 (defun gen-linearizer (gamma)
   "Returns a linearization function for a given gamma value."
@@ -47,6 +63,7 @@
   (min 0d0 :type double-float)
   (max 1d0 :type double-float)
   (length 1d0 :type double-float) ; length of the interval [min, max]
+  (/length 1d0 :type double-float)
   (normal t :type boolean) ; t, if min = 0d0 and max = 1d0
 
   ;; quantization
@@ -107,6 +124,7 @@ forcibly set to [0, 1]."
 			  :min min
 			  :max max
 			  :length len
+                          :/length (/ len)
 			  :normal normal
 			  :bit-per-channel bit-per-channel
 			  :qmax qmax
@@ -129,198 +147,6 @@ forcibly set to [0, 1]."
 		    (float lr 1d0)
 		    (float lg 1d0)
 		    (float lb 1d0)))
-
-
-(defun copy-rgbspace (rgbspace &key (illuminant nil) (bit-per-channel nil))
-  "Returns a new RGBSPACE with different standard illuminant and/or
-bit-per-channel. All the parameters are properly recalculated. If both
-are nil, it is just a copier."
-  (destructuring-bind (new-xr new-yr new-xg new-yg new-xb new-yb)
-      (if illuminant
-	  (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace) illuminant)))
-	    (labels ((get-new-xy (r g b)
-		       (multiple-value-bind (small-x small-y y)
-			   (multiple-value-call #'xyz-to-xyy
-			     (multiple-value-call ca-func
-			       (lrgb-to-xyz r g b :rgbspace rgbspace)))
-			 (declare (ignore y))
-			 (list small-x small-y))))
-	      (append (get-new-xy 1 0 0)
-		      (get-new-xy 0 1 0)
-		      (get-new-xy 0 0 1))))
-	  (list (rgbspace-xr rgbspace) (rgbspace-yr rgbspace)
-		(rgbspace-xg rgbspace) (rgbspace-yg rgbspace)
-		(rgbspace-xb rgbspace) (rgbspace-yb rgbspace)))
-    (make-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
-		   :illuminant (or illuminant (rgbspace-illuminant rgbspace))
-		   :linearizer (rgbspace-linearizer rgbspace)
-		   :delinearizer (rgbspace-delinearizer rgbspace)
-		   :lmin (rgbspace-lmin rgbspace)
-		   :lmax (rgbspace-lmax rgbspace)
-		   :bit-per-channel (or bit-per-channel (rgbspace-bit-per-channel rgbspace))
-		   :force-normal (rgbspace-normal rgbspace))))
-
-
-;;;
-;;; Predefined RGB spaces
-;;;
-
-(defun linearize-srgb (x)
-  "linearizer of sRGB (actually the same as bg-sRGB)"
-  (declare (optimize (speed 3) (safety 1))
-	   (double-float x))
-  (cond ((> x #.(* 0.0031308d0 12.92d0))
-	 (expt (* (+ 0.055d0 x) #.(/ 1.055d0)) 2.4d0))
-	((< x #.(* -0.0031308d0 12.92d0))
-	 (- (expt (* (- 0.055d0 x) #.(/ 1.055d0)) 2.4d0)))
-	(t (* x #.(/ 12.92d0)))))
-
-(defun delinearize-srgb (x)
-  "delinealizer of sRGB (actually the same as bg-sRGB)"
-  (declare (optimize (speed 3) (safety 1))
-	   (double-float x))
-  (cond ((> x 0.0031308d0)
-	 (+ (* 1.055d0 (expt x #.(/ 2.4d0))) -0.055d0))
-	((< x -0.0031308d0)
-	 (+ (* -1.055d0 (expt (- x) #.(/ 2.4d0))) 0.055d0))
-	(t (* x 12.92d0))))
-
-(defun linearize-scrgb-nl (x)
-  (declare (optimize (speed 3) (safety 1))
-	   (double-float x))
-  (cond ((> x #.(* 4.5d0 0.018d0))
-	 (expt (* (+ 0.099d0 x) #.(/ 1.099d0)) #.(/ 0.45d0)))
-	((< x (* 4.5d0 -0.018d0))
-	 (- (expt (* (- 0.099d0 x) #.(/ 1.099d0)) #.(/ 0.45d0))))
-	(t (* x #.(/ 4.5d0)))))
-
-(defun delinearize-scrgb-nl (x)
-  (declare (optimize (speed 3) (safety 1))
-	   (double-float x))
-  (cond ((> x 0.018d0)
-	 (+ (* 1.099d0 (expt x 0.45d0)) -0.099d0))
-	((< x -0.018d0)
-	 (+ (* -1.099d0 (expt (- x) 0.45d0)) 0.099d0))
-	(t (* x 4.5d0))))
-
-
-(defparameter +srgb+
-  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		:linearizer #'linearize-srgb				
-		:delinearizer #'delinearize-srgb
-		:force-normal t)
-  "sRGB, 8-bit per channel")
-
-(defparameter +bg-srgb-10+
-  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		:linearizer #'linearize-srgb				
-		:delinearizer #'delinearize-srgb
-		:lmin -0.53d0
-		:lmax 1.68d0
-		:bit-per-channel 10)
-  "bg-sRGB, 10-bit per channel
-http://www.color.org/chardata/rgb/bgsrgb.xalter")
-
-(defparameter +bg-srgb-12+
-  (copy-rgbspace +bg-srgb-10+ :bit-per-channel 12)
-  "bg-sRGB, 12-bit per channel,
-http://www.color.org/chardata/rgb/bgsrgb.xalter")
-
-(defparameter +bg-srgb-16+
-  (copy-rgbspace +bg-srgb-10+ :bit-per-channel 16)
-  "bg-sRGB, 16-bit per channel,
-http://www.color.org/chardata/rgb/bgsrgb.xalter")
-
-(defparameter +scrgb-16+
-  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		:lmin -0.5d0
-		:lmax 7.4999d0
-		:bit-per-channel 16)
-  "scRGB(16), IEC 61966-2-2:2003
-http://www.color.org/chardata/rgb/scrgb.xalter")
-
-(defparameter +scrgb-nl+
-  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-		:lmin -0.6038d0
-		:lmax 7.5913d0
-		:linearizer #'linearize-scrgb-nl
-		:delinearizer #'delinearize-scrgb-nl
-		:bit-per-channel 12)
-  "scRGB-nl, IEC 61966-2-2:2003
-http://www.color.org/chardata/rgb/scrgb-nl.xalter")
-
-(defparameter +cie-rgb+
-  (make-rgbspace 0.7347d0 0.2653d0 0.2738d0 0.7174d0 0.1666d0 0.0089d0
-                      :illuminant +illum-e+)
-  "CIE RGB (1931), no gamma-correction, 8-bit per channel.")
-
-(defparameter +adobe+
-  (make-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
-		:linearizer (gen-linearizer #.(float 563/256 1d0))
-		:delinearizer (gen-delinearizer #.(float 563/256 1d0)))
-  "Adobe RGB (1998), 8-bit per channel")
-
-(defparameter +adobe-16+
-  (copy-rgbspace +adobe+ :bit-per-channel 16)
-  "Adobe RGB (1998), 16-bit per channel.")
-
-(defparameter +wide-gamut+
-  (make-rgbspace 0.7347d0 0.2653d0 0.1152d0 0.8264d0 0.1566d0 0.0177d0
-                 :illuminant +illum-d50+
-		 :linearizer (gen-linearizer #.(float 563/256 1d0))
-		 :delinearizer (gen-delinearizer #.(float 563/256 1d0)))
-  "Wide-gamut RGB, 8-bit per channel.")
-
-(defparameter +ntsc1953+
-  (make-rgbspace 0.67d0 0.33d0 0.21d0 0.71d0 0.14d0 0.08d0
-		:illuminant +illum-c+
-		:linearizer (gen-linearizer 2.2d0)
-		:delinearizer (gen-delinearizer 2.2d0))
-  "NTSC RGB, Rec. ITU-R BT.470-6, System M, 8-bit per channel.
-http://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.470-6-199811-S!!PDF-E.pdf")
-
-(defparameter +pal/secam+
-  (make-rgbspace 0.64d0 0.33d0 0.29d0 0.60d0 0.15d0 0.06d0
-		:linearizer (gen-linearizer 2.8d0)
-		:delinearizer (gen-delinearizer 2.8d0))
-  "PAL/SECAM RGB, Rec. ITU-R BT.470-6, 8-bit per channel.
-http://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.470-6-199811-S!!PDF-E.pdf")
-
-(defun linearize-prophoto (x)
-  (declare (optimize (speed 3) (safety 1))
-	   (double-float x))
-  (cond ((> x #.(* 1/512 16d0))
-	 (expt x 1.8d0))
-	((< x #.(* -1/512 16d0))
-	 (- (expt (- x) 1.8d0)))
-	(t (* x #.(float 1/16 1d0)))))
-  
-(defun delinearize-prophoto (x)
-  (declare (optimize (speed 3) (safety 1))
-	   (double-float x))
-  (cond ((> x #.(float 1/512 1d0))
-	 (expt x #.(/ 1.8d0)))
-	((< x #.(float -1/512 1d0))
-	 (- (expt (- x) #.(/ 1.8d0))))
-	(t (* x 16d0))))
-	    
-(defparameter +prophoto+
-  (make-rgbspace 0.7347d0 0.2653d0 0.1596d0 0.8404d0 0.0366d0 0.0001d0
-		:illuminant +illum-d50+
-		:linearizer #'linearize-prophoto
-		:delinearizer #'delinearize-prophoto)
-  "Prophoto RGB (also known as ROMM RGB), 8-bit per channel,
-http://www.color.org/ROMMRGB.pdf")		      
- 
-(defparameter +prophoto-12+
-  (copy-rgbspace +prophoto+ :bit-per-channel 12)
-  "Prophoto RGB (also known as ROMM RGB), 12-bit per channel,
-http://www.color.org/ROMMRGB.pdf")
-
-(defparameter +prophoto-16+
-  (copy-rgbspace +prophoto+ :bit-per-channel 16)
-  "Prophoto RGB (also known as ROMM RGB), 16-bit per channel,
-http://www.color.org/ROMMRGB.pdf")
 
 
 
@@ -538,12 +364,12 @@ all the real values."
 		     (logand (ash int -bpc) qmax)
 		     (logand int qmax))))))
 
-(defun bench-qrgb (&optional (num 10000000))
-  (time-median 10 (dotimes (i num)
-                    (multiple-value-call #'qrgb-to-int
-                      (int-to-qrgb (random #.(expt 2 64))
-                                   :rgbspace +bg-srgb-16+)
-                      :rgbspace +bg-srgb-16+))))
+;; (defun bench-qrgb (&optional (num 10000000))
+;;   (time-median 10 (dotimes (i num)
+;;                     (multiple-value-call #'qrgb-to-int
+;;                       (int-to-qrgb (random #.(expt 2 64))
+;;                                    :rgbspace +bg-srgb-16+)
+;;                       :rgbspace +bg-srgb-16+))))
 
 
 
@@ -554,6 +380,8 @@ all the real values."
 ;;   (multiple-value-call #'qrgb-to-rgb
 ;;     (int-to-qrgb int rgbspace)
 ;;     rgbspace))
+
+
 
 (defconverter rgb int)
 ;; (declaim (inline rgb-to-int))
@@ -601,77 +429,129 @@ all the real values."
 
 
 
+
 ;;;
 ;;; HSV/HSL
 ;;;
 
-(declaim (inline hsv-to-rgb))
-(defun hsv-to-rgb (hue sat val)
+(define-colorspace hsv ((hue double-float)
+                        (sat double-float)
+                        (val double-float))
+  :illuminant :rgbspace)
+(define-colorspace hsl ((hue double-float)
+                        (sat double-float)
+                        (lum double-float))
+  :illuminant :rgbspace)
+
+(defmacro macrolet-applied-only-when (test definitions &body body)
+  `(if ,test
+       (macrolet ,definitions
+         ,@body)
+       (macrolet ,(loop for def in definitions
+                        collect `(,(car def) (arg) arg))
+         ,@body)))
+
+(define-primary-converter hsv rgb (&key (rgbspace +srgb+))
   "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0,
 1]; all the real values outside the interval are also acceptable."
   (declare (optimize (speed 3) (safety 1)))
   (let ((hue (the (double-float 0d0 360d0) (mod (float hue 1d0) 360d0)))
-	(sat (float sat 1d0))
-	(val (float val 1d0)))
+        (sat (float sat 1d0))
+        (val (float val 1d0)))
     (let* ((c (* val sat))
-	   (h-prime (* hue 1/60))
-	   (h-prime-int (floor h-prime))
-	   (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
-	   (base (- val c)))
-      (cond ((= sat 0d0) (values base base base))
-	    ((= 0 h-prime-int) (values (+ base c) (+ base x) base))
-	    ((= 1 h-prime-int) (values (+ base x) (+ base c) base))
-	    ((= 2 h-prime-int) (values base (+ base c) (+ base x)))
-	    ((= 3 h-prime-int) (values base (+ base x) (+ base c)))
-	    ((= 4 h-prime-int) (values (+ base x) base (+ base c)))
-	    ((= 5 h-prime-int) (values (+ base c) base (+ base x)))))))
+           (h-prime (* hue 1/60))
+           (h-prime-int (floor h-prime))
+           (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
+           (base (- val c)))
+      (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
+          ((local-lerp (x)
+                       `(+ (rgbspace-min rgbspace)
+                           (* ,x (rgbspace-length rgbspace)))))
+        (cond ((= sat 0d0) (values base base base))
+              ((= 0 h-prime-int) (values (local-lerp (+ base c))
+                                         (local-lerp (+ base x))
+                                         (local-lerp base)))
+              ((= 1 h-prime-int) (values (local-lerp (+ base x))
+                                         (local-lerp (+ base c))
+                                         (local-lerp base)))
+              ((= 2 h-prime-int) (values (local-lerp base)
+                                         (local-lerp (+ base c))
+                                         (local-lerp (+ base x))))
+              ((= 3 h-prime-int) (values (local-lerp base)
+                                         (local-lerp (+ base x))
+                                         (local-lerp (+ base c))))
+              ((= 4 h-prime-int) (values (local-lerp (+ base x))
+                                         (local-lerp base)
+                                         (local-lerp (+ base c))))
+              ((= 5 h-prime-int) (values (local-lerp (+ base c))
+                                         (local-lerp base)
+                                         (local-lerp (+ base x))))
+              (t (values 0d0 0d0 0d0))) ; for avoiding warnings
+        ))))
 
-(declaim (inline hsv-to-qrgb))
-(defun hsv-to-qrgb (hue sat val &key (rgbspace +srgb+) (clamp t))
+(defconverter hsv qrgb)
+;; (declaim (inline hsv-to-qrgb))
+;; (defun hsv-to-qrgb (hue sat val &key (rgbspace +srgb+) (clamp t))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-qrgb
+;;     (hsv-to-rgb hue sat val)
+;;     :rgbspace rgbspace
+;;     :clamp clamp))
+
+(defconverter hsv xyz)
+;; (declaim (inline hsv-to-xyz))
+;; (defun hsv-to-xyz (hue sat val &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-xyz
+;;     (hsv-to-rgb hue sat val)
+;;     rgbspace))
+
+(defmacro let-if (test bindings &body body)
+  `(if ,test
+       (let ,(loop for x in bindings
+                   collect (list (first x) (second x)))
+         ,@body)
+       (let ,(loop for x in bindings
+                   collect (list (first x) (third x)))
+         ,@body)))
+
+(define-primary-converter rgb hsv (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-qrgb
-    (hsv-to-rgb hue sat val)
-    :rgbspace rgbspace
-    :clamp clamp))
+  (macrolet ((local-lerp (x) ; scale to the range [0, 1]
+               `(* (- (float ,x 1d0) (rgbspace-min rgbspace))
+                   (rgbspace-/length rgbspace))))
+    (let-if (rgbspace-normal rgbspace)
+        ((r (float r 1d0) (local-lerp r))
+         (g (float g 1d0) (local-lerp g))
+         (b (float b 1d0) (local-lerp b)))
+      (let* ((maxrgb (max r g b))
+             (minrgb (min r g b))
+             (s (if (= maxrgb 0d0)
+                    0d0
+                    (/ (- maxrgb minrgb) maxrgb)))
+             (h (cond ((= minrgb maxrgb) 0d0)
+                      ((= minrgb b) (+ (* 60d0 (/ (- g r) (- maxrgb minrgb))) 60d0))
+                      ((= minrgb r) (+ (* 60d0 (/ (- b g) (- maxrgb minrgb))) 180d0))
+                      ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
+        (values h s maxrgb)))))
 
-(declaim (inline hsv-to-xyz))
-(defun hsv-to-xyz (hue sat val &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-xyz
-    (hsv-to-rgb hue sat val)
-    rgbspace))
+(defconverter qrgb hsv)
+;; (declaim (inline qrgb-to-hsv))
+;; (defun qrgb-to-hsv (qr qg qb &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1))
+;; 	   (integer qr qg qb))
+;;   (multiple-value-call #'rgb-to-hsv
+;;     (qrgb-to-rgb qr qg qb rgbspace)))
 
-(declaim (inline rgb-to-hsv))
-(defun rgb-to-hsv (r g b)
-  (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (r g b)
-    (let* ((maxrgb (max r g b))
-	   (minrgb (min r g b))
-	   (s (if (= maxrgb 0d0)
-		  0d0
-		  (/ (- maxrgb minrgb) maxrgb)))
-	   (h (cond ((= minrgb maxrgb) 0d0)
-		    ((= minrgb b) (+ (* 60d0 (/ (- g r) (- maxrgb minrgb))) 60d0))
-		    ((= minrgb r) (+ (* 60d0 (/ (- b g) (- maxrgb minrgb))) 180d0))
-		    ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
-      (values h s maxrgb))))
+(defconverter xyz hsv)
+;; (declaim (inline xyz-to-hsv))
+;; (defun xyz-to-hsv (x y z &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-hsv
+;;     (xyz-to-rgb x y z rgbspace)))
 
-(declaim (inline qrgb-to-hsv))
-(defun qrgb-to-hsv (qr qg qb &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1))
-	   (integer qr qg qb))
-  (multiple-value-call #'rgb-to-hsv
-    (qrgb-to-rgb qr qg qb rgbspace)))
 
-(declaim (inline xyz-to-hsv))
-(defun xyz-to-hsv (x y z &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-hsv
-    (xyz-to-rgb x y z rgbspace)))
-  
-
-(declaim (inline hsl-to-rgb))
-(defun hsl-to-rgb (hue sat lum)
+(define-primary-converter hsl rgb (&key (rgbspace +srgb+))
   "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0,
 1]; all the real values outside the interval are also acceptable."
   (declare (optimize (speed 3) (safety 1)))
@@ -681,71 +561,85 @@ all the real values."
 	   (min (- lum tmp))
 	   (delta (- max min))
 	   (h-prime (floor (the (double-float 0d0 6d0)
-				(* (mod hue 360d0) #.(float 1/60 1d0))))))
-      (cond ((= sat 0d0) (values max max max))
-	    ((= 0 h-prime) (values max
-				   (+ min (* delta hue #.(float 1/60 1d0)))
-				   min))
-	    ((= 1 h-prime) (values (+ min (* delta (- 120d0 hue) #.(float 1/60 1d0)))
-				   max
-				   min))
-	    ((= 2 h-prime) (values min
-				   max
-				   (+ min (* delta (- hue 120d0) #.(float 1/60 1d0)))))
-	    ((= 3 h-prime) (values min
-				   (+ min (* delta (- 240d0 hue) #.(float 1/60 1d0)))
-				   max))
-	    ((= 4 h-prime) (values (+ min (* delta (- hue 240d0) #.(float 1/60 1d0)))
-				   min
-				   max))
-	    ((= 5 h-prime) (values max
-				   min
-				   (+ min (* delta (- 360d0 hue) #.(float 1/60 1d0)))))))))
+				(* (mod hue 360d0) 1/60)))))
+      (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
+          ((local-lerp (x)
+                       `(+ (rgbspace-min rgbspace)
+                           (* ,x (rgbspace-length rgbspace)))))
+        (cond ((= sat 0d0) (values max max max))
+              ((= 0 h-prime) (values (local-lerp max)
+                                     (local-lerp (+ min (* delta hue 1/60)))
+                                     (local-lerp min)))
+              ((= 1 h-prime) (values (local-lerp (+ min (* delta (- 120d0 hue) 1/60)))
+                                     (local-lerp max)
+                                     (local-lerp min)))
+              ((= 2 h-prime) (values (local-lerp min)
+                                     (local-lerp max)
+                                     (local-lerp (+ min (* delta (- hue 120d0) 1/60)))))
+              ((= 3 h-prime) (values (local-lerp min)
+                                     (local-lerp (+ min (* delta (- 240d0 hue) 1/60)))
+                                     (local-lerp max)))
+              ((= 4 h-prime) (values (local-lerp (+ min (* delta (- hue 240d0) 1/60)))
+                                     (local-lerp min)
+                                     (local-lerp max)))
+              ((= 5 h-prime) (values (local-lerp max)
+                                     (local-lerp min)
+                                     (local-lerp (+ min (* delta (- 360d0 hue) 1/60)))))
+              (t (values 0d0 0d0 0d0) ; for avoiding warnings
+                 ))))))
  
 
-(declaim (inline hsl-to-qrgb))
-(defun hsl-to-qrgb (hue sat lum &key (rgbspace +srgb+) (clamp t))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-qrgb
-    (hsl-to-rgb hue sat lum)
-    :rgbspace rgbspace
-    :clamp clamp))
+(defconverter hsl qrgb)
+;; (declaim (inline hsl-to-qrgb))
+;; (defun hsl-to-qrgb (hue sat lum &key (rgbspace +srgb+) (clamp t))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-qrgb
+;;     (hsl-to-rgb hue sat lum)
+;;     :rgbspace rgbspace
+;;     :clamp clamp))
 
-(declaim (inline hsl-to-xyz))
-(defun hsl-to-xyz (hue sat lum &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-xyz
-    (hsl-to-rgb hue sat lum)
-    rgbspace))
+(defconverter hsl xyz)
+;; (declaim (inline hsl-to-xyz))
+;; (defun hsl-to-xyz (hue sat lum &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-xyz
+;;     (hsl-to-rgb hue sat lum)
+;;     rgbspace))
 
-(declaim (inline rgb-to-hsl))
-(defun rgb-to-hsl (r g b)
+(define-primary-converter rgb hsl (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (r g b)
-    (let ((min (min r g b))
-	  (max (max r g b)))
-      (let ((hue (cond ((= min max) 0d0)
-		       ((= min b) (+ 60d0 (* 60d0 (/ (- g r) (- max min)))))
-		       ((= min r) (+ 180d0 (* 60d0 (/ (- b g) (- max min)))))
-		       ((= min g) (+ 300d0 (* 60d0 (/ (- r b) (- max min))))))))
-	(values hue
-		(let ((denom (- 1d0 (abs (+ max min -1d0)))))
-		  (if (zerop denom)
-		      0d0
-		      (/ (- max min) denom)))
-		(* 0.5d0 (+ max min)))))))
-	  
+  (macrolet ((local-lerp (x) ; scale to the range [0, 1]
+               `(* (- (float ,x 1d0) (rgbspace-min rgbspace))
+                   (rgbspace-/length rgbspace))))
+    (let-if (rgbspace-normal rgbspace)
+        ((r (float r 1d0) (local-lerp r))
+         (g (float g 1d0) (local-lerp g))
+         (b (float b 1d0) (local-lerp b)))
+      (let ((min (min r g b))
+            (max (max r g b)))
+        (let ((hue (cond ((= min max) 0d0)
+                         ((= min b) (+ 60d0 (* 60d0 (/ (- g r) (- max min)))))
+                         ((= min r) (+ 180d0 (* 60d0 (/ (- b g) (- max min)))))
+                         ((= min g) (+ 300d0 (* 60d0 (/ (- r b) (- max min))))))))
+          (values hue
+                  (let ((denom (- 1d0 (abs (+ max min -1d0)))))
+                    (if (zerop denom)
+                        0d0
+                        (/ (- max min) denom)))
+                  (* 0.5d0 (+ max min))))))))
 
-(declaim (inline qrgb-to-hsl))
-(defun qrgb-to-hsl (qr qg qb &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-hsl
-    (qrgb-to-rgb qr qg qb rgbspace)))
+(defconverter qrgb hsl)
+;; (declaim (inline qrgb-to-hsl))
+;; (defun qrgb-to-hsl (qr qg qb &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-hsl
+;;     (qrgb-to-rgb qr qg qb rgbspace)))
 
 
-(declaim (inline xyz-to-hsl))
-(defun xyz-to-hsl (x y z &optional (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'rgb-to-hsl
-    (xyz-to-rgb x y z rgbspace)))
+(defconverter xyz hsl)
+;; (declaim (inline xyz-to-hsl))
+;; (defun xyz-to-hsl (x y z &optional (rgbspace +srgb+))
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'rgb-to-hsl
+;;     (xyz-to-rgb x y z rgbspace)))
 

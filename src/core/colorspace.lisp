@@ -24,21 +24,22 @@ clamp::= :always-clamped | :clampable | nil
 
 (defmacro define-colorspace (term args &key (illuminant :illuminant) clamp)
   (let ((key (make-keyword term)))
-    `(setf (gethash ',key *colorspace-table*)
-           (make-colorspace :term ',(make-keyword key)
-                            :args ',(mapcar #'(lambda (x)
-                                                (if (consp x)
-                                                    (first x)
-                                                    x))
-                                            args)
-                            :arg-types ',(mapcar #'(lambda (x)
-                                                     (if (consp x)
-                                                         (second x)
-                                                         t))
-                                                 args)
-                            :illuminant ,illuminant
-                            :clamp ,clamp
-                            :neighbors nil))))
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (setf (gethash ,key *colorspace-table*)
+             (make-colorspace :term ,key
+                              :args ',(mapcar #'(lambda (x)
+                                                  (if (consp x)
+                                                      (first x)
+                                                      x))
+                                              args)
+                              :arg-types ',(mapcar #'(lambda (x)
+                                                       (if (consp x)
+                                                           (second x)
+                                                           t))
+                                                   args)
+                              :illuminant ,illuminant
+                              :clamp ,clamp
+                              :neighbors nil)))))
 
 (defun get-colorspace (term)
   (gethash term *colorspace-table*))
@@ -58,6 +59,8 @@ clamp::= :always-clamped | :clampable | nil
   (maphash-values #'(lambda (val) (format t "~S~%" val))
                   *colorspace-table*)
   (format t ">~%"))
+
+
 
 (defparameter *primary-converter-table* (make-hash-table :test 'equal))
 
@@ -127,66 +130,6 @@ clamp::= :always-clamped | :clampable | nil
                      (enqueue (cons term path) path-q)))))))
 
 
-(define-colorspace xyz ((x double-float)
-                        (y double-float)
-                        (z double-float)))
-(define-colorspace xyy ((small-x double-float)
-                        (small-y double-float)
-                        (y double-float)))
-(define-colorspace lab ((lstar double-float)
-                        (astar double-float)
-                        (bstar double-float)))
-(define-colorspace lchab ((lstar double-foat)
-                          (cstarab double-float)
-                          (hab double-float)))
-(define-colorspace luv ((lstar double-float)
-                        (ustar double-float)
-                        (vstar double-float)))
-(define-colorspace lchuv ((lstar double-float)
-                          (cstaruv double-float)
-                          (huv double-float)))
-(define-colorspace rgb ((r double-float)
-                        (g double-float)
-                        (b double-float))
-  :illuminant :rgbspace)
-(define-colorspace lrgb ((lr double-float)
-                         (lg double-float)
-                         (lb double-float))
-  :illuminant :rgbspace)
-(define-colorspace qrgb ((qr integer)
-                         (qg integer)
-                         (qb integer))
-  :illuminant :rgbspace :clamp :clampable)
-(define-colorspace int ((int integer))
-  :illuminant :rgbspace :clamp :always-clamped)
-(define-colorspace hsv ((hue double-float)
-                        (sat double-float)
-                        (val double-float))
-  :illuminant :rgbspace)
-(define-colorspace hsl ((hue double-float)
-                        (sat double-float)
-                        (lum double-float))
-  :illuminant :rgbspace)
-(define-colorspace spectrum ((spectrum spectrum-function)))
-(define-colorspace lms ((l double-float)
-                        (m double-float)
-                        (s double-float)))
-
-;; (add-primary-converter :xyz :xyy)
-;; (add-primary-converter :xyz :lms)
-;; (add-primary-converter :xyz :spectrum)
-;; (add-primary-converter :xyz :lrgb)
-;; (add-primary-converter :lrgb :rgb)
-;; (add-primary-converter :rgb :qrgb)
-;; (add-primary-converter :qrgb :int)
-;; (add-primary-converter :xyz :lab)
-;; (add-primary-converter :lab :lchab)
-;; (add-primary-converter :xyz :luv)
-;; (add-primary-converter :luv :lchuv)
-;; (add-primary-converter :hsv :rgb)
-;; (add-primary-converter :hsl :rgb)
-
-
 (defmacro define-primary-converter (begin-term dest-term args &body body)
   "Defines FOO-TOO-BAR function as a primary converter."
   (assert (and (symbolp begin-term) (symbolp dest-term) (listp args)))
@@ -198,8 +141,9 @@ clamp::= :always-clamped | :clampable | nil
                 (ftype (function * (values ,@(get-arg-types dest-term) &optional)) ,fname))
        (defun ,fname ,(append (get-args begin-term) args)
          ,@body)
-       (add-primary-converter ,begin-term ,dest-term
-                              ',args))))
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+         (add-primary-converter ,begin-term ,dest-term
+                                ',args)))))
 
 
 (defun converter-clamp-p (term1 term2)

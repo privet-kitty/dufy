@@ -12,12 +12,12 @@
 (def-cat-function d65-to-c +illum-d65+ +illum-c+ :cat +bradford+)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *bit-most-positive-fixnum* #.(floor (log most-positive-fixnum 2))))
+  (defparameter *most-positive-fixnum-bit-size* #.(floor (log most-positive-fixnum 2))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (declaim (double-float *maximum-chroma*))
   (defparameter *maximum-chroma*
-    #+(and sbcl 64-bit) #.(float (expt 2 (- *bit-most-positive-fixnum* 10)) 1d0)
+    #+(and sbcl 64-bit) #.(float (expt 2 (- *most-positive-fixnum-bit-size* 10)) 1d0)
     #-(and sbcl 64-bit)  most-positive-double-float
     "The largest chroma which the Munsell converters accepts. It is in
     some cases less than MOST-POSITIVE-DOUBLE-FLOAT because of
@@ -108,7 +108,7 @@ smaller than 10^-5."
 		max-error delta))))))
 
 (defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
-  (y-to-munsell-value (nth-value 1 (qrgb-to-xyz r g b rgbspace))))
+  (y-to-munsell-value (nth-value 1 (qrgb-to-xyz r g b :rgbspace rgbspace))))
 
 
 
@@ -276,9 +276,11 @@ Illuminant C.)"
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'lchab-to-xyz
     (mhvc-to-lchab-illum-c (float hue40 1d0) (float value 1d0) (float chroma 1d0))
-    +illum-c+))
+    :illuminant +illum-c+))
 
-(declaim (inline mhvc-to-xyz))
+(declaim (inline mhvc-to-xyz)
+         (ftype (function * (values double-float double-float double-float &optional))
+                mhvc-to-xyz))
 (defun mhvc-to-xyz (hue40 value chroma)
   "Illuminant D65. It causes an error by Bradford transformation,
 since the Munsell Renotation Data is measured under the Illuminant C."
@@ -297,7 +299,7 @@ since the Munsell Renotation Data is measured under the Illuminant C."
   "The standard illuminant is D65: that of RGBSPACE must also be D65."
   (multiple-value-call #'xyz-to-lrgb
     (mhvc-to-xyz hue40 value chroma)
-    rgbspace))
+    :rgbspace rgbspace))
 
 (declaim (ftype (function * (values integer integer integer &optional)) mhvc-to-qrgb)
          (inline mhvc-to-qrgb))
@@ -391,14 +393,18 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
 	(mhvc-to-lchab-illum-c hue40 value chroma))))
 
+(declaim (inline munsell-to-xyz)
+         (ftype (function * (values double-float double-float double-float &optional)) munsell-to-xyz))
 (defun munsell-to-xyz (munsellspec)
   "Illuminant D65."
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
     (if (mhvc-invalid-p hue40 value chroma)
 	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
 	(mhvc-to-xyz hue40 value chroma))))
 
 (defun munsell-to-xyz-illum-c (munsellspec)
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
     (if (mhvc-invalid-p hue40 value chroma)
 	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
@@ -411,6 +417,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 
 (defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (clamp t))
   "Illuminant D65; the standard illuminant of RGBSPACE must also be D65."
+  (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'xyz-to-qrgb
     (munsell-to-xyz munsellspec)
     :rgbspace rgbspace
@@ -496,6 +503,7 @@ CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
       (:return (values (mod tmp-hue40 40d0) v tmp-c)))))
 
 
+(declaim (inline lchab-to-mhvc-illum-c))
 (defun lchab-to-mhvc-illum-c (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "An inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
 algorithm like the one in \"An Open-Source Inversion Algorithm for the
@@ -548,7 +556,7 @@ MAX-ITERATION:
   (multiple-value-call #'lchab-to-mhvc-illum-c
     (multiple-value-call #'xyz-to-lchab
       (d65-to-c x y z)
-      +illum-c+)
+      :illuminant +illum-c+)
     :max-iteration max-iteration
     :if-reach-max if-reach-max
     :factor factor
@@ -600,8 +608,8 @@ MAX-ITERATION:
 	(multiple-value-bind (lstar cstarab hab)
 	    (multiple-value-call #'xyz-to-lchab
 	      (multiple-value-call cat-func
-		(qrgb-to-xyz qr qg qb rgbspace))
-	      +illum-c+)
+		(qrgb-to-xyz qr qg qb :rgbspace rgbspace))
+	      :illuminant +illum-c+)
 	  (let ((result (lchab-to-mhvc-illum-c lstar cstarab hab
                                                :max-iteration 300
                                                :if-reach-max :negative
@@ -623,7 +631,7 @@ MAX-ITERATION:
       (dotimes (qg 256)
 	(dotimes (qb 256)
 	  (let ((result (multiple-value-call #'xyz-to-mhvc 
-                          (qrgb-to-xyz qr qg qb rgbspace)
+                          (qrgb-to-xyz qr qg qb :rgbspace rgbspace)
                           :if-reach-max :negative
                           :max-iteration 200
                           :threshold 1.0d-3)))

@@ -7,8 +7,8 @@
 (defstruct (cat (:constructor $make-cat))
   "Model of chromatic adaptation transformation. Currently only linear
 models are available."
-  (matrix +empty-matrix+ :type (simple-array double-float (3 3)))
-  (inv-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
+  (matrix +empty-matrix+ :type matrix33)
+  (inv-matrix +empty-matrix+ :type matrix33))
 
 (defun make-cat (mat)
   "Generates a (linear) CAT model by a 3*3 matrix."
@@ -58,8 +58,12 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
   illum-bar :cat +cat02+) is different from the one in CIECAM02.")
 
 
-(declaim (inline xyz-to-lms))
-(defun xyz-to-lms (x y z &key (illuminant nil) (cat +bradford+))
+
+(define-colorspace lms ((l double-float)
+                        (m double-float)
+                        (s double-float)))
+
+(define-primary-converter xyz lms (&key (illuminant nil) (cat +bradford+))
   "Note: The default illuminant is **not** D65. If ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
@@ -83,8 +87,7 @@ the transform is virtually equivalent to that of illuminant E. "
 	(multiply-mat-vec (cat-matrix cat) x y z))))
 	    
 
-(declaim (inline lms-to-xyz))
-(defun lms-to-xyz (l m s &key (illuminant nil) (cat +bradford+))
+(define-primary-converter lms xyz (&key (illuminant nil) (cat +bradford+))
   "Note: The default illuminant is **not** D65. If ILLUMINANT is NIL,
 the transform is virtually equivalent to that of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
@@ -165,8 +168,8 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 			(multiple-value-call #',xyz-to-repr
 			  (multiple-value-call #'multiply-mat-vec
 			    mat
-			    (,repr-to-xyz ,@args from-illuminant))
-			  to-illuminant))))))
+			    (,repr-to-xyz ,@args :illuminant from-illuminant))
+			  :illuminant to-illuminant))))))
     (let ((mat (calc-cat-matrix from-illuminant to-illuminant cat)))
       (ecase target
 	(:xyz
@@ -210,8 +213,8 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 			(multiple-value-call #',',xyz-to-target
 			  (multiple-value-call #'multiply-mat-vec
 			    mat
-			    (,',target-to-xyz ,@',args ,,'from-illuminant))
-			  ,,'to-illuminant)))))))
+			    (,',target-to-xyz ,@',args :illuminant ,,'from-illuminant))
+			  :illuminant ,,'to-illuminant)))))))
     (unless (and (symbolp from-illuminant)
                  (symbolp to-illuminant))
       (error "FROM-ILLUMINANT and TO-ILLUMINANT must be symbols"))
@@ -253,10 +256,10 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 				      cat)
 		     (rgbspace-to-xyz-matrix from-rgbspace)))
 
-(defun gen-rgbspace-changer (from-rgbspace to-rgbspace &optional (target :lrgb) (cat +bradford+))
+(defun gen-rgbspace-changer (from-rgbspace to-rgbspace &key (target :lrgb) (cat +bradford+))
   "Returns a function for changing RGB working space.
 
- (funcall (gen-rgbspace-changer +srgb+ +adobe+ :rgb) 0 1 0)
+ (funcall (gen-rgbspace-changer +srgb+ +adobe+ :target :rgb) 0 1 0)
 => 0.28488056007809415d0
 1.0000000000000002d0
 0.041169364382683385d0 ; change from sRGB to Adobe RGB.
@@ -277,18 +280,50 @@ INT case: with clamping."
 		(multiple-value-call #'lrgb-to-rgb
 		  (multiple-value-call #'multiply-mat-vec
 		    mat
-		    (rgb-to-lrgb (float r 1d0) (float g 1d0) (float b 1d0) from-rgbspace))
-		  to-rgbspace)))
+		    (rgb-to-lrgb (float r 1d0) (float g 1d0) (float b 1d0)
+                                 :rgbspace from-rgbspace))
+		  :rgbspace to-rgbspace)))
       (:qrgb #'(lambda (qr qg qb)
 		 (multiple-value-call #'lrgb-to-qrgb
 		   (multiple-value-call #'multiply-mat-vec
 		     mat
-		     (qrgb-to-lrgb qr qg qb from-rgbspace))
+		     (qrgb-to-lrgb qr qg qb :rgbspace from-rgbspace))
 		   :rgbspace to-rgbspace)))
       (:int #'(lambda (int)
 		(multiple-value-call #'lrgb-to-int
 		  (multiple-value-call #'multiply-mat-vec
 		    mat
-		    (int-to-lrgb int from-rgbspace))
-		  to-rgbspace))))))
+		    (int-to-lrgb int :rgbspace from-rgbspace))
+		  :rgbspace to-rgbspace))))))
 
+
+(defun copy-rgbspace (rgbspace &key (illuminant nil) (bit-per-channel nil) (cat +bradford+))
+  "Returns a new RGBSPACE with different standard illuminant and/or
+bit-per-channel. All the parameters are properly recalculated. If both
+are nil, it is just a copier."
+  (destructuring-bind (new-xr new-yr new-xg new-yg new-xb new-yb)
+      (if illuminant
+	  (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace)
+                                           illuminant
+                                           :cat cat)))
+	    (labels ((get-new-xy (r g b)
+		       (multiple-value-bind (small-x small-y y)
+			   (multiple-value-call #'xyz-to-xyy
+			     (multiple-value-call ca-func
+			       (lrgb-to-xyz r g b :rgbspace rgbspace)))
+			 (declare (ignore y))
+			 (list small-x small-y))))
+	      (append (get-new-xy 1 0 0)
+		      (get-new-xy 0 1 0)
+		      (get-new-xy 0 0 1))))
+	  (list (rgbspace-xr rgbspace) (rgbspace-yr rgbspace)
+		(rgbspace-xg rgbspace) (rgbspace-yg rgbspace)
+		(rgbspace-xb rgbspace) (rgbspace-yb rgbspace)))
+    (make-rgbspace new-xr new-yr new-xg new-yg new-xb new-yb
+		   :illuminant (or illuminant (rgbspace-illuminant rgbspace))
+		   :linearizer (rgbspace-linearizer rgbspace)
+		   :delinearizer (rgbspace-delinearizer rgbspace)
+		   :lmin (rgbspace-lmin rgbspace)
+		   :lmax (rgbspace-lmax rgbspace)
+		   :bit-per-channel (or bit-per-channel (rgbspace-bit-per-channel rgbspace))
+		   :force-normal (rgbspace-normal rgbspace))))

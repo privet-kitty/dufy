@@ -4,6 +4,15 @@
 
 (in-package :dufy-core)
 
+
+(define-colorspace xyz ((x double-float)
+                        (y double-float)
+                        (z double-float)))
+(define-colorspace xyy ((small-x double-float)
+                        (small-y double-float)
+                        (y double-float)))
+(define-colorspace spectrum ((spectrum spectrum-function)))
+
 (define-primary-converter xyy xyz ()
   "xyY to XYZ. The nominal range of Y is [0, 1], though all real
 values are accepted."
@@ -343,23 +352,8 @@ f(x) = 0d0 otherwise."
                (format stream "The illuminant has no spectrum: ~A"
                        (cond-illuminant condition))))))
 
-(defvar +illum-e+) ; defined later
+(defvar +illum-d65+) ; defined later
 (defvar +illum-c+)
-
-(define-primary-converter spectrum xyz (&key (illuminant +illum-e+) (begin-wl 360) (end-wl 830) (band 1))
-  (declare (optimize (speed 3) (safety 1)))
-  "Computes XYZ values from SPECTRUM in reflective and transmissive
-case. The function SPECTRUM, a spectral reflectance, must be defined
-at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL,
-BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
-  (if (illuminant-no-spd-p illuminant)
-      (error (make-condition 'no-spd-error :illuminant illuminant))
-      (spectrum-to-xyz-primitive spectrum
-                                 (illuminant-spectrum illuminant)
-                                 (illuminant-observer illuminant)
-                                 begin-wl
-                                 end-wl
-                                 band)))
 
 (defun spectrum-to-xyz-primitive (spectrum illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
   "SPECTRUM: spectral reflectance (or transmittance)
@@ -382,6 +376,22 @@ ILLUMINANT-SPD: SPD of illuminant"
       (values (* x normalizing-factor)
               (* y normalizing-factor)
               (* z normalizing-factor)))))
+
+(define-primary-converter spectrum xyz (&key (illuminant +illum-d65+) (begin-wl 360) (end-wl 830) (band 1))
+  (declare (optimize (speed 3) (safety 1)))
+  "Computes XYZ values from SPECTRUM in reflective and transmissive
+case. The function SPECTRUM, a spectral reflectance, must be defined
+at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL,
+BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
+  (if (illuminant-no-spd-p illuminant)
+      (error (make-condition 'no-spd-error :illuminant illuminant))
+      (spectrum-to-xyz-primitive spectrum
+                                 (illuminant-spectrum illuminant)
+                                 (illuminant-observer illuminant)
+                                 begin-wl
+                                 end-wl
+                                 band)))
+
 
 
 (defun bench-spectrum (&optional (num 50000) (illuminant +illum-c+))
@@ -417,7 +427,7 @@ ILLUMINANT-SPD: SPD of illuminant"
                 (aref mat 2 2) a22))))
     (invert-matrix33 mat)))
 
-(define-primary-converter xyz spectrum (&key (illuminant +illum-e+))
+(define-primary-converter xyz spectrum (&key (illuminant +illum-d65+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among
 many."
   (if (illuminant-no-spd-p illuminant)
