@@ -167,15 +167,14 @@
            (multiple-value-call #'xyz-to-int
              (int-to-xyz intrgb :rgbspace +bg-srgb-16+)
              :rgbspace +bg-srgb-16+)))
-    ;; (is (= intrgb
-    ;;        (multiple-value-call #'rgb-to-int
-    ;;          (int-to-rgb intrgb :rgbspace +bg-srgb-16+)
-    ;;          :rgbspace +bg-srgb-16+)))
-    ;; (is (= intrgb
-    ;;        (multiple-value-call #'lrgb-to-int
-    ;;          (int-to-lrgb intrgb :rgbspace +bg-srgb-16+)
-    ;;          :rgbspace +bg-srgb-16+)))
-    )
+    (is (= intrgb
+           (multiple-value-call #'rgb-to-int
+             (int-to-rgb intrgb :rgbspace +bg-srgb-16+)
+             :rgbspace +bg-srgb-16+)))
+    (is (= intrgb
+           (multiple-value-call #'lrgb-to-int
+             (int-to-lrgb intrgb :rgbspace +bg-srgb-16+)
+             :rgbspace +bg-srgb-16+))))
   ;; rgbspace changer
   (dolist (rgb *rgb-set*)
     (is (nearly-equal 1d-4

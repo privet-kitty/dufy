@@ -1,6 +1,5 @@
 ;;;
 ;;; Meta-definition of color space
-;;; (currently not used)
 ;;;
 
 (in-package :dufy-core)
@@ -103,6 +102,8 @@ clamp::= :always-clamped | :clampable | nil
                   *primary-converter-table*)
   (format t ">~%"))
 
+
+;; simple queue structure
 (defstruct queue list tail)
 (defun enqueue (obj queue)
   (with-slots (list tail) queue
@@ -131,7 +132,7 @@ clamp::= :always-clamped | :clampable | nil
 
 
 (defmacro define-primary-converter (begin-term dest-term args &body body)
-  "Defines FOO-TOO-BAR function as a primary converter."
+  "Defines FOO-TO-BAR function as a primary converter."
   (assert (and (symbolp begin-term) (symbolp dest-term) (listp args)))
   (let* ((begin-term (make-keyword begin-term))
          (dest-term (make-keyword dest-term))
