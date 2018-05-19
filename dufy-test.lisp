@@ -35,18 +35,18 @@
 (defparameter *lchuv-set*
   '((20 30 40) (0.5 0.2 240) (99.9 0.1 359.9)))
 
-(def-cat-function lchuv-d50-to-a +illum-d50+ +illum-a+
-		       :target :lchuv
-		       :cat +cmccat97+)
-(def-cat-function lchuv-a-to-d50 +illum-a+ +illum-d50+
-		       :target :lchuv
-		       :cat +cmccat97+)
-(def-cat-function xyy-c-to-e +illum-c+ +illum-e+
-		       :target :xyy
-		       :cat +von-kries+)
-(def-cat-function xyy-e-to-c +illum-e+ +illum-c+
-		       :target :xyy
-		       :cat +von-kries+)
+(define-cat-function lchuv-d50-to-a +illum-d50+ +illum-a+
+  :target :lchuv
+  :cat +cmccat97+)
+(define-cat-function lchuv-a-to-d50 +illum-a+ +illum-d50+
+  :target :lchuv
+  :cat +cmccat97+)
+(define-cat-function xyy-c-to-e +illum-c+ +illum-e+
+  :target :xyy
+  :cat +von-kries+)
+(define-cat-function xyy-e-to-c +illum-e+ +illum-c+
+  :target :xyy
+  :cat +von-kries+)
 
 (defparameter *ciede2000-set-path* (merge-pathnames "ciede2000-test-data.csv" (asdf:component-pathname (asdf:find-component :dufy :dat))))
 (defparameter *ciede2000-set*

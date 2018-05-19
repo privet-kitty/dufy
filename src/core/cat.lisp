@@ -189,9 +189,9 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 	(:lchuv (gen-lambda (lstar cstaruv huv) :lchuv))))))
 
 
-(defmacro def-cat-function (name from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
+(defmacro define-cat-function (name from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
   "DEF-macro of GEN-CAT-FUNCTION.
- (def-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
+ (define-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
  (d65-to-e 0.9504d0 1.0d0 1.0889d0)
 => 0.9999700272441295d0
 0.999998887365445d0
@@ -205,21 +205,22 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 		 ``(defun ,,'name ,',args
 		     (declare (optimize (speed 3) (safety 1)))
 		     (let ((mat (load-time-value
-				(calc-cat-matrix ,,'from-illuminant
-						 ,,'to-illuminant
-						 ,,'cat)
-				t)))
-		      (with-double-float ,',args
-			(multiple-value-call #',',xyz-to-target
-			  (multiple-value-call #'multiply-mat-vec
-			    mat
-			    (,',target-to-xyz ,@',args :illuminant ,,'from-illuminant))
-			  :illuminant ,,'to-illuminant)))))))
+                                 (calc-cat-matrix ,,'from-illuminant
+                                                  ,,'to-illuminant
+                                                  ,,'cat)
+                                 t)))
+                       (with-double-float ,',args
+                         (multiple-value-call #',',xyz-to-target
+                           (multiple-value-call #'multiply-mat-vec
+                             mat
+                             (,',target-to-xyz ,@',args :illuminant ,,'from-illuminant))
+                           :illuminant ,,'to-illuminant)))))))
     (unless (and (symbolp from-illuminant)
                  (symbolp to-illuminant))
       (error "FROM-ILLUMINANT and TO-ILLUMINANT must be symbols"))
     `(progn
-       (declaim (ftype (function (t t t)
+       (declaim (inline ,name)
+                (ftype (function (t t t)
 				 (values double-float double-float double-float &optional))
 		       ,name))
        ,(ecase target

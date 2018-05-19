@@ -5,11 +5,8 @@
 (in-package :dufy-munsell)
 
 ;; The bradford transformations between D65 and C are frequently used here.
-(declaim (inline c-to-d65))
-(def-cat-function c-to-d65 +illum-c+ +illum-d65+ :cat +bradford+)
-
-(declaim (inline d65-to-c))
-(def-cat-function d65-to-c +illum-d65+ +illum-c+ :cat +bradford+)
+(define-cat-function c-to-d65 +illum-c+ +illum-d65+ :cat +bradford+)
+(define-cat-function d65-to-c +illum-d65+ +illum-c+ :cat +bradford+)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *most-positive-fixnum-bit-size* #.(floor (log most-positive-fixnum 2))))
