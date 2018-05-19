@@ -9,12 +9,12 @@
 (define-cat-function d65-to-c +illum-d65+ +illum-c+ :cat +bradford+)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *most-positive-fixnum-bit-size* #.(floor (log most-positive-fixnum 2))))
+  (defparameter *most-positive-fixnum-bit-length* #.(floor (log most-positive-fixnum 2))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (declaim (double-float *maximum-chroma*))
   (defparameter *maximum-chroma*
-    #+(and sbcl 64-bit) #.(float (expt 2 (- *most-positive-fixnum-bit-size* 10)) 1d0)
+    #+(and sbcl 64-bit) #.(float (expt 2 (- *most-positive-fixnum-bit-length* 10)) 1d0)
     #-(and sbcl 64-bit)  most-positive-double-float
     "The largest chroma which the Munsell converters accepts. It is in
     some cases less than MOST-POSITIVE-DOUBLE-FLOAT because of
@@ -91,7 +91,7 @@ smaller than 10^-5."
 	     (* r (aref y-to-munsell-value-arr y2)))))))
 
 (defun test-value-to-y (&optional (num 100000000))
-  "Evaluates error of y-to-munsell-value"
+  "For devel. Evaluates error of y-to-munsell-value"
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum num))
   (let ((max-error 0d0)
@@ -114,7 +114,7 @@ smaller than 10^-5."
 ;;; The primary converter is mhvc-to-lchab.
 ;;;
 
-(declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float))
+(declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float &optional))
 		mhvc-to-lchab-all-integer-case
 		mhvc-to-lchab-value-chroma-integer-case
 		mhvc-to-lchab-value-integer-case
@@ -328,24 +328,28 @@ since the Munsell Renotation Data is measured under the Illuminant C."
 
 (defun munsell-to-mhvc (munsellspec)
   "Usage Example:
-CL-USER> (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
-=> (36.00799999982119d0 0.8999999761581421d0 3.5d0)
+ (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
+;; => 36.008d0
+;; 0.9d0
+;; 3.5d0
 
 Many other notations of numbers are acceptable; an ugly specification
 as follows are also available:
 
-CL-USER> (dufy:munsell-to-mhvc \"2d-2RP .9/ #x0ffffff\")
-=> (36.008d0 0.8999999761581421d0 1.6777215d7)
+ (dufy:munsell-to-mhvc \"2d-2RP .9/ #x0ffffff\")
+;; => 36.008d0
+;; 0.9d0
+;; 1.6777215d7
 
 but the capital letters and  '/' are reserved:
 
-CL-USER> (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
+ (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
 => ERROR,
 "
   (let ((lst (let ((*read-default-float-format* 'double-float))
 	       (mapcar (compose (rcurry #'coerce 'double-float)
 				#'read-from-string)
-		       (remove "" (ppcre:split "[^0-9.a-z\-]+"
+		       (remove "" (ppcre:split "[^0-9.a-z\-#]+"
                                                munsellspec)
 			       :test #'string=)))))
     (let* ((hue-name (ppcre:scan-to-strings "[A-Z]+"
