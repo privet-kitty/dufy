@@ -104,7 +104,14 @@ clamp::= :always-clamped | :clampable | nil
   (gethash (list from-term to-term) *primary-converter-table*))
 (defun get-primary-converter-fname (from-term to-term)
   (primary-converter-fname (gethash (list from-term to-term)
-                                      *primary-converter-table*)))
+                                    *primary-converter-table*)))
+(defun get-primary-converter-lambda-list (from-term to-term)
+  (primary-converter-lambda-list (gethash (list from-term to-term)
+                                          *primary-converter-table*)))
+(defun get-primary-converter-key-args (from-term to-term)
+  (primary-converter-key-args (gethash (list from-term to-term)
+                                       *primary-converter-table*)))
+
 
 (defun print-primary-converter-table ()
   (format t "#<HASH-TABLE ~%")
@@ -184,29 +191,62 @@ clamp::= :always-clamped | :clampable | nil
     (and (find :rgbspace illum-keys)
          (find :illuminant illum-keys))))
 
+(defun get-initial-value (arg term1 term2)
+  (funcall #'(lambda (x)
+               (if (consp x) (second x) x))
+           (find-if #'(lambda (x)
+                        (if (consp x)
+                            (string= arg (car x))
+                            (string= arg x)))
+                    (get-primary-converter-lambda-list term1 term2))))
+
+(defun collect-key-args (terms &key (exclude-list nil))
+  (remove-if #'(lambda (x) (member x exclude-list :test #'key-arg=))
+             (remove-duplicates
+              (loop for (term1 term2) on terms
+                    until (null term2)
+                    append (get-primary-converter-key-args term1 term2)))))
+
+(defun key-arg= (key1 key2)
+  (string= (car (ensure-list key1))
+           (car (ensure-list key2))))
+
+(defun collect-key-args-with-init (terms &key (exclude-list nil))
+  (remove-if #'(lambda (x) (member x exclude-list :test #'key-arg=))
+             (remove-duplicates
+              (loop for (term1 term2) on terms
+                    until (null term2)
+                    append (mapcar #'(lambda (key)
+                                       (list (sane-symbol key)
+                                             (get-initial-value key term1 term2)))
+                                   (get-primary-converter-key-args term1 term2)))
+              :test #'key-arg=)))
+
 (defun gen-global-key-args (terms)
   (remove nil
-          (list
-           (let ((illum-key (get-global-illuminant-key terms)))
-             (case illum-key
-               (:rgbspace (list (sane-symbol illum-key) '+srgb+))
-               (:illuminant (list (sane-symbol illum-key) '+illum-d65+))))
-           (when (global-clamp-p terms)
-             (list (sane-symbol :clamp) t)))))
-
-(defun gen-last-key-args (terms)
-  (when (global-clamp-p terms)
-    (list :clamp (sane-symbol :clamp))))
+          `(,(let ((illum-key (get-global-illuminant-key terms)))
+               (case illum-key
+                 (:rgbspace (list (sane-symbol illum-key) '+srgb+))
+                 (:illuminant (list (sane-symbol illum-key) '+illum-d65+))))
+            ,(when (global-clamp-p terms)
+               (list (sane-symbol :clamp) t))
+            ,@(collect-key-args-with-init terms
+                                          :exclude-list '(:rgbspace :illuminant :clamp)))))
 
 (defun expand-key-args (arg-lst)
   (mappend #'(lambda (key)
                (list key (sane-symbol key)))
            arg-lst))
 
+(defun gen-last-key-args (terms)
+  (expand-key-args
+   `(,@(when (global-clamp-p terms) '(:clamp))
+     ,@(collect-key-args (last terms 2) :exclude-list '(:clamp)))))
+
 (defun gen-local-key-args (term1 term2)
   (expand-key-args
-   (remove nil
-           (list (get-local-illuminant-key term1 term2)))))
+   (collect-key-args (list term1 term2)
+                     :exclude-list '(:clamp))))
 
 (defmacro defconverter (begin-term dest-term &key (fname (gen-converter-name begin-term dest-term)))
   "Defines a converter function from BEGIN-TERM to DEST-TERM automatically."
@@ -241,7 +281,7 @@ clamp::= :always-clamped | :clampable | nil
                                          ,code
                                          ,@(gen-local-key-args term1 term2)))))))))
       `(progn
-         (declaim (inline ,global-fname)
+         (declaim #+dufy/inline(inline ,global-fname)
                   (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-fname))
          (defun ,global-fname (,@(get-args begin-term *package*)
                                &key ,@global-key-args)
