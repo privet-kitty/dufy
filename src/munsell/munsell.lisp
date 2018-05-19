@@ -343,7 +343,7 @@ as follows are also available:
 
 but the capital letters and  '/' are reserved:
 
- (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #x0FFFFFF\")
+ (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #X0FFFFFF\")
 => ERROR,
 "
   (let ((lst (let ((*read-default-float-format* 'double-float))
@@ -369,7 +369,7 @@ but the capital letters and  '/' are reserved:
 		(setf (car lst) (+ (* hue-number 4) (/ (* (car lst) 2) 5)))
 		(values-list lst)))))))
 
-(defun mhvc-to-munsell (hue40 value chroma &optional (digits 2))
+(defun mhvc-to-munsell (hue40 value chroma &key (digits 2))
   (let ((unit (concatenate 'string "~," (write-to-string digits) "F")))
     (if (< chroma (* 0.5d0 (expt 0.1d0 digits))) ; if achromatic
 	(format nil (concatenate 'string "N " unit) value)
@@ -550,7 +550,7 @@ MAX-ITERATION:
                              :if-reach-max if-reach-max
                              :factor factor
                              :threshold threshold)
-    (values (mhvc-to-munsell h v c digits))))
+    (values (mhvc-to-munsell h v c :digits digits))))
 
 (defun xyz-to-mhvc (x y z &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "Illuminant D65. doing Bradford transformation."
@@ -572,7 +572,7 @@ MAX-ITERATION:
                    :if-reach-max if-reach-max
 		   :factor factor
 		   :threshold threshold)
-    (values (mhvc-to-munsell m h v digits))))
+    (values (mhvc-to-munsell m h v :digits digits))))
 
   
 (defun test-inverter ()
