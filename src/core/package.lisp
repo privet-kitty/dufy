@@ -97,13 +97,11 @@
       :rgbspace-min
       :rgbspace-max
       :rgbspace-qmax
-      :rgbspace-quantizer
-      :rgbspace-dequantizer
       :gen-linearizer
       :gen-delinearizer
 
-      :delinearize
       :linearize
+      :delinearize
       :xyz-to-lrgb
       :lrgb-to-xyz
       :lrgb-out-of-gamut-p
@@ -112,6 +110,8 @@
       :rgb-out-of-gamut-p
       :xyz-to-rgb
       :rgb-to-xyz
+      :quantize
+      :dequantize
       :rgb-to-qrgb
       :qrgb-to-rgb
       :qrgb-out-of-gamut-p

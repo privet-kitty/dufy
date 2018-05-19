@@ -307,7 +307,7 @@ are nil, it is just a copier."
 	  (let ((ca-func (gen-cat-function (rgbspace-illuminant rgbspace)
                                            illuminant
                                            :cat cat)))
-	    (labels ((get-new-xy (r g b)
+            (labels ((get-new-xy (r g b)
 		       (multiple-value-bind (small-x small-y y)
 			   (multiple-value-call #'xyz-to-xyy
 			     (multiple-value-call ca-func

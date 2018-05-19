@@ -164,11 +164,13 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 	       (<= inf lg sup)
 	       (<= inf lb sup)))))
 
-(defun linearize (x &optional (rgbspace +srgb+))
+(declaim (inline linearize))
+(defun linearize (x &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (funcall (rgbspace-linearizer rgbspace) (float x 1d0)))
 
-(defun delinearize (x &optional (rgbspace +srgb+))
+(declaim (inline delinearize))
+(defun delinearize (x &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (funcall (rgbspace-delinearizer rgbspace) (float x 1d0)))
 
@@ -232,6 +234,25 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
     (not (and (<= inf qr sup)
 	      (<= inf qg sup)
 	      (<= inf qb sup)))))
+
+(declaim (inline quantize))
+(defun quantize (x &key (rgbspace +srgb+) (clamp t))
+  "RGB value to QRGB value"
+  (declare (optimize (speed 3) (safety 1)))
+  (if clamp
+      (clamp (round (* (- (float x 1d0) (rgbspace-min rgbspace))
+                       (rgbspace-qmax-float/length rgbspace)))
+             0 (rgbspace-qmax rgbspace))
+      (round (* (- (float x 1d0) (rgbspace-min rgbspace))
+                (rgbspace-qmax-float/length rgbspace)))))
+
+(declaim (inline dequantize))
+(defun dequantize (n &key (rgbspace +srgb+))
+  "QRGB value to RGB value"
+  (declare (optimize (speed 3) (safety 1))
+           (fixnum n))
+  (+ (rgbspace-min rgbspace)
+     (* n (rgbspace-length/qmax-float rgbspace))))
 
 (define-primary-converter (rgb qrgb) (&key (rgbspace +srgb+) (clamp t))
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1], typically) to {0, 1,
