@@ -240,15 +240,14 @@ clamp::= :always-clamped | :clampable | nil
 
 (defun gen-last-key-args (terms)
   (expand-key-args
-   `(,@(when (global-clamp-p terms) '(:clamp))
-     ,@(collect-key-args (last terms 2) :exclude-list '(:clamp)))))
+   `(,@(when (global-clamp-p terms) '(:clamp)))))
 
 (defun gen-local-key-args (term1 term2)
   (expand-key-args
    (collect-key-args (list term1 term2)
                      :exclude-list '(:clamp))))
 
-(defmacro defconverter (begin-term dest-term &key (fname (gen-converter-name begin-term dest-term)))
+(defmacro defconverter (begin-term dest-term &key (fname (gen-converter-name begin-term dest-term)) (documentation ""))
   "Defines a converter function from BEGIN-TERM to DEST-TERM automatically."
   (let* ((begin-term (make-keyword begin-term))
          (dest-term (make-keyword dest-term))
@@ -286,6 +285,7 @@ clamp::= :always-clamped | :clampable | nil
          (defun ,global-fname (,@(get-args begin-term *package*)
                                &key ,@global-key-args)
            (declare (optimize (speed 3) (safety 1)))
+           ,documentation
            ,(if (need-rgbspace-to-illuminant-p chain)
                 `(let ((,(sane-symbol 'illuminant)
                          (dufy-core:rgbspace-illuminant ,(sane-symbol 'rgbspace))))

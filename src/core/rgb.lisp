@@ -11,9 +11,7 @@
                          (lg double-float)
                          (lb double-float))
   :illuminant :rgbspace)
-(define-colorspace qrgb ((qr integer)
-                         (qg integer)
-                         (qb integer))
+(define-colorspace qrgb ((qr fixnum) (qg fixnum) (qb fixnum))
   :illuminant :rgbspace
   :clamp :clampable)
 (define-colorspace int ((int integer))
@@ -228,7 +226,7 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 (declaim (inline qrgb-out-of-gamut-p))
 (defun qrgb-out-of-gamut-p (qr qg qb &key (rgbspace +srgb+) (threshold 0))
   (declare (optimize (speed 3) (safety 1))
-	   (integer qr qg qb threshold))
+	   (fixnum qr qg qb threshold))
   (let ((inf (- threshold))
 	(sup (+ (rgbspace-qmax rgbspace) threshold)))
     (not (and (<= inf qr sup)
@@ -274,7 +272,7 @@ all the real values."
 
 (define-primary-converter (qrgb rgb) (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
-	   (integer qr qg qb))
+	   (fixnum qr qg qb))
   (let ((min (rgbspace-min rgbspace))
 	(length/qmax-float (rgbspace-length/qmax-float rgbspace)))
     (values (+ min (* qr length/qmax-float))
@@ -330,7 +328,7 @@ all the real values."
 
 (define-primary-converter (qrgb int) (&key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
-	   (integer qr qg qb))
+	   (fixnum qr qg qb))
   (let ((bpc (rgbspace-bit-per-channel rgbspace))
 	(qmax (rgbspace-qmax rgbspace)))
     (+ (ash (clamp qr 0 qmax) (+ bpc bpc))
@@ -353,7 +351,7 @@ all the real values."
   "The order can be :ARGB or :RGBA. Note that it is different from the
   'physical' byte order in a machine, which depends on the endianess."
   (declare (optimize (speed 3) (safety 1))
-	   (integer qr qg qb qalpha))
+	   (fixnum qr qg qb qalpha))
   (let* ((bpc (rgbspace-bit-per-channel rgbspace))
 	 (2bpc (+ bpc bpc))
 	 (qmax (rgbspace-qmax rgbspace)))
@@ -485,9 +483,8 @@ all the real values."
            (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
            (base (- val c)))
       (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
-          ((%lerp (x)
-                  `(+ (rgbspace-min rgbspace)
-                      (* ,x (rgbspace-length rgbspace)))))
+          ((%lerp (x) `(+ (rgbspace-min rgbspace)
+                          (* ,x (rgbspace-length rgbspace)))))
         (cond ((= sat 0d0) (values base base base))
               ((= 0 h-prime-int) (values (%lerp (+ base c))
                                          (%lerp (+ base x))
@@ -507,7 +504,8 @@ all the real values."
               ((= 5 h-prime-int) (values (%lerp (+ base c))
                                          (%lerp base)
                                          (%lerp (+ base x))))
-              (t (error "Reached an unreachable clause. Maybe a bug.")))))))
+              (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
+                 ))))))
 
 (defconverter hsv qrgb)
 ;; (declaim (inline hsv-to-qrgb))
@@ -597,7 +595,8 @@ all the real values."
               ((= 5 h-prime) (values (%lerp max)
                                      (%lerp min)
                                      (%lerp (+ min (* delta (- 360d0 hue) 1/60)))))
-              (t (error "Reached an unreachable clause. Maybe a bug.")))))))
+              (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
+                 ))))))
  
 
 (defconverter hsl qrgb)

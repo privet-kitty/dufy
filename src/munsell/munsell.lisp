@@ -22,6 +22,13 @@
     fulfills (typep (round F) '(SIGNED-BYTE 64))"))
 
 
+;; (define-colorspace mhvc ((hue40 (double-float 0d0 40d0))
+;;                          (value double-float)
+;;                          (chroma (double-float 0d0 #.*maximum-chroma*)))
+;;   :illuminant nil)
+;; (define-colorspace munsell ((munsellspec string))
+;;   :illuminant nil)
+
 (declaim (ftype (function * (integer 0 50)) max-chroma-in-mrd))
 (defun max-chroma-in-mrd (hue40 value &key (use-dark t))
   "Returns the largest chroma in the Munsell renotation data for a
@@ -118,9 +125,7 @@ smaller than 10^-5."
 		mhvc-to-lchab-all-integer-case
 		mhvc-to-lchab-value-chroma-integer-case
 		mhvc-to-lchab-value-integer-case
-		mhvc-to-lchab-general-case
-		mhvc-to-lchab-illum-c))
-
+		mhvc-to-lchab-general-case))
 
 (declaim (inline mhvc-to-lchab-all-integer-case))
 (defun mhvc-to-lchab-all-integer-case (hue40 tmp-value half-chroma &optional (dark nil))
@@ -254,17 +259,21 @@ smaller than 10^-5."
   (or (< value 0) (> value 10)
       (< chroma 0) (> chroma *maximum-chroma*)))
 
-(declaim (inline mhvc-to-lchab-illum-c-))
+(DECLAIM (INLINE MHVC-TO-LCHAB-ILLUM-C)
+          (FTYPE
+           (FUNCTION *
+            (VALUES DOUBLE-FLOAT DOUBLE-FLOAT DOUBLE-FLOAT &OPTIONAL))
+           MHVC-TO-LCHAB-ILLUM-C))
 (defun mhvc-to-lchab-illum-c (hue40 value chroma)
   "Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
-  (let ((d-hue (mod (float hue40 1d0) 40d0))
-	(d-value (clamp (float value 1d0) 0d0 10d0))
-	(d-chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
+  (let ((hue40 (mod (float hue40 1d0) 40d0))
+	(value (clamp (float value 1d0) 0d0 10d0))
+	(chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
     ;; (format t "~A ~A ~A" d-hue (* d-value 5) (/ d-chroma 2))
-    (if (>= d-value 1d0)
-	(mhvc-to-lchab-general-case d-hue d-value (* d-chroma 0.5d0) nil)
-	(mhvc-to-lchab-general-case d-hue (* d-value 5d0) (* d-chroma 0.5d0) t))))
+    (if (>= value 1d0)
+	(mhvc-to-lchab-general-case hue40 value (* chroma 0.5d0) nil)
+	(mhvc-to-lchab-general-case hue40 (* value 5d0) (* chroma 0.5d0) t))))
 
 (declaim (inline mhvc-to-xyz-illum-c))
 (defun mhvc-to-xyz-illum-c (hue40 value chroma)
