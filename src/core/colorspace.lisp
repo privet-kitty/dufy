@@ -4,8 +4,11 @@
 
 (in-package :dufy-core)
 
+(defun sane-symbol (symb)
+  (intern (symbol-name symb) *package*))
+
 (defstruct colorspace
-  "illuminant::= illuminant | rgbspace | nil
+  "illuminant::= :illuminant | :rgbspace | nil
 clamp::= :always-clamped | :clampable | nil
 "
   (term nil :type symbol)
@@ -44,8 +47,11 @@ clamp::= :always-clamped | :clampable | nil
   (gethash term *colorspace-table*))
 (defun get-neighbors (term)
   (colorspace-neighbors (gethash term *colorspace-table*)))
-(defun get-args (term)
-  (colorspace-args (gethash term *colorspace-table*)))
+(defun get-args (term &optional (package nil))
+  (mapcar (if package
+              #'sane-symbol
+              #'identity)
+          (colorspace-args (gethash term *colorspace-table*))))
 (defun get-arg-types (term)
   (colorspace-arg-types (gethash term *colorspace-table*)))
 (defun get-clamp (term)
@@ -61,7 +67,9 @@ clamp::= :always-clamped | :clampable | nil
 
 
 
-(defparameter *primary-converter-table* (make-hash-table :test 'equal))
+;;;
+;;; Primary converter
+;;;
 
 (defun gen-converter-name (from-term to-term)
   (intern (format nil "~A-TO-~A" from-term to-term) *package*))
@@ -74,26 +82,28 @@ clamp::= :always-clamped | :clampable | nil
 
 (defstruct (primary-converter (:constructor make-primary-converter
                                   (from-term to-term lambda-list
-                                   &aux (key-args (get-key-args lambda-list))
-                                     (fsymbol (gen-converter-name from-term to-term)))))
+                                   &key (fname (gen-converter-name from-term to-term))
+                                   &aux (key-args (get-key-args lambda-list)))))
   (from-term nil :type symbol)
   (to-term nil :type symbol)
-  (fsymbol nil :type symbol)
+  (fname nil :type symbol)
   (lambda-list nil :type list)
   (key-args nil :type list))
 
-(defun add-primary-converter (from-term to-term lambda-list)
+(defparameter *primary-converter-table* (make-hash-table :test 'equal))
+
+(defun add-primary-converter (from-term to-term lambda-list &key (fname (gen-converter-name from-term to-term)))
   (let ((from-space (get-colorspace from-term))
         (to-space (get-colorspace to-term)))
     (assert (and from-space to-space))
-    (pushnew to-term (colorspace-neighbors from-space))
     (setf (gethash (list from-term to-term) *primary-converter-table*)
-          (make-primary-converter from-term to-term lambda-list))))
+          (make-primary-converter from-term to-term lambda-list :fname fname))
+    (pushnew to-term (colorspace-neighbors from-space))))
 
 (defun get-primary-converter (from-term to-term)
   (gethash (list from-term to-term) *primary-converter-table*))
-(defun get-primary-converter-fsymbol (from-term to-term)
-  (primary-converter-fsymbol (gethash (list from-term to-term)
+(defun get-primary-converter-fname (from-term to-term)
+  (primary-converter-fname (gethash (list from-term to-term)
                                       *primary-converter-table*)))
 
 (defun print-primary-converter-table ()
@@ -117,10 +127,10 @@ clamp::= :always-clamped | :clampable | nil
   (pop (queue-list queue)))
 
 (defun get-converter-chain (begin-term dest-term)
-  "Returns the shortest path in the converter graph with BFS."
+  "Returns the shortest path in the color space graph with BFS."
   (let ((visited (make-hash-table))
-        (path-q (enqueue (list begin-term) (make-queue))))
-    (loop for path = (dequeue path-q)
+        (path-queue (enqueue (list begin-term) (make-queue))))
+    (loop for path = (dequeue path-queue)
           for current-term = (car path)
           do (when (null current-term)
                (error "No route found: from ~S to ~S" begin-term dest-term))
@@ -128,23 +138,23 @@ clamp::= :always-clamped | :clampable | nil
                  (return (reverse path))
                  (unless (nth-value 1 (ensure-gethash current-term visited t))
                    (dolist (term (get-neighbors current-term))
-                     (enqueue (cons term path) path-q)))))))
+                     (enqueue (cons term path) path-queue)))))))
 
 
-(defmacro define-primary-converter (begin-term dest-term args &body body)
+(defmacro define-primary-converter ((begin-term dest-term &optional (fname (gen-converter-name begin-term dest-term))) args &body body)
   "Defines FOO-TO-BAR function as a primary converter."
   (assert (and (symbolp begin-term) (symbolp dest-term) (listp args)))
   (let* ((begin-term (make-keyword begin-term))
-         (dest-term (make-keyword dest-term))
-         (fname (gen-converter-name begin-term dest-term)))
+         (dest-term (make-keyword dest-term)))
     `(progn
        (declaim (inline ,fname)
                 (ftype (function * (values ,@(get-arg-types dest-term) &optional)) ,fname))
-       (defun ,fname ,(append (get-args begin-term) args)
+       (defun ,fname ,(append (get-args begin-term *package*) args)
          ,@body)
        (eval-when (:compile-toplevel :load-toplevel :execute)
          (add-primary-converter ,begin-term ,dest-term
-                                ',args)))))
+                                ',args
+                                :fname ',fname)))))
 
 
 (defun converter-clamp-p (term1 term2)
@@ -174,10 +184,6 @@ clamp::= :always-clamped | :clampable | nil
     (and (find :rgbspace illum-keys)
          (find :illuminant illum-keys))))
 
-
-(defun sane-symbol (symb)
-  (intern (symbol-name symb) *package*))
-
 (defun gen-global-key-args (terms)
   (remove nil
           (list
@@ -203,6 +209,7 @@ clamp::= :always-clamped | :clampable | nil
            (list (get-local-illuminant-key term1 term2)))))
 
 (defmacro defconverter (begin-term dest-term &key (fname (gen-converter-name begin-term dest-term)))
+  "Defines a converter function from BEGIN-TERM to DEST-TERM automatically."
   (let* ((begin-term (make-keyword begin-term))
          (dest-term (make-keyword dest-term))
          (global-fname fname)
@@ -211,17 +218,17 @@ clamp::= :always-clamped | :clampable | nil
          (last-key-args (gen-last-key-args chain)))
     (assert (>= (length chain) 3)
             (chain)
-            "The length of converters path is ~a. It should be greater than 3."
-            (length chain))
+            "The length of converters path is ~a. It should be greater than 2."
+            (- (length chain) 1))
     (labels ((expand (term-lst code)
                (if (null (cdr term-lst))
                    code
                    (let* ((term1 (first term-lst))
                           (term2 (second term-lst))
-                          (name (get-primary-converter-fsymbol term1 term2)))
+                          (name (get-primary-converter-fname term1 term2)))
                      (cond ((null code)
                             (expand (cdr term-lst) ; first conversion
-                                    `(,name ,@(get-args term1)
+                                    `(,name ,@(get-args term1 *package*)
                                             ,@(gen-local-key-args term1 term2))))
                            ((eql term2 dest-term) ; last conversion
                             (expand (cdr term-lst)
@@ -236,7 +243,7 @@ clamp::= :always-clamped | :clampable | nil
       `(progn
          (declaim (inline ,global-fname)
                   (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-fname))
-         (defun ,global-fname (,@(get-args begin-term)
+         (defun ,global-fname (,@(get-args begin-term *package*)
                                &key ,@global-key-args)
            (declare (optimize (speed 3) (safety 1)))
            ,(if (need-rgbspace-to-illuminant-p chain)
