@@ -467,7 +467,7 @@ but the capital letters and  '/' are reserved:
 	     (format stream "~A"
                      (cond-message condition)))))
 
-;; used in INVERT-LCHAB-TO-MHVC
+;; called by LCHAB-TO-MHVC-ILLUM-C
 (declaim (inline invert-mhvc-to-lchab))
 (defun invert-mhvc-to-lchab (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
