@@ -56,7 +56,7 @@ given hue and value."
 
 (declaim (inline munsel-value-to-y
 		 munsell-value-to-lstar))
-(declaim (ftype (function * double-float) munsell-value-to-y))
+(declaim (ftype (function * (values double-float &optional)) munsell-value-to-y))
 (defun munsell-value-to-y (v)
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
 formula is based on ASTM D1535-08e1:"
@@ -307,7 +307,7 @@ since the Munsell Renotation Data is measured under the Illuminant C."
     (mhvc-to-xyz hue40 value chroma)
     :rgbspace rgbspace))
 
-(declaim (ftype (function * (values integer integer integer &optional)) mhvc-to-qrgb)
+(declaim (ftype (function * (values fixnum fixnum fixnum &optional)) mhvc-to-qrgb)
          (inline mhvc-to-qrgb))
 (defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp t))
   "The standard illuminant is D65: that of RGBSPACE must also be D65."

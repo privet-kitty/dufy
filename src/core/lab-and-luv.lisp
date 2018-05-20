@@ -35,10 +35,6 @@
 	    (* 500d0 (- fx fy))
 	    (* 200d0 (- fy fz)))))
 
-(defconverter xyy lab)
-;; (define-primary-converter xyy lab (&key (illuminant +illum-d65+))
-;;   (multiple-value-bind (new-x new-y new-z) (xyy-to-xyz small-x small-y y)
-;;     (xyz-to-lab new-x new-y new-z illuminant)))
 
 (define-primary-converter (lab xyz) (&key (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
@@ -68,11 +64,6 @@
   (declare (optimize (speed 3) (safety 1)))
   (- (* 116d0 (function-f (float y 1d0))) 16d0))
 
-(defconverter lab xyy)
-;; (defun lab-to-xyy (lstar astar bstar &optional (illuminant +illum-d65+))
-;;   (multiple-value-call #'xyz-to-xyy
-;;     (lab-to-xyz lstar astar bstar illuminant)))
-
 (define-constant +TWO-PI/360+ (/ TWO-PI 360))
 (define-constant +360/TWO-PI+ (/ 360 TWO-PI))
 
@@ -92,28 +83,13 @@
 	      (* cstarab (sin hue-two-pi))))))
 
 (defconverter xyz lchab)
-;; (declaim (inline xyz-to-lchab))
-;; (defun xyz-to-lchab (x y z &optional (illuminant +illum-d65+))
-;;   (declare (optimize (speed 3) (safety 1)))
-;;   (multiple-value-call #'lab-to-lchab
-;;     (xyz-to-lab (float x 1d0) (float y 1d0) (float z 1d0) illuminant)))
-
-(defconverter xyy lchab)
-;; (defun xyy-to-lchab (small-x small-y y &optional (illuminant +illum-d65+))
-;;   (multiple-value-call #'lab-to-lchab (xyy-to-lab small-x small-y y illuminant)))
-
 (defconverter lchab xyz)
-;; (declaim (inline lchab-to-xyz))
-;; (defun lchab-to-xyz (lstar cstarab hab &optional (illuminant +illum-d65+))
-;;   (declare (optimize (speed 3) (safety 1)))
-;;   (multiple-value-call #'lab-to-xyz
-;;       (lchab-to-lab (float lstar 1d0) (float cstarab 1d0) (float hab 1d0))
-;;       illuminant))
 
+;; for internal use
+(defconverter xyy lab)
+(defconverter lab xyy)
+(defconverter xyy lchab)
 (defconverter lchab xyy)
-;; (defun lchab-to-xyy (lstar cstarab hab &optional (illuminant +illum-d65+))
-;;   (multiple-value-call #'xyz-to-xyy
-;;     (lchab-to-xyz lstar cstarab hab illuminant)) )
 
 
 
@@ -187,17 +163,4 @@
 	      (* cstaruv (sin hue-two-pi))))))
 
 (defconverter xyz lchuv)
-;; (declaim (inline xyz-to-lchuv))
-;; (defun xyz-to-lchuv (x y z &optional (illuminant +illum-d65+))
-;;   (declare (optimize (speed 3) (safety 1)))
-;;   (multiple-value-call #'luv-to-lchuv
-;;     (xyz-to-luv x y z illuminant)))
-
 (defconverter lchuv xyz)
-;; (declaim (inline lchuv-to-xyz))
-;; (defun lchuv-to-xyz (lstar cstaruv huv &optional (illuminant +illum-d65+))
-;;   (declare (optimize (speed 3) (safety 1)))
-;;   (multiple-value-call #'luv-to-xyz
-;;     (lchuv-to-luv (float lstar 1d0) (float cstaruv 1d0) (float huv 1d0))
-;;     illuminant))
-

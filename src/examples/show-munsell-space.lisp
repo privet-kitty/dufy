@@ -8,7 +8,7 @@
 (defun draw-srgb-in-munsell (&optional (size 300) (framerate 10) (bg-color sdl:*black*))
   "Graphical demonstration with SDL. Renders the sRGB space in the
 Munsell space."
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
            (type uint size framerate))
   (let* ((value100 0)
          (radius (round (/ size 2)))
