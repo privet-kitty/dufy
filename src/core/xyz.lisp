@@ -443,7 +443,7 @@ many."
     
 	    
 (defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil))
-  "Generates an illuminant with an SPD. Though the white point (X,
+  "Generates an illuminant with an SPD. Although the white point (X,
 1d0, Z) is automatically calculated if X and Z are nil, you can
 designate X and Z explicitly. Note that no error occurs, even if the
 given white point and SPD contradicts to each other.
@@ -452,17 +452,17 @@ given white point and SPD contradicts to each other.
  (make-illuminant :spectrum #'flat-spectrum)
 ;; => almost same illuminants
 
-If X and Y are NIL and COMPILE-TIME is T, the second form is
-transformed into the first form at compile time."
+If X and Y are NIL and COMPILE-TIME is T, the white point is
+calculated at compile time."
   (declare (ignore compile-time))
-  (macrolet ((make (x z)
-               `(%make-illuminant
-                 :x (float ,x 1d0)
-                 :z (float ,z 1d0)
-                 :spectrum spectrum
-                 :observer observer
-                 :to-spectrum-matrix (calc-to-spectrum-matrix spectrum
-                                                              observer))))
+  (macrolet
+      ((make (x z)
+         `(%make-illuminant :x (float ,x 1d0)
+                            :z (float ,z 1d0)
+                            :spectrum spectrum
+                            :observer observer
+                            :to-spectrum-matrix (calc-to-spectrum-matrix spectrum
+                                                                         observer))))
     (if (and (null x) (null z))
         (multiple-value-bind (x y z)
             (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer)
@@ -472,11 +472,16 @@ transformed into the first form at compile time."
 
 (define-compiler-macro make-illuminant (&whole form &key x z spectrum (observer '+obs-cie1931+) (compile-time nil))
   (if (and compile-time (null x) (null z))
-      (multiple-value-bind (x y z)
-          (spectrum-to-xyz-primitive #'flat-spectrum
-                                     (eval spectrum)
-                                     (eval observer))
-        (declare (ignore y))
-        `(make-illuminant :x ,x :z ,z :spectrum ,spectrum :observer ,observer))
+      (let ((spctrm (eval spectrum))
+            (obs (eval observer)))
+        (multiple-value-bind (x y z)
+            (spectrum-to-xyz-primitive #'flat-spectrum spctrm obs)
+          (declare (ignore y))
+          `(%make-illuminant :x (float ,x 1d0)
+                             :z (float ,z 1d0)
+                             :spectrum ,spectrum
+                             :observer ,observer
+                             :to-spectrum-matrix ,(calc-to-spectrum-matrix spctrm
+                                                                           obs))))
       form))
 
