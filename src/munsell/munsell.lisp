@@ -55,8 +55,8 @@ given hue and value."
 		 (aref max-chroma-arr-dark hue2 dark-val2)))))))
 
 (declaim (inline munsel-value-to-y
-		 munsell-value-to-lstar))
-(declaim (ftype (function * (values double-float &optional)) munsell-value-to-y))
+		 munsell-value-to-lstar)
+         (ftype (function * (values double-float &optional)) munsell-value-to-y munsell-value-to-lstar))
 (defun munsell-value-to-y (v)
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
 formula is based on ASTM D1535-08e1:"
@@ -164,7 +164,7 @@ smaller than 10^-5."
             (declare (ignore disused)
                      ((double-float 0d0 360d0) hab1 hab2))
             (if (or (= hab1 hab2)
-                    (>= (subtract-with-mod hab2 hab1 360d0) 180d0))   ; fix me
+                    (>= (subtract-with-mod hab2 hab1 360d0) 180d0)) ; fix me
                 (values lstar cstarab1 hab1)
                 (let* ((hab (the (double-float 0d0 360d0)
                                  (circular-lerp (- hue40 hue1) hab1 hab2 360d0)))
@@ -222,8 +222,7 @@ smaller than 10^-5."
 		(multiple-value-bind (lstar2 astar2 bstar2)
 		    (multiple-value-call #'lchab-to-lab
 		      (mhvc-to-lchab-value-integer-case hue40 tmp-val2 half-chroma dark))
-		  (declare (double-float lstar
-                                         lstar1 astar1 bstar1
+		  (declare (double-float lstar1 astar1 bstar1
                                          lstar2 astar2 bstar2))
 		  (let ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
 				  (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
