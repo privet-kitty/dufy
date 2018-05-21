@@ -16,33 +16,10 @@
 (defparameter dat-url "http://www.rit-mcsl.org/MunsellRenotation/all.dat")
 (defparameter dat-txt (babel:octets-to-string (drakma:http-request dat-url) :encoding :ascii))
 
-(defun make-adjustable-string (s)
-  (make-array (length s)
-              :fill-pointer (length s)
-              :adjustable t
-              :initial-contents s
-              :element-type (array-element-type s)))
-
-(defun subseq-if (predicate sequence &rest args)
-  (let ((len (length sequence))
-	(str (make-adjustable-string "")))
-    (dotimes (idx len str)
-      (let ((x (elt sequence idx)))
-	(if (apply predicate (cons x args))
-	    (vector-push-extend x str))))))
-
-
-(defun quantize-40hue (hue-name hue-prefix)
-  (let ((hue-number
-	 (alexandria:switch (hue-name :test #'string=)
-	   ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
-	   ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9)
-	   (t (error "invalid spec")))))
-    (mod (+ (* 4 hue-number) (round (/ hue-prefix 2.5))) 40)))
 
 (defparameter munsell-renotation-data nil)
 
-;; Reads the munsell renotation data to a list. Y values in the MRD
+;; Reads the Munsell renotation data to a list. Y values in the MRD
 ;; are substituted by #'dufy:munsell-value-to-y (the formula in ASTM
 ;; D1535-08e1)
 (with-input-from-string (in dat-txt)
@@ -59,11 +36,32 @@
         (declare (ignore largey))
         (if (null hue)
             (return)
-            (unless (<= y 0) ; non-positive y gives too high chroma
+            (unless (<= y 0) ; ignore non-positive y
               (let ((row (list hue value chroma x y
                                (dufy:munsell-value-to-y value))))
                 (push row munsell-renotation-data))))))))
 
+
+(defun quantize-40hue (hue-name hue-prefix)
+  (let ((hue-number
+	 (alexandria:switch (hue-name :test #'string=)
+	   ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
+	   ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9)
+	   (t (error "invalid spec")))))
+    (mod (+ (* 4 hue-number) (round (/ hue-prefix 2.5))) 40)))
+
+(defun subseq-if (predicate sequence &rest args)
+  (let ((len (length sequence))
+	(str (make-array 0
+                         :fill-pointer 0
+                         :adjustable t
+                         :element-type (array-element-type sequence))))
+    (dotimes (idx len str)
+      (let ((x (elt sequence idx)))
+	(if (apply predicate (cons x args))
+	    (vector-push-extend x str))))))
+
+;; Quantizes hue spec. in the list.
 (let ((quantized-data nil))
   (dolist (x munsell-renotation-data)
     (let* ((hue-str (string (car x)))
@@ -73,11 +71,11 @@
   (setf munsell-renotation-data quantized-data))
 
 ;; the largest chroma in the renotation data
-(defparameter max-chroma-overall (apply #'max (mapcar #'third munsell-renotation-data)))
+(defparameter max-chroma-overall
+  (apply #'max (mapcar #'third munsell-renotation-data)))
 
-
-;; Constructs max-chroma-arr (for 40 hues and V in [1, 10]) and
-;; max-chroma-arr-dark (for 40 hues and V in [0, 1])
+;; Constructs max-chroma-arr (for 40 hues and V in {0, ..., 10}) and
+;; max-chroma-arr-dark (for 40 hues and V in {0, 0.2, ..., 1})
 (defparameter max-chroma-arr
   (make-array '(40 11) :element-type 'fixnum))
 (defparameter max-chroma-arr-dark
@@ -146,13 +144,17 @@
       (apply #'max rows))))
 
 
+(defun munsell-value-to-achromatic-xyy (v)
+  "Illuminant C."
+  (values 0.31006d0 0.31616d0 (dufy:munsell-value-to-y v)))
+
 (defun get-xyy-from-dat (hue-num value chroma)
   "Illuminant C. Returns a list. 
 
 Note: The data with value=0 are substituted with the data with
 value=0.2."
   (cond ((= chroma 0)
-	 (multiple-value-list (dufy-munsell::munsell-value-to-achromatic-xyy value)))
+	 (multiple-value-list (munsell-value-to-achromatic-xyy value)))
 	((= value 0)
 	 (funcall #'(lambda (lst)
 		      (if (null lst)
@@ -183,7 +185,7 @@ value=0.2."
   (aif (get-xyy-from-dat hue-num value chroma)
        (multiple-value-list (multiple-value-call #'dufy:xyz-to-lchab
 			      (apply #'dufy:xyy-to-xyz it)
-			      dufy:+illum-c+))))
+			      :illuminant dufy:+illum-c+))))
 
 (defun get-extrapolated-lchab-from-dat (hue-num value chroma)
   "CHROMA must be even."
@@ -194,6 +196,7 @@ value=0.2."
           (list lstar
                 (* cstarab (/ chroma mchroma))
                 hab)))))
+
 
 
 ;; constructs Munsell-to-LCHab data.
@@ -214,12 +217,11 @@ value=0.2."
   (make-array 6 :element-type 'double-float))
 
 
-
 (defun xyy-to-lchab (x y largey)
   (multiple-value-bind (lstar cstarab hab)
       (multiple-value-call #'dufy:xyz-to-lchab
 	(dufy:xyy-to-xyz x y largey)
-	dufy:+illum-c+)
+	:illuminant dufy:+illum-c+)
     (list (alexandria:clamp lstar 0d0 100d0)
 	  cstarab
 	  hab)))
@@ -244,6 +246,7 @@ value=0.2."
 	  (setf (aref mrd-array-c-h-dark hue value-idx half-chroma 1) hab))))))
 
 
+;; Saves to the .lisp file.
 (defun main (obj-filename)
   (let ((obj-path (merge-pathnames obj-filename this-dir-path)))
     (with-open-file (out obj-path

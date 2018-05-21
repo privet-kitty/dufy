@@ -63,19 +63,13 @@ formula is based on ASTM D1535-08e1:"
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (v)
     (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
-
 (defun munsell-value-to-lstar (v)
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
   (- (* 116d0 (dufy-core::function-f (munsell-value-to-y v))) 16d0))
 
-(defun munsell-value-to-achromatic-xyy (v)
-  "Illuminant C."
-  (values 0.31006d0 0.31616d0 (munsell-value-to-y v)))
-
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
-  "For devel. Another version of munsell-value-to-achromatic-xyy based
-on the Munsell renotation data. V must be integer. It is nearly equal
-to munsell-value-to-achromatic-xyy"
+  "V -> Y correspondence in the Munsell renotation data, multiplied by
+0.975d0."
   (values 0.31006d0 0.31616d0
 	  (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
 		    0.975d0)
@@ -289,13 +283,6 @@ since the Munsell Renotation Data is measured under the Illuminant C."
     (mhvc-to-xyz-illum-c (float hue40 1d0)
 			 (float value 1d0)
 			 (float chroma 1d0))))
-
-(defconverter mhvc lrgb)
-;; (defun mhvc-to-lrgb (hue40 value chroma &optional (rgbspace +srgb+))
-;;   "The standard illuminant is D65: that of RGBSPACE must also be D65."
-;;   (multiple-value-call #'xyz-to-lrgb
-;;     (mhvc-to-xyz hue40 value chroma)
-;;     :rgbspace rgbspace))
 
 (defconverter mhvc qrgb)
 ;; (declaim (ftype (function * (values fixnum fixnum fixnum &optional)) mhvc-to-qrgb)
