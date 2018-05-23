@@ -207,6 +207,10 @@
 			 :illuminant *illum-d55-10*))))))
 
 (test test-hsv/hsl
+  (is (nearly-equal 1d-4
+                    (multiple-value-list
+                     (hsl-to-rgb 360 0 1 :rgbspace +bg-srgb-10+))
+                    '(1.2545778685270217d0 1.2545778685270217d0 1.2545778685270217d0)))
   (loop for xyz-to-foo in '(xyz-to-hsv xyz-to-hsl)
      for foo-to-xyz in '(hsv-to-xyz hsl-to-xyz) do
        (dolist (xyz *xyz-set*)
@@ -229,12 +233,14 @@
 			 :rgbspace rgbspace))))))))
 
 (test test-deltae
+  (is (nearly= 1d-3 66.228d0 (qrgb-deltae94 10 20 30 200 100 0 :application :textiles)))
+  (is (nearly= 1d-3 91.75d0 (qrgb-deltae 10 20 30 200 100 0)))
   (dolist (row *ciede2000-set*)
     (is (nearly= 1d-3
-		 (nth 6 row)
-		 (apply #'deltae00
-			(append  (subseq row 0 3)
-				 (subseq row 3 6)))))))
+                 (nth 6 row)
+                 (apply #'deltae00
+                        (append  (subseq row 0 3)
+                                 (subseq row 3 6)))))))
 
 (test test-munsell
   (dolist (xyz *xyz-set*)
