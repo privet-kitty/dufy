@@ -14,7 +14,7 @@ clamp::= :always-clamped | :clampable | nil
   (term nil :type symbol)
   (args nil :type list)
   (arg-types nil :type list)
-  (illuminant 'illuminant :type symbol)
+  (illuminant :illuminant :type symbol)
   (clamp nil :type symbol)
   (neighbors nil :type list))
 
@@ -39,7 +39,7 @@ clamp::= :always-clamped | :clampable | nil
                                                            (second x)
                                                            t))
                                                    args)
-                              :illuminant ,illuminant
+                              :illuminant ',illuminant
                               :clamp ,clamp
                               :neighbors nil)))))
 
@@ -177,12 +177,23 @@ clamp::= :always-clamped | :clampable | nil
     (or (find :rgbspace key-args)
         (find :illuminant key-args))))
 
+(defun get-global-illuminant (terms)
+  "Determines the required illuminant for the converter chain"
+  (let ((conv-illum-keys (loop for (term1 term2) on terms
+                               until (null term2)
+                               collect (get-local-illuminant-key term1 term2)))
+        (cs-illums (mapcar #'get-illuminant terms)))
+    (or (find :rgbspace conv-illum-keys)
+        (find-if #'(lambda (x) (not (member x '(:rgbspace :illuminant nil))))
+                 cs-illums)
+        (find :illuminant conv-illum-keys))))
+
 (defun get-global-illuminant-key (terms)
-  (let ((illum-keys (loop for (term1 term2) on terms
-                          until (null term2)
-                          collect (get-local-illuminant-key term1 term2))))
-    (or (find :rgbspace illum-keys)
-        (find :illuminant illum-keys))))
+  "Determines the keyword argument for illuminant"
+  (case (get-global-illuminant terms)
+    (:rgbspace :rgbspace)
+    (:illuminant :illuminant)
+    (otherwise nil)))
 
 (defun need-rgbspace-to-illuminant-p (terms)
   (let ((illum-keys (loop for (term1 term2) on terms
@@ -254,7 +265,8 @@ clamp::= :always-clamped | :clampable | nil
          (global-fname fname)
          (chain (get-converter-chain begin-term dest-term))
          (global-key-args (gen-global-key-args chain))
-         (last-key-args (gen-last-key-args chain)))
+         (last-key-args (gen-last-key-args chain))
+         (global-illuminant (get-global-illuminant chain)))
     (assert (>= (length chain) 3)
             (chain)
             "The length of converters path is ~a. It should be greater than 2."
@@ -283,14 +295,21 @@ clamp::= :always-clamped | :clampable | nil
          (declaim #+dufy/inline(inline ,global-fname)
                   (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-fname))
          (defun ,global-fname (,@(get-args begin-term *package*)
-                               &key ,@global-key-args)
+                               ,@(when global-key-args
+                                   `(&key ,@global-key-args)))
            (declare (optimize (speed 3) (safety 1)))
            ,@(ensure-list documentation)
-           ,(if (need-rgbspace-to-illuminant-p chain)
-                `(let ((,(sane-symbol 'illuminant)
-                         (dufy-core:rgbspace-illuminant ,(sane-symbol 'rgbspace))))
-                   (declare (ignorable ,(sane-symbol 'illuminant)))
-                   ,(expand chain nil))
-                (expand chain nil)))))))
+           ,(case global-illuminant
+              (:rgbspace
+               `(let ((,(sane-symbol 'illuminant)
+                        (dufy-core:rgbspace-illuminant ,(sane-symbol 'rgbspace))))
+                  (declare (ignorable ,(sane-symbol 'illuminant)))
+                  ,(expand chain nil)))
+              (:illuminant (expand chain nil))
+              (nil (expand chain nil))
+              (otherwise
+               `(symbol-macrolet ((,(sane-symbol 'illuminant)
+                                    ,(sane-symbol global-illuminant)))
+                  ,(expand chain nil)))))))))
 
 ;; (defconverter xyy lrgb)

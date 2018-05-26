@@ -209,8 +209,16 @@
 (test test-hsv/hsl
   (is (nearly-equal 1d-4
                     (multiple-value-list
-                     (hsl-to-rgb 360 0 1 :rgbspace +bg-srgb-10+))
+                     (hsl-to-rgb 1234 0 1 :rgbspace +bg-srgb-10+))
+                    (multiple-value-list
+                     (hsv-to-rgb -1234 0 1 :rgbspace +bg-srgb-10+))
                     '(1.2545778685270217d0 1.2545778685270217d0 1.2545778685270217d0)))
+  (is (nearly-equal 1d-4
+                    (multiple-value-list
+                     (hsl-to-rgb 1234 80 0 :rgbspace +scrgb-nl+))
+                    (multiple-value-list
+                     (hsv-to-rgb -1234 10000000 0 :rgbspace +scrgb-nl+))
+                    '(-0.7767892121959618d0 -0.7767892121959618d0 -0.7767892121959618d0)))
   (loop for xyz-to-foo in '(xyz-to-hsv xyz-to-hsl)
      for foo-to-xyz in '(hsv-to-xyz hsl-to-xyz) do
        (dolist (xyz *xyz-set*)
