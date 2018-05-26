@@ -8,7 +8,7 @@
   (intern (symbol-name symb) *package*))
 
 (defstruct colorspace
-  "illuminant::= :illuminant | :rgbspace | nil
+  "illuminant::= :illuminant | :rgbspace | [symbol of predefined illuminant]
 clamp::= :always-clamped | :clampable | nil
 "
   (term nil :type symbol)
@@ -134,7 +134,7 @@ clamp::= :always-clamped | :clampable | nil
   (pop (queue-list queue)))
 
 (defun get-converter-chain (begin-term dest-term)
-  "Returns the shortest path in the color space graph with BFS."
+  "Finds the shortest path in the graph of color spaces with BFS."
   (let ((visited (make-hash-table))
         (path-queue (enqueue (list begin-term) (make-queue))))
     (loop for path = (dequeue path-queue)
@@ -142,7 +142,7 @@ clamp::= :always-clamped | :clampable | nil
           do (when (null current-term)
                (error "No route found: from ~S to ~S" begin-term dest-term))
              (if (eql current-term dest-term)
-                 (return (reverse path))
+                 (return (nreverse path))
                  (unless (nth-value 1 (ensure-gethash current-term visited t))
                    (dolist (term (get-neighbors current-term))
                      (enqueue (cons term path) path-queue)))))))
@@ -189,7 +189,7 @@ clamp::= :always-clamped | :clampable | nil
         (find :illuminant conv-illum-keys))))
 
 (defun get-global-illuminant-key (terms)
-  "Determines the keyword argument for illuminant"
+  "Decides the keyword argument for illuminant"
   (case (get-global-illuminant terms)
     (:rgbspace :rgbspace)
     (:illuminant :illuminant)
@@ -202,7 +202,9 @@ clamp::= :always-clamped | :clampable | nil
     (and (find :rgbspace illum-keys)
          (find :illuminant illum-keys))))
 
-(defun get-initial-value (arg term1 term2)
+(defun get-default-value (arg term1 term2)
+  "Returns the default value of an argument of the converter from
+term1 to term2"
   (funcall #'(lambda (x)
                (if (consp x) (second x) x))
            (find-if #'(lambda (x)
@@ -229,7 +231,7 @@ clamp::= :always-clamped | :clampable | nil
                     until (null term2)
                     append (mapcar #'(lambda (key)
                                        (list (sane-symbol key)
-                                             (get-initial-value key term1 term2)))
+                                             (get-default-value key term1 term2)))
                                    (get-primary-converter-key-args term1 term2)))
               :test #'key-arg=)))
 
@@ -269,7 +271,7 @@ clamp::= :always-clamped | :clampable | nil
          (global-illuminant (get-global-illuminant chain)))
     (assert (>= (length chain) 3)
             (chain)
-            "The length of converters path is ~a. It should be greater than 2."
+            "The length of converters path is ~a. It should be greater than 1."
             (- (length chain) 1))
     (labels ((expand (term-lst code)
                (if (null (cdr term-lst))
@@ -309,7 +311,5 @@ clamp::= :always-clamped | :clampable | nil
               (nil (expand chain nil))
               (otherwise
                `(symbol-macrolet ((,(sane-symbol 'illuminant)
-                                    ,(sane-symbol global-illuminant)))
+                                    ,global-illuminant))
                   ,(expand chain nil)))))))))
-
-;; (defconverter xyy lrgb)
