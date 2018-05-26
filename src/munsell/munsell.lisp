@@ -14,7 +14,7 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (declaim (double-float *maximum-chroma*))
   (defparameter *maximum-chroma*
-    #+(and sbcl 64-bit) #.(float (expt 2 (- *most-positive-fixnum-bit-length* 10)) 1d0)
+    #+(and sbcl 64-bit) #.(float (expt 2 (- *most-positive-fixnum-bit-length* 1)) 1d0)
     #-(and sbcl 64-bit)  most-positive-double-float
     "The largest chroma which the Munsell converters accepts. It is in
     some cases less than MOST-POSITIVE-DOUBLE-FLOAT because of
@@ -257,7 +257,6 @@ smaller than 10^-5."
   (let ((hue40 (mod (float hue40 1d0) 40d0))
 	(value (clamp (float value 1d0) 0d0 10d0))
 	(chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
-    ;; (format t "~A ~A ~A" d-hue (* d-value 5) (/ d-chroma 2))
     (if (>= value 1d0)
 	(mhvc-to-lchab-general-case hue40 value (* chroma 0.5d0) nil)
 	(mhvc-to-lchab-general-case hue40 (* value 5d0) (* chroma 0.5d0) t))))
@@ -403,10 +402,7 @@ but the capital letters and  '/' are reserved:
 (defun munsell-to-xyz (munsellspec)
   "Illuminant D65."
   (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-bind (hue40 value chroma) (munsell-to-mhvc munsellspec)
-    (if (mhvc-invalid-p hue40 value chroma)
-	(error (make-condition 'invalid-mhvc-error :value value :chroma chroma))
-	(mhvc-to-xyz hue40 value chroma))))
+  (multiple-value-call #'mhvc-to-xyz (munsell-to-mhvc munsellspec)))
 
 
 ;; For development. Not exported.
@@ -480,30 +476,30 @@ The illuminant of RGBSPACE must also be D65."
 	(v (lstar-to-munsell-value lstar))
 	(tmp-c init-chroma))
     (declare (double-float tmp-hue40 tmp-c v))
-    (dotimes (i max-iteration)
-      (multiple-value-bind (disused tmp-cstarab tmp-hab)
-	  (mhvc-to-lchab-illum-c tmp-hue40 v tmp-c)
-	(declare (ignore disused))
-	(let* ((delta-cstarab (- cstarab tmp-cstarab))
-	       (delta-hab (circular-delta hab tmp-hab))
-	       (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
-	       (delta-c (* delta-cstarab #.(/ 5.5d0))))
-	  (if (and (<= (abs delta-hue40) threshold)
-		   (<= (abs delta-c) threshold))
-	      (return-from invert-mhvc-to-lchab
-                (values (mod tmp-hue40 40d0) v tmp-c))
-	      (setf tmp-hue40 (+ tmp-hue40
-                                 (* factor delta-hue40))
-		    tmp-c (max 0d0 (+ tmp-c
-                                      (* factor delta-c))))))))
-    (ecase if-reach-max
-      (:error
-       (error (make-condition 'large-approximation-error
-                              :message "INVERT-MHVC-TO-LCHAB reached MAX-ITERATION without achieving sufficient accuracy.")))
-      (:negative (values least-negative-double-float
-                         least-negative-double-float
-                         least-negative-double-float))
-      (:return (values (mod tmp-hue40 40d0) v tmp-c)))))
+    (if (or (<= v threshold) (<= init-chroma threshold))
+        (values init-hue40 v init-chroma)
+        (dotimes (i max-iteration
+                    (ecase if-reach-max
+                      (:error
+                       (error (make-condition 'large-approximation-error
+                                              :message "INVERT-MHVC-TO-LCHAB reached MAX-ITERATION without achieving sufficient accuracy.")))
+                      (:return40 (values 40d0 40d0 40d0))
+                      (:raw (values (mod tmp-hue40 40d0) v tmp-c))))
+          (multiple-value-bind (disused tmp-cstarab tmp-hab)
+              (mhvc-to-lchab-illum-c tmp-hue40 v tmp-c)
+            (declare (ignore disused))
+            (let* ((delta-cstarab (- cstarab tmp-cstarab))
+                   (delta-hab (circular-delta hab tmp-hab))
+                   (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
+                   (delta-c (* delta-cstarab #.(/ 5.5d0))))
+              (if (and (<= (abs delta-hue40) threshold)
+                       (<= (abs delta-c) threshold))
+                  (return-from invert-mhvc-to-lchab
+                    (values (mod tmp-hue40 40d0) v tmp-c))
+                  (setf tmp-hue40 (+ tmp-hue40
+                                     (* factor delta-hue40))
+                        tmp-c (max 0d0 (+ tmp-c
+                                          (* factor delta-c)))))))))))
 
 
 (define-primary-converter (lchab mhvc lchab-to-mhvc-illum-c) (&key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
@@ -518,30 +514,26 @@ C_(n+1) :=  C_n + factor * delta(C_n);
 H_(n+1) := H_n + factor * delta(H_n),
 
 where delta(H_n) and delta(C_n) is internally calculated at every
-step. It returns Munsell HVC values if C_0 <= THRESHOLD or
-max(delta(H_n), delta(C_n)) falls below THRESHOLD.
+step. It returns Munsell HVC values if C_0 <= THRESHOLD or V <=
+THRESHOLD or max(delta(H_n), delta(C_n)) falls below THRESHOLD.
 
 IF-REACH-MAX specifies the action to be taken if the loop reaches the
 MAX-ITERATION:
 :error: Error of type DUFY:LARGE-APPROXIMATION-ERROR is signaled.
-:negative: Three LEAST-NEGATIVE-DOUBLE-FLOATs are returned.
-:return: Just returns HVC as it is.
+:return40: Three 40d0s are returned.
+:raw: Just returns HVC as it is.
 "
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum max-iteration))
   (with-double-float (lstar cstarab hab factor threshold)
     (let ((init-h (* hab #.(float 40/360 1d0)))
 	  (init-c (* cstarab #.(/ 5.5d0))))
-      (if (<= init-c threshold) ; returns the initial HVC, if achromatic
-          (values init-h
-                  (lstar-to-munsell-value lstar)
-                  init-c)
-          (invert-mhvc-to-lchab lstar cstarab hab
-                                init-h init-c
-                                :max-iteration max-iteration
-                                :if-reach-max if-reach-max
-                                :factor factor
-                                :threshold threshold)))))
+      (invert-mhvc-to-lchab lstar cstarab hab
+                            init-h init-c
+                            :max-iteration max-iteration
+                            :if-reach-max if-reach-max
+                            :factor factor
+                            :threshold threshold))))
 
 (defconverter lchab munsell
   :fname lchab-to-munsell-illum-c
@@ -623,12 +615,11 @@ D65 to illuminant C."
 	  ((= hab 360))
 	(do ((cstarab 0 (+ cstarab 10)))
 	    ((= cstarab 200) nil)
-	  (multiple-value-bind (lst number)
-	      (lchab-to-mhvc-illum-c lstar cstarab hab
-                                     :threshold 1d-6
-                                     :max-iteration max-iteration)
-	    (declare (ignore lst))
-	    (when (= number max-iteration)
+	  (let ((result (lchab-to-mhvc-illum-c lstar cstarab hab
+                                               :threshold 1d-6
+                                               :if-reach-max :return40
+                                               :max-iteration max-iteration)))
+            (when (= result 40d0)
 	      (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
 
 (defun test-inverter2 (&optional (num-loop 10000) (profile nil) (rgbspace +srgb+))
@@ -652,9 +643,9 @@ D65 to illuminant C."
 	      :illuminant +illum-c+)
 	  (let ((result (lchab-to-mhvc-illum-c lstar cstarab hab
                                                :max-iteration 300
-                                               :if-reach-max :negative
+                                               :if-reach-max :return40
                                                :factor 0.5d0)))
-            (when (= result least-negative-double-float)
+            (when (= result 40d0)
 	      (incf sum)
 	      (format t "~A ~A ~A, (~a ~a ~a)~%" lstar cstarab hab qr qg qb))))))))
 
@@ -672,10 +663,10 @@ D65 to illuminant C."
 	(dotimes (qb 256)
 	  (let ((result (multiple-value-call #'xyz-to-mhvc 
                           (qrgb-to-xyz qr qg qb :rgbspace rgbspace)
-                          :if-reach-max :negative
+                          :if-reach-max :return40
                           :max-iteration 200
                           :threshold 1.0d-3)))
-	    (when (= result least-negative-double-float)
+	    (when (= result 40d0)
 	      (incf sum)
 	      (format t "(~a ~a ~a)~%" qr qg qb))))))
     (float (/ sum (* 256 256 256)) 1d0)))
