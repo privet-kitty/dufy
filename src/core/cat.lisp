@@ -143,6 +143,7 @@ and TO-ILLUMINANT in XYZ space."
                             matrix1))))))
 
 (defun bench-cat (&optional (num 20000000))
+  "For devel."
   (time-after-gc
     (dotimes (i num)
       (calc-cat-matrix +illum-c+ +illum-d65+))))
@@ -190,7 +191,7 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 
 
 (defmacro define-cat-function (name from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
-  "DEF-macro of GEN-CAT-FUNCTION.
+  "DEFINE-macro of GEN-CAT-FUNCTION.
  (define-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
  (d65-to-e 0.9504d0 1.0d0 1.0889d0)
 => 0.9999700272441295d0
@@ -261,9 +262,10 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
   "Returns a function for changing RGB working space.
 
  (funcall (gen-rgbspace-changer +srgb+ +adobe+ :target :rgb) 0 1 0)
-=> 0.28488056007809415d0
-1.0000000000000002d0
-0.041169364382683385d0 ; change from sRGB to Adobe RGB.
+;; => 0.5649506908657044d0
+;; 1.0d0
+;; 0.2344342037422755d0
+;; change from sRGB to Adobe RGB.
 
 TARGET can be :LRGB, :RGB, :QRGB or :INT.
 
