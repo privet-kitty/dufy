@@ -5,6 +5,7 @@
 (in-package :dufy-internal)
 
 (defparameter *dat-dir-path* (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
+
 ;;;
 ;;; For preprocessing of data
 ;;;
@@ -13,14 +14,14 @@
   "array->list coercion"
   (let* ((dimensions (array-dimensions array))
          (indices (make-list (length dimensions) :initial-element 0)))
-    (labels ((recurse (dimensions-rest indices-rest)
+    (labels ((traverse (dimensions-rest indices-rest)
                (loop for idx of-type fixnum below (car dimensions-rest)
                   do (setf (car indices-rest) idx)
                   collect (if (null (cdr dimensions-rest))
                               (apply #'aref array indices)
-                              (recurse (cdr dimensions-rest)
+                              (traverse (cdr dimensions-rest)
                                        (cdr indices-rest))))))
-      (recurse dimensions indices))))
+      (traverse dimensions indices))))
 
 
 (defun print-make-array (var-name array &optional (stream t) (declaration t) (load-time-value nil))
@@ -49,13 +50,10 @@
 
 
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter safe '(optimize (speed 3) (safety 1)))
-  (defparameter unsafe '(optimize (speed 3) (safety 0))))
+(defparameter safe '(optimize (speed 3) (safety 1)))
+(defparameter unsafe '(optimize (speed 3) (safety 0)))
 
 (define-constant TWO-PI (float (+ PI PI) 1d0))
-
-
 
 (defmacro subseq-values (start end number form)
   "analogous to NTH-VALUE"
@@ -102,7 +100,19 @@
   `(progn
      #+sbcl(sb-ext:gc :full t)
      #+ccl(ccl:gc)
-    (time ,@body)))
+     (time ,@body)))
+
+(defmacro stime-after-gc (&body body)
+  `(progn
+     #+sbcl(sb-ext:gc :full t)
+     #+ccl(ccl:gc)
+     (simple-time ,@body)))
+
+(defmacro time-median (num &body body)
+  (let ((i (gensym)))
+    `(alexandria:median
+      (loop for ,i below ,num
+            collect (stime-after-gc ,@body)))))
 
 #+sbcl
 (defmacro with-profile (&body body)
@@ -126,11 +136,15 @@
       (and (<= (abs (- number (car (the cons more-numbers)))) threshold)
 	   (apply #'nearly= threshold more-numbers))))
 
-(defun nearly-equal (threshold lst1 lst2)
+(defun nearly-equal (threshold lst1 &rest lsts)
   (if (null lst1)
       t
-      (and (nearly= threshold (car lst1) (car lst2))
-	   (nearly-equal threshold (cdr lst1) (cdr lst2)))))
+      (and (apply #'nearly= threshold
+                  (car lst1)
+                  (mapcar #'car lsts))
+	   (apply #'nearly-equal threshold
+                  (cdr lst1)
+                  (mapcar #'cdr lsts)))))
 
 (defun nearly<= (threshold number &rest more-numbers)
   (if (null more-numbers)
@@ -157,7 +171,7 @@
 
 (defun circular-nearer (theta1 x theta2 &optional (perimeter TWO-PI))
   "Compares counterclockwise distances between THETA1 and X and
-between X and THETA2; returns THETA1 or THETA2, whichever is nearer."
+between X and THETA2, returns THETA1 or THETA2 whichever is nearer."
   (if (<= (subtract-with-mod x theta1 perimeter)
 	  (subtract-with-mod theta2 x perimeter))
       theta1
@@ -180,8 +194,8 @@ returns MIN or MAX, whichever is nearer to NUMBER."
 
 (defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
-circle group. It doesn't exceed the given interval from THETA1 to
-THETA2, if COEF is in [0, 1]. It is, however, slower than
+circle group. The return value doesn't exceed the given interval from
+THETA1 to THETA2 if COEF is in [0, 1]. It is, however, slower than
 CIRCULAR-LERP-LOOSE."
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (circular-clamp (+ theta1 (* dtheta coef))

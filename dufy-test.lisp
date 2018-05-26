@@ -35,18 +35,18 @@
 (defparameter *lchuv-set*
   '((20 30 40) (0.5 0.2 240) (99.9 0.1 359.9)))
 
-(def-cat-function lchuv-d50-to-a +illum-d50+ +illum-a+
-		       :target :lchuv
-		       :cat +cmccat97+)
-(def-cat-function lchuv-a-to-d50 +illum-a+ +illum-d50+
-		       :target :lchuv
-		       :cat +cmccat97+)
-(def-cat-function xyy-c-to-e +illum-c+ +illum-e+
-		       :target :xyy
-		       :cat +von-kries+)
-(def-cat-function xyy-e-to-c +illum-e+ +illum-c+
-		       :target :xyy
-		       :cat +von-kries+)
+(define-cat-function lchuv-d50-to-a +illum-d50+ +illum-a+
+  :target :lchuv
+  :cat +cmccat97+)
+(define-cat-function lchuv-a-to-d50 +illum-a+ +illum-d50+
+  :target :lchuv
+  :cat +cmccat97+)
+(define-cat-function xyy-c-to-e +illum-c+ +illum-e+
+  :target :xyy
+  :cat +von-kries+)
+(define-cat-function xyy-e-to-c +illum-e+ +illum-c+
+  :target :xyy
+  :cat +von-kries+)
 
 (defparameter *ciede2000-set-path* (merge-pathnames "ciede2000-test-data.csv" (asdf:component-pathname (asdf:find-component :dufy :dat))))
 (defparameter *ciede2000-set*
@@ -70,22 +70,26 @@
   (is (nearly-equal 1d-3
 		    '(0.95047d0 1d0 1.08883d0)
 		    (multiple-value-list
-		     (spectrum-to-xyz #'flat-spectrum +illum-d65+
-				      370s0 825.5 1/10))))
+		     (spectrum-to-xyz #'flat-spectrum :illuminant +illum-d65+
+                                                      :begin-wl 370s0
+                                                      :end-wl 825.5
+                                                      :band 1/10))))
   (is (nearly-equal 1d-4
 		    '(0.33411 0.34877 1.0d0)
 		    (multiple-value-list
 		     (multiple-value-call #'xyz-to-xyy
-		       (spectrum-to-xyz #'flat-spectrum *illum-d55-10*)))))
+		       (spectrum-to-xyz #'flat-spectrum
+                                        :illuminant *illum-d55-10*)))))
   (dolist (xyz *xyz-set*)
     (is (nearly-equal 1d-4
 		      xyz
 		      (multiple-value-list
 		       (spectrum-to-xyz (approximate-spectrum
-					 (apply (rcurry #'xyz-to-spectrum *illum-d55-10*)
+					 (apply (rcurry #'xyz-to-spectrum
+                                                        :illuminant *illum-d55-10*)
 						xyz)
 					 340d0 850d0 0.23d0)
-					*illum-d55-10*))))))
+					:illuminant *illum-d55-10*))))))
 
 (test test-xyy
   (dolist (xyz *xyz-set*)
@@ -135,49 +139,52 @@
 		      xyz
 		      (multiple-value-list
 		       (multiple-value-call #'rgb-to-xyz
-			 (apply (rcurry #'xyz-to-rgb +scrgb-nl+) xyz)
-			 +scrgb-nl+)))))
-  (dolist (rgbspace (list +bg-srgb-16+ +scrgb-nl+ (copy-rgbspace +scrgb-16+ :illuminant +illum-a+ :bit-per-channel 21)))
+			 (apply (rcurry #'xyz-to-rgb :rgbspace +scrgb-nl+) xyz)
+			 :rgbspace +scrgb-nl+)))))
+  (dolist (rgbspace (list +bg-srgb-16+ +scrgb-nl+
+                          (copy-rgbspace +scrgb-16+
+                                         :illuminant +illum-a+
+                                         :bit-per-channel 21)))
     (dolist (qrgb *qrgb16-set*)
       (is (equal qrgb
 		 (multiple-value-list
 		  (multiple-value-call (rcurry #'xyz-to-qrgb :clamp nil)
-		    (apply (rcurry #'qrgb-to-xyz rgbspace)
+		    (apply (rcurry #'qrgb-to-xyz :rgbspace rgbspace)
 			   qrgb)
 		    :rgbspace rgbspace))))
       (is (equal qrgb
 		 (multiple-value-list
 		  (multiple-value-call (rcurry #'lrgb-to-qrgb :clamp nil)
-		    (apply (rcurry #'qrgb-to-lrgb rgbspace)
+		    (apply (rcurry #'qrgb-to-lrgb :rgbspace rgbspace)
 			   qrgb)
 		    :rgbspace rgbspace))))))
   (is (equal '(0 5001 65535)
 	     (multiple-value-list
-	      (int-to-qrgb (qrgb-to-int 0 5001 65535 +bg-srgb-16+)
-			   +bg-srgb-16+))))
-  (dolist (int '(#x000011112222 #x5678abcdffff))
-    (is (= int
-	   (multiple-value-call #'xyz-to-int
-	     (int-to-xyz int +bg-srgb-16+)
-	     +bg-srgb-16+)))
-    (is (= int
-	   (multiple-value-call #'rgb-to-int
-	     (int-to-rgb int +bg-srgb-16+)
-	     +bg-srgb-16+)))
-    (is (= int
-	   (multiple-value-call #'lrgb-to-int
-	     (int-to-lrgb int +bg-srgb-16+)
-	     +bg-srgb-16+))))
-  
+	      (int-to-qrgb (qrgb-to-int 0 5001 65535 :rgbspace +bg-srgb-16+)
+			   :rgbspace +bg-srgb-16+))))
+  (dolist (intrgb '(#x000011112222 #x5678abcdffff))
+    (is (= intrgb
+           (multiple-value-call #'xyz-to-int
+             (int-to-xyz intrgb :rgbspace +bg-srgb-16+)
+             :rgbspace +bg-srgb-16+)))
+    (is (= intrgb
+           (multiple-value-call #'rgb-to-int
+             (int-to-rgb intrgb :rgbspace +bg-srgb-16+)
+             :rgbspace +bg-srgb-16+)))
+    (is (= intrgb
+           (multiple-value-call #'lrgb-to-int
+             (int-to-lrgb intrgb :rgbspace +bg-srgb-16+)
+             :rgbspace +bg-srgb-16+))))
   ;; rgbspace changer
   (dolist (rgb *rgb-set*)
     (is (nearly-equal 1d-4
 		      rgb
 		      (multiple-value-list
-		       (multiple-value-call (gen-rgbspace-changer +scrgb-nl+ +pal/secam+ :rgb)
-			 (apply (gen-rgbspace-changer +pal/secam+ +scrgb-nl+ :rgb)
+		       (multiple-value-call (gen-rgbspace-changer +scrgb-nl+ +pal/secam+
+                                                                  :target :rgb)
+			 (apply (gen-rgbspace-changer +pal/secam+ +scrgb-nl+
+                                                      :target :rgb)
 				rgb)))))))
-
 
 (test test-lab/luv
   (dolist (xyy *xyy-set*)
@@ -185,19 +192,33 @@
 		      xyy
 		      (multiple-value-list
 		       (multiple-value-call #'dufy-core::lchab-to-xyy
-			 (apply (rcurry #'dufy-core::xyy-to-lchab *illum-d55-10*)
+			 (apply (rcurry #'dufy-core::xyy-to-lchab
+                                        :illuminant *illum-d55-10*)
 				xyy)
-			 *illum-d55-10*)))))
+			 :illuminant *illum-d55-10*)))))
   (dolist (xyz *xyz-set*)
     (is (nearly-equal 1d-4
 		      xyz
 		      (multiple-value-list
 		       (multiple-value-call #'lchuv-to-xyz
-			 (apply (rcurry #'xyz-to-lchuv *illum-d55-10*)
+			 (apply (rcurry #'xyz-to-lchuv
+                                        :illuminant *illum-d55-10*)
 				xyz)
-			 *illum-d55-10*))))))
+			 :illuminant *illum-d55-10*))))))
 
 (test test-hsv/hsl
+  (is (nearly-equal 1d-4
+                    (multiple-value-list
+                     (hsl-to-rgb 1234 0 1 :rgbspace +bg-srgb-10+))
+                    (multiple-value-list
+                     (hsv-to-rgb -1234 0 1 :rgbspace +bg-srgb-10+))
+                    '(1.2545778685270217d0 1.2545778685270217d0 1.2545778685270217d0)))
+  (is (nearly-equal 1d-4
+                    (multiple-value-list
+                     (hsl-to-rgb 1234 80 0 :rgbspace +scrgb-nl+))
+                    (multiple-value-list
+                     (hsv-to-rgb -1234 10000000 0 :rgbspace +scrgb-nl+))
+                    '(-0.7767892121959618d0 -0.7767892121959618d0 -0.7767892121959618d0)))
   (loop for xyz-to-foo in '(xyz-to-hsv xyz-to-hsl)
      for foo-to-xyz in '(hsv-to-xyz hsl-to-xyz) do
        (dolist (xyz *xyz-set*)
@@ -205,9 +226,9 @@
 			   xyz
 			   (multiple-value-list
 			    (multiple-value-call foo-to-xyz
-			      (apply (rcurry xyz-to-foo +bg-srgb-16+)
+			      (apply (rcurry xyz-to-foo :rgbspace +bg-srgb-16+)
 				     xyz)
-			      +bg-srgb-16+))))))
+			      :rgbspace +bg-srgb-16+))))))
   (loop for qrgb-to-foo in '(qrgb-to-hsv qrgb-to-hsl)
      for foo-to-qrgb in '(hsv-to-qrgb hsl-to-qrgb) do
        (dolist (rgbspace (list +bg-srgb-16+ +prophoto-16+))
@@ -215,17 +236,19 @@
 	   (is (equal qrgb
 		      (multiple-value-list
 		       (multiple-value-call (rcurry foo-to-qrgb :clamp nil)
-			 (apply (rcurry qrgb-to-foo rgbspace)
+			 (apply (rcurry qrgb-to-foo :rgbspace rgbspace)
 				qrgb)
 			 :rgbspace rgbspace))))))))
 
 (test test-deltae
+  (is (nearly= 1d-3 66.228d0 (qrgb-deltae94 10 20 30 200 100 0 :application :textiles)))
+  (is (nearly= 1d-3 91.75d0 (qrgb-deltae 10 20 30 200 100 0)))
   (dolist (row *ciede2000-set*)
     (is (nearly= 1d-3
-		 (nth 6 row)
-		 (apply #'deltae00
-			(append  (subseq row 0 3)
-				 (subseq row 3 6)))))))
+                 (nth 6 row)
+                 (apply #'deltae00
+                        (append  (subseq row 0 3)
+                                 (subseq row 3 6)))))))
 
 (test test-munsell
   (dolist (xyz *xyz-set*)

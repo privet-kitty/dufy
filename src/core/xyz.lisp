@@ -5,8 +5,15 @@
 (in-package :dufy-core)
 
 
-(declaim (inline xyy-to-xyz))
-(defun xyy-to-xyz (small-x small-y y)
+(define-colorspace xyz ((x double-float)
+                        (y double-float)
+                        (z double-float)))
+(define-colorspace xyy ((small-x double-float)
+                        (small-y double-float)
+                        (y double-float)))
+(define-colorspace spectrum ((spectrum spectrum-function)))
+
+(define-primary-converter (xyy xyz) ()
   "xyY to XYZ. The nominal range of Y is [0, 1], though all real
 values are accepted."
   (declare (optimize (speed 3) (safety 1)))
@@ -17,8 +24,7 @@ values are accepted."
 		y
 		(/ (* (- 1d0 small-x small-y) y) small-y)))))
 
-(declaim (inline xyz-to-xyy))
-(defun xyz-to-xyy (x y z)
+(define-primary-converter (xyz xyy) ()
   "XYZ to xyY. The nominal range of Y is [0, 1], though all real
 values are accepted."
   (declare (optimize (speed 3) (safety 1)))
@@ -346,23 +352,8 @@ f(x) = 0d0 otherwise."
                (format stream "The illuminant has no spectrum: ~A"
                        (cond-illuminant condition))))))
 
-(defvar +illum-e+) ; defined later
+(defvar +illum-d65+) ; defined later
 (defvar +illum-c+)
-
-(defun spectrum-to-xyz (spectrum &optional (illuminant +illum-e+) (begin-wl 360) (end-wl 830) (band 1))
-  (declare (optimize (speed 3) (safety 1)))
-  "Computes XYZ values from SPECTRUM in reflective and transmissive
-case. The function SPECTRUM, a spectral reflectance, must be defined
-at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL,
-BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
-  (if (illuminant-no-spd-p illuminant)
-      (error (make-condition 'no-spd-error :illuminant illuminant))
-      (spectrum-to-xyz-primitive spectrum
-                                 (illuminant-spectrum illuminant)
-                                 (illuminant-observer illuminant)
-                                 begin-wl
-                                 end-wl
-                                 band)))
 
 (defun spectrum-to-xyz-primitive (spectrum illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
   "SPECTRUM: spectral reflectance (or transmittance)
@@ -386,6 +377,22 @@ ILLUMINANT-SPD: SPD of illuminant"
               (* y normalizing-factor)
               (* z normalizing-factor)))))
 
+(define-primary-converter (spectrum xyz) (&key (illuminant +illum-d65+) (begin-wl 360) (end-wl 830) (band 1))
+  (declare (optimize (speed 3) (safety 1)))
+  "Computes XYZ values from SPECTRUM in reflective and transmissive
+case. The function SPECTRUM, a spectral reflectance, must be defined
+at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL,
+BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
+  (if (illuminant-no-spd-p illuminant)
+      (error (make-condition 'no-spd-error :illuminant illuminant))
+      (spectrum-to-xyz-primitive spectrum
+                                 (illuminant-spectrum illuminant)
+                                 (illuminant-observer illuminant)
+                                 begin-wl
+                                 end-wl
+                                 band)))
+
+
 
 (defun bench-spectrum (&optional (num 50000) (illuminant +illum-c+))
   "For devel."
@@ -394,7 +401,7 @@ ILLUMINANT-SPD: SPD of illuminant"
   (time-after-gc
     (let ((spctrm (gen-illum-d-spectrum 4000)))
       (dotimes (idx num)
-        (spectrum-to-xyz spctrm illuminant)))))
+        (spectrum-to-xyz spctrm :illuminant illuminant)))))
 
 
 (defun calc-to-spectrum-matrix (illuminant-spd observer)
@@ -420,7 +427,7 @@ ILLUMINANT-SPD: SPD of illuminant"
                 (aref mat 2 2) a22))))
     (invert-matrix33 mat)))
 
-(defun xyz-to-spectrum (x y z &optional (illuminant +illum-e+))
+(define-primary-converter (xyz spectrum) (&key (illuminant +illum-d65+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among
 many."
   (if (illuminant-no-spd-p illuminant)
@@ -429,13 +436,14 @@ many."
         (multiple-value-bind (fac-x fac-y fac-z)
             (multiply-mat-vec (illuminant-to-spectrum-matrix illuminant) x y z)
           #'(lambda (wl)
+              (declare (optimize (speed 3) (safety 1)))
               (+ (* fac-x (funcall (observer-cmf-x observer) wl))
                  (* fac-y (funcall (observer-cmf-y observer) wl))
                  (* fac-z (funcall (observer-cmf-z observer) wl))))))))
     
 	    
 (defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil))
-  "Generates an illuminant with an SPD. Though the white point (X,
+  "Generates an illuminant with an SPD. Although the white point (X,
 1d0, Z) is automatically calculated if X and Z are nil, you can
 designate X and Z explicitly. Note that no error occurs, even if the
 given white point and SPD contradicts to each other.
@@ -444,17 +452,17 @@ given white point and SPD contradicts to each other.
  (make-illuminant :spectrum #'flat-spectrum)
 ;; => almost same illuminants
 
-If X and Y are NIL and COMPILE-TIME is T, the second form is
-transformed into the first form at compile time."
+If X and Y are NIL and COMPILE-TIME is T, the white point is
+calculated at compile time."
   (declare (ignore compile-time))
-  (macrolet ((make (x z)
-               `(%make-illuminant
-                 :x (float ,x 1d0)
-                 :z (float ,z 1d0)
-                 :spectrum spectrum
-                 :observer observer
-                 :to-spectrum-matrix (calc-to-spectrum-matrix spectrum
-                                                              observer))))
+  (macrolet
+      ((make (x z)
+         `(%make-illuminant :x (float ,x 1d0)
+                            :z (float ,z 1d0)
+                            :spectrum spectrum
+                            :observer observer
+                            :to-spectrum-matrix (calc-to-spectrum-matrix spectrum
+                                                                         observer))))
     (if (and (null x) (null z))
         (multiple-value-bind (x y z)
             (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer)
@@ -464,11 +472,16 @@ transformed into the first form at compile time."
 
 (define-compiler-macro make-illuminant (&whole form &key x z spectrum (observer '+obs-cie1931+) (compile-time nil))
   (if (and compile-time (null x) (null z))
-      (multiple-value-bind (x y z)
-          (spectrum-to-xyz-primitive #'flat-spectrum
-                                     (eval spectrum)
-                                     (eval observer))
-        (declare (ignore y))
-        `(make-illuminant :x ,x :z ,z :spectrum ,spectrum :observer ,observer))
+      (let ((spctrm (eval spectrum))
+            (obs (eval observer)))
+        (multiple-value-bind (x y z)
+            (spectrum-to-xyz-primitive #'flat-spectrum spctrm obs)
+          (declare (ignore y))
+          `(%make-illuminant :x (float ,x 1d0)
+                             :z (float ,z 1d0)
+                             :spectrum ,spectrum
+                             :observer ,observer
+                             :to-spectrum-matrix ,(calc-to-spectrum-matrix spctrm
+                                                                           obs))))
       form))
 

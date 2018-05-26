@@ -14,7 +14,13 @@
 
 (defpackage dufy-core
   (:use :cl :alexandria :dufy-internal)
-  #.`(:export  ;; xyz.lisp
+  #.`(:export
+      ;; colorspace.lisp
+      :define-colorspace
+      :define-primary-converter
+      :defconverter
+
+      ;; xyz.lisp
       :xyy-to-xyz
       :xyz-to-xyy
       
@@ -53,7 +59,7 @@
       :+illum-a+ :+illum-e+
       :+illum-c+ :+illum-d50+ :+illum-d65+
       :gen-cat-function
-      :def-cat-function
+      :define-cat-function
 
       :cat
       :make-cat
@@ -97,13 +103,11 @@
       :rgbspace-min
       :rgbspace-max
       :rgbspace-qmax
-      :rgbspace-quantizer
-      :rgbspace-dequantizer
       :gen-linearizer
       :gen-delinearizer
 
-      :delinearize
       :linearize
+      :delinearize
       :xyz-to-lrgb
       :lrgb-to-xyz
       :lrgb-out-of-gamut-p
@@ -112,6 +116,8 @@
       :rgb-out-of-gamut-p
       :xyz-to-rgb
       :rgb-to-xyz
+      :quantize
+      :dequantize
       :rgb-to-qrgb
       :qrgb-to-rgb
       :qrgb-out-of-gamut-p

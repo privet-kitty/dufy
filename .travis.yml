@@ -4,6 +4,7 @@ branches:
   only:
     - master
     - develop
+    - /^ci-.*$/
 
 env:
   global:

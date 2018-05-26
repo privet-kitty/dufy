@@ -27,8 +27,10 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
 	   (declare (optimize (speed 3) (safety 1)))
 	   (multiple-value-call #',name
-	     (xyz-to-lab (float x1 1d0) (float y1 1d0) (float z1 1d0) illuminant)
-	     (xyz-to-lab (float x2 1d0) (float y2 1d0) (float z2 1d0) illuminant)
+	     (xyz-to-lab (float x1 1d0) (float y1 1d0) (float z1 1d0)
+                         :illuminant illuminant)
+	     (xyz-to-lab (float x2 1d0) (float y2 1d0) (float z2 1d0)
+                         :illuminant illuminant)
 	     ,@(extract sub-args)))
 
 	 ;; for quantized RGB
@@ -37,8 +39,8 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 	   (declare (optimize (speed 3) (safety 1))
 		    (integer qr1 qg1 qb1 qr2 qg2 qb2))
 	   (multiple-value-call #',xyz-name
-	     (qrgb-to-xyz qr1 qg1 qb1 rgbspace)
-	     (qrgb-to-xyz qr2 qg2 qb2 rgbspace)
+	     (qrgb-to-xyz qr1 qg1 qb1 :rgbspace rgbspace)
+	     (qrgb-to-xyz qr2 qg2 qb2 :rgbspace rgbspace)
 	     ,@(extract sub-args)
 	     :illuminant (rgbspace-illuminant rgbspace)))))))
 
@@ -155,8 +157,9 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 
 (defun bench-deltae00 (&optional (num 1000000))
   (declare (optimize (speed 3) (safety 1)))
-  (time (dotimes (x num)
-	  (qrgb-deltae00 (random 65536) (random 65536) (random 65536)
-			 (random 65536) (random 65536) (random 65536)
-			 :rgbspace +bg-srgb-16+))))
+  (time-after-gc
+    (dotimes (x num)
+      (qrgb-deltae00 (random 65536) (random 65536) (random 65536)
+                     (random 65536) (random 65536) (random 65536)
+                     :rgbspace +bg-srgb-16+))))
 
