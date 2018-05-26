@@ -2,6 +2,10 @@
 
 (defpackage dufy-munsell
   (:use :cl :dufy-core :dufy-internal :alexandria)
+  (:import-from :dufy-core
+   dufy-core::define-primary-converter
+   dufy-core::define-colorspace
+   dufy-core::defconverter)
   (:export
    :invalid-mhvc-error
    :munsellspec-parse-error

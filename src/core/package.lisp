@@ -15,11 +15,6 @@
 (defpackage dufy-core
   (:use :cl :alexandria :dufy-internal)
   #.`(:export
-      ;; colorspace.lisp
-      :define-colorspace
-      :define-primary-converter
-      :defconverter
-
       ;; xyz.lisp
       :xyy-to-xyz
       :xyz-to-xyy

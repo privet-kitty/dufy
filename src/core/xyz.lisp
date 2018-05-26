@@ -429,7 +429,7 @@ BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
 
 (define-primary-converter (xyz spectrum) (&key (illuminant +illum-d65+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among
-many."
+many and may contain a negative spectral density."
   (if (illuminant-no-spd-p illuminant)
       (error (make-condition 'no-spd-error :illuminant illuminant))
       (let ((observer (illuminant-observer illuminant)))
