@@ -51,6 +51,7 @@
     invmat))
 
 (defun bench-invmat (&optional (num 3000000))
+  "For devel."
   (time (let ((mat (make-array '(3 3)
 			       :element-type 'double-float
 			       :initial-contents '((1d0 2d0 3d0) (4d0 5d0 6d0) (7d0 8d0 10d0)))))
@@ -93,8 +94,8 @@
       (multiply-mat-mat mat1
 			(apply #'multiply-matrices (car mats) (cdr mats)))))
 
-
 (defun bench-mult-mat (&optional (num 20000000))
+  "For devel."
   (time-after-gc
    (let ((mat1 (make-array '(3 3)
                            :element-type 'double-float

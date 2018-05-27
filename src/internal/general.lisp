@@ -6,6 +6,7 @@
 
 (defparameter *dat-dir-path* (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
 
+
 ;;;
 ;;; For preprocessing of data
 ;;;
@@ -23,7 +24,6 @@
                                        (cdr indices-rest))))))
       (traverse dimensions indices))))
 
-
 (defun print-make-array (var-name array &optional (stream t) (declaration t) (load-time-value nil))
   "Prints a code like (defparameter VAR-NAME (make-array ...))"
   (let ((typ (array-element-type array))
@@ -32,26 +32,19 @@
       (format stream "~S~%"
               `(declaim (type (simple-array ,typ ,dims)
                               ,(intern (string-upcase var-name))))))
-    (format stream "(defparameter ~A ~A~% #.~S~A)~%"
+    (format stream "(DEFPARAMETER ~A ~A~% #.~S~A)~%"
             var-name
             (if load-time-value "(load-time-value" "")
-            `(make-array (quote ,dims)
-                         :element-type (quote ,typ)
-                         :initial-contents (quote ,(array-to-list array)))
+            `(make-array ',dims
+                         :element-type ',typ
+                         :initial-contents ',(array-to-list array))
             (if load-time-value " t)" ""))))
-
-
 
 ;; (defun plot-spectrum (spectrum &optional (band 5) (begin 360) (end 830))
 ;;   "Plots a spectrum function with gnuplot."
 ;;   (let ((x-lst (loop for x from begin to end by band collect x)))
 ;;     (clgp:plot (mapcar spectrum x-lst)
 ;;                :x-seq x-lst)))
-
-
-
-(defparameter safe '(optimize (speed 3) (safety 1)))
-(defparameter unsafe '(optimize (speed 3) (safety 0)))
 
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 
@@ -94,7 +87,6 @@
        ,@body
        (/ (float (- (get-internal-real-time) ,start) 1d0)
 	  internal-time-units-per-second))))
-
 
 (defmacro time-after-gc (&body body)
   `(progn
@@ -151,7 +143,6 @@
       t
       (and (<= (- number (car (the cons more-numbers))) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
-
 
 
 
@@ -222,6 +213,3 @@ THETA2] in a circle group."
 	     (<= x-m theta2))
 	(or (<= theta1-m x-m)
 	    (<= x-m theta2)))))
-
-
-

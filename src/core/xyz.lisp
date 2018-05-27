@@ -5,6 +5,8 @@
 (in-package :dufy-core)
 
 
+(deftype spectrum-function () '(function * (values double-float &optional)))
+
 (define-colorspace xyz ((x double-float)
                         (y double-float)
                         (z double-float)))
@@ -35,10 +37,8 @@ values are accepted."
 	  (values (/ x sum) (/ y sum) y)))))
 
 
-(deftype spectrum-function () '(function * (values double-float &optional)))
-
 (defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
-  "A spectrum is just a function which takes a real number as
+  "A spectrum is just a function which receives a real number as
 wavelength (nm) and returns a double-float.
 
 GEN-SPECTRUM returns a spectral power distribution
