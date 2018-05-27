@@ -16,20 +16,22 @@
   :clamp :always-clamped)
 
 (defun gen-linearizer (gamma)
-  "Returns a linearization function for a given gamma value."
+  "Returns a linearization function for a given gamma value. You
+shouldn't call the returned function on your own, as it is not safe."
   (let ((gamma (float gamma 1d0)))
     #'(lambda (x)
-	(declare (optimize (speed 3) (safety 1))
+	(declare (optimize (speed 3) (safety 0))
 		 (double-float x))
 	(if (plusp x)
 	    (expt x gamma)
 	    (- (expt (- x) gamma))))))
 
 (defun gen-delinearizer (gamma)
-  "Returns a gamma-correction function for a given gamma value."
+  "Returns a gamma-correction function for a given gamma value. You
+shouldn't call the returned function on your own, as it is not safe."
   (let ((/gamma (/ (float gamma 1d0))))
     #'(lambda (x)
-	(declare (optimize (speed 3) (safety 1))
+	(declare (optimize (speed 3) (safety 0))
 		 (double-float x))
 	(if (plusp x)
 	    (expt x /gamma)
@@ -58,12 +60,12 @@
   (min 0d0 :type double-float)
   (max 1d0 :type double-float)
   (length 1d0 :type double-float) ; length of the interval [min, max]
-  (/length 1d0 :type double-float)
+  (/length 1d0 :type double-float) ; reciprocal
   (normal t :type boolean) ; t, if min = 0d0 and max = 1d0
 
   ;; quantization
   (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
-  (qmax 255 :type (integer 1 #.most-positive-fixnum) :read-only t) ; max. of quantized values
+  (qmax 255 :type (integer 1 #.most-positive-fixnum)) ; maximum of quantized values
   (qmax-float 255d0 :type double-float)
   (length/qmax-float (float 1/255 1d0) :type double-float)
   (qmax-float/length 255d0 :type double-float))

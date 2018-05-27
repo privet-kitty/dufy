@@ -6,7 +6,7 @@
 
 (defun linearize-srgb (x)
   "linearizer of sRGB (actually the same as bg-sRGB)"
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
   (cond ((> x #.(* 0.0031308d0 12.92d0))
 	 (expt (* (+ 0.055d0 x) #.(/ 1.055d0)) 2.4d0))
@@ -16,7 +16,7 @@
 
 (defun delinearize-srgb (x)
   "delinealizer of sRGB (actually the same as bg-sRGB)"
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
   (cond ((> x 0.0031308d0)
 	 (+ (* 1.055d0 (expt x #.(/ 2.4d0))) -0.055d0))
@@ -25,7 +25,7 @@
 	(t (* x 12.92d0))))
 
 (defun linearize-scrgb-nl (x)
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
   (cond ((> x #.(* 4.5d0 0.018d0))
 	 (expt (* (+ 0.099d0 x) #.(/ 1.099d0)) #.(/ 0.45d0)))
@@ -34,7 +34,7 @@
 	(t (* x #.(/ 4.5d0)))))
 
 (defun delinearize-scrgb-nl (x)
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
   (cond ((> x 0.018d0)
 	 (+ (* 1.099d0 (expt x 0.45d0)) -0.099d0))
@@ -126,7 +126,7 @@ http://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.470-6-199811-S!!PDF-E.pdf")
 http://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.470-6-199811-S!!PDF-E.pdf")
 
 (defun linearize-prophoto (x)
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
   (cond ((> x #.(* 1/512 16d0))
 	 (expt x 1.8d0))
@@ -135,7 +135,7 @@ http://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.470-6-199811-S!!PDF-E.pdf")
 	(t (* x #.(float 1/16 1d0)))))
   
 (defun delinearize-prophoto (x)
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
 	   (double-float x))
   (cond ((> x #.(float 1/512 1d0))
 	 (expt x #.(/ 1.8d0)))
