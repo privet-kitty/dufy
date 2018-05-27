@@ -107,8 +107,8 @@ The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-
 ```lisp
 (dufy:lab-to-xyz 87.07 -78.15 -20.51)  ; L*=87.07, a*=-78.15, b*=-20.51
 ;; => 0.3731544163010862d0 ; X
-;; 0.701492216468595d0     ; Y
-;; 1.0600774614243746d0    ; Z
+;;    0.701492216468595d0  ; Y
+;;    1.0600774614243746d0 ; Z
    
 (multiple-value-call #'dufy:xyz-to-qrgb
   (dufy:lab-to-xyz 87.07 -78.15 -20.51)
@@ -150,26 +150,15 @@ Out of which gamut, however? By default, `xyz-to-qrgb` (and all other RGB conver
 Likewise most converters regard the implicit illuminant as D65. You can also specify it explicitly:
 
 ```lisp
-(dufy:luv-to-xyz 100 0 0)                  ; Illuminant D65 
-<<<<<<< HEAD
-(dufy:luv-to-xyz 100 0 0 dufy:+illum-d65+) ; Illuminant D65
-;; => 0.9504285453771808d0
-;;    1.0d0
-;;    1.0889003707981282d0
-;; the white point of standard illuminant D65
-
-(dufy:luv-to-xyz 100 0 0 dufy:+illum-e+)   ; Illuminant E
-;; => 0.9999999999999999d0
-=======
+(dufy:luv-to-xyz 100 0 0)                              ; Illuminant D65 
 (dufy:luv-to-xyz 100 0 0 :illuminant dufy:+illum-d65+) ; Illuminant D65
 ;; => 0.9504692366968726d0
-;; 1.0d0
-;; 1.0889440678362423d0
+;;    1.0d0
+;;    1.0889440678362423d0
 ;; the white point of standard illuminant D65
 
 (dufy:luv-to-xyz 100 0 0 :illuminant dufy:+illum-e+)   ; Illuminant E
 ;; => 1.0d0
->>>>>>> defconverter
 ;;    1.0d0
 ;;    1.0000000000000004d0
 ```
