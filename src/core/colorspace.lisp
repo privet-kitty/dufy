@@ -7,6 +7,13 @@
 (defun sane-symbol (symb)
   (intern (symbol-name symb) *package*))
 
+;; new
+;; (defstruct colorspace
+;;   (term nil :type symbol)
+;;   (args nil :type list)
+;;   (arg-types nil :type list)
+;;   (neighbors nil :type list))
+
 (defstruct colorspace
   "illuminant::= :illuminant | :rgbspace | [symbol of predefined illuminant]
 clamp::= :always-clamped | :clampable | nil
@@ -74,36 +81,40 @@ clamp::= :always-clamped | :clampable | nil
 (defun gen-converter-name (from-term to-term)
   (intern (format nil "~A-TO-~A" from-term to-term) *package*))
 
-(defun get-key-args (lambda-list)
-  (mapcar #'(lambda (x) (make-keyword (if (consp x)
-                                          (first x)
-                                          x)))
-          (cdr (member '&key lambda-list))))
+(defun get-key-args-with-init (lambda-list)
+  (cdr (member '&key lambda-list)))
 
-(defstruct (primary-converter (:constructor make-primary-converter
-                                  (from-term to-term lambda-list
-                                   &key (fname (gen-converter-name from-term to-term))
-                                   &aux (key-args (get-key-args lambda-list)))))
+(defun get-key-args (lambda-list)
+  (mapcar #'(lambda (x) (make-keyword (car (ensure-list x))))
+          (get-key-args-with-init lambda-list)))
+
+(defstruct (primary-converter
+            (:constructor make-primary-converter
+                (from-term to-term lambda-list
+                 &key (name (gen-converter-name from-term to-term))
+                 &aux
+                   (key-args-with-init (get-key-args-with-init lambda-list))
+                   (key-args (get-key-args lambda-list)))))
   (from-term nil :type symbol)
   (to-term nil :type symbol)
-  (fname nil :type symbol)
-  (lambda-list nil :type list)
+  (name nil :type symbol)
+  (key-args-with-init nil :type list)
   (key-args nil :type list))
 
 (defparameter *primary-converter-table* (make-hash-table :test 'equal))
 
-(defun add-primary-converter (from-term to-term lambda-list &key (fname (gen-converter-name from-term to-term)))
+(defun add-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)))
   (let ((from-space (get-colorspace from-term))
         (to-space (get-colorspace to-term)))
     (assert (and from-space to-space))
     (setf (gethash (list from-term to-term) *primary-converter-table*)
-          (make-primary-converter from-term to-term lambda-list :fname fname))
+          (make-primary-converter from-term to-term lambda-list :name name))
     (pushnew to-term (colorspace-neighbors from-space))))
 
 (defun get-primary-converter (from-term to-term)
   (gethash (list from-term to-term) *primary-converter-table*))
-(defun get-primary-converter-fname (from-term to-term)
-  (primary-converter-fname (gethash (list from-term to-term)
+(defun get-primary-converter-name (from-term to-term)
+  (primary-converter-name (gethash (list from-term to-term)
                                     *primary-converter-table*)))
 (defun get-primary-converter-lambda-list (from-term to-term)
   (primary-converter-lambda-list (gethash (list from-term to-term)
@@ -111,7 +122,6 @@ clamp::= :always-clamped | :clampable | nil
 (defun get-primary-converter-key-args (from-term to-term)
   (primary-converter-key-args (gethash (list from-term to-term)
                                        *primary-converter-table*)))
-
 
 (defun print-primary-converter-table ()
   (format t "#<HASH-TABLE ~%")
@@ -148,20 +158,20 @@ clamp::= :always-clamped | :clampable | nil
                      (enqueue (cons term path) path-queue)))))))
 
 
-(defmacro define-primary-converter ((begin-term dest-term &optional (fname (gen-converter-name begin-term dest-term))) args &body body)
+(defmacro define-primary-converter ((begin-term dest-term &key (name (gen-converter-name begin-term dest-term))) args &body body)
   "Defines FOO-TO-BAR function as a primary converter."
   (assert (and (symbolp begin-term) (symbolp dest-term) (listp args)))
   (let* ((begin-term (make-keyword begin-term))
          (dest-term (make-keyword dest-term)))
     `(progn
-       (declaim (inline ,fname)
-                (ftype (function * (values ,@(get-arg-types dest-term) &optional)) ,fname))
-       (defun ,fname ,(append (get-args begin-term *package*) args)
+       (declaim (inline ,name)
+                (ftype (function * (values ,@(get-arg-types dest-term) &optional)) ,name))
+       (defun ,name ,(append (get-args begin-term *package*) args)
          ,@body)
        (eval-when (:compile-toplevel :load-toplevel :execute)
          (add-primary-converter ,begin-term ,dest-term
                                 ',args
-                                :fname ',fname)))))
+                                :name ',name)))))
 
 
 (defun converter-clamp-p (term1 term2)
@@ -261,11 +271,11 @@ term1 to term2"
    (collect-key-args (list term1 term2)
                      :exclude-list '(:clamp))))
 
-(defmacro defconverter (begin-term dest-term &key (fname (gen-converter-name begin-term dest-term)) (documentation nil))
+(defmacro defconverter (begin-term dest-term &key (name (gen-converter-name begin-term dest-term)) (exclude-args nil) (documentation nil))
   "Defines a converter function from BEGIN-TERM to DEST-TERM automatically."
   (let* ((begin-term (make-keyword begin-term))
          (dest-term (make-keyword dest-term))
-         (global-fname fname)
+         (global-name name)
          (chain (get-converter-chain begin-term dest-term))
          (global-key-args (gen-global-key-args chain))
          (last-key-args (gen-last-key-args chain))
@@ -279,7 +289,7 @@ term1 to term2"
                    code
                    (let* ((term1 (first term-lst))
                           (term2 (second term-lst))
-                          (name (get-primary-converter-fname term1 term2)))
+                          (name (get-primary-converter-name term1 term2)))
                      (cond ((null code)
                             (expand (cdr term-lst) ; first conversion
                                     `(,name ,@(get-args term1 *package*)
@@ -295,9 +305,9 @@ term1 to term2"
                                          ,code
                                          ,@(gen-local-key-args term1 term2)))))))))
       `(progn
-         (declaim #+dufy/inline(inline ,global-fname)
-                  (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-fname))
-         (defun ,global-fname (,@(get-args begin-term *package*)
+         (declaim #+dufy/inline(inline ,global-name)
+                  (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-name))
+         (defun ,global-name (,@(get-args begin-term *package*)
                                ,@(when global-key-args
                                    `(&key ,@global-key-args)))
            (declare (optimize (speed 3) (safety 1)))
