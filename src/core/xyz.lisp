@@ -89,14 +89,14 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
   (with-double-float (begin-wl end-wl band)
     (let* ((partitions (max 2 (round (/ (- end-wl begin-wl) band))))
 	   (partitions-f (float partitions 1d0))
-           (arr (make-array (1+ partitions) :element-type 'double-float)))
+           (points (make-array (1+ partitions) :element-type 'double-float)))
       (declare (fixnum partitions))
       (gen-spectrum (loop for i from 0 to partitions
                           for wl = (lerp (/ i partitions-f)
                                          begin-wl
                                          end-wl)
-                          do (setf (aref arr i) (funcall spectrum wl))
-                          finally (return arr))
+                          do (setf (aref points i) (funcall spectrum wl))
+                          finally (return points))
                     begin-wl
                     end-wl))))
 

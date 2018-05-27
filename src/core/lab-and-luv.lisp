@@ -18,7 +18,7 @@
                           (huv double-float)))
 
 (declaim (inline function-f)
-	 (ftype (function * double-float) function-f))
+	 (ftype (function * (values double-float &optional)) function-f))
 (defun function-f (x)
   (declare (optimize (speed 3) (safety 0))
 	   (double-float x))

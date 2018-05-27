@@ -211,7 +211,8 @@ term1 to term2"
                         (if (consp x)
                             (string= arg (car x))
                             (string= arg x)))
-                    (get-primary-converter-lambda-list term1 term2))))
+                    (get-key-args
+                     (get-primary-converter-lambda-list term1 term2)))))
 
 (defun collect-key-args (terms &key (exclude-list nil))
   (remove-if #'(lambda (x) (member x exclude-list :test #'key-arg=))

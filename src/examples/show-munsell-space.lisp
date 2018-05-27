@@ -29,8 +29,8 @@ Munsell space."
                  (values (- 20 (* theta #.(/ 40 dufy-core::two-pi)))
                          (* value100 0.1d0)
                          (* max-chroma (/ r radius))))))
-      (declare (inline coord-to-mhvc polar))
-      (declare (type uint value100 radius center-x center-y))
+      (declare (inline coord-to-mhvc polar)
+               (uint value100 radius center-x center-y))
       (sdl:with-init ()
         (sdl:window size size
                     :bpp 32
