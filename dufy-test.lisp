@@ -242,11 +242,11 @@
 
 (test test-deltae
   (is (nearly= 1d-3 66.228d0 (qrgb-deltae94 10 20 30 200 100 0 :application :textiles)))
-  (is (nearly= 1d-3 91.75d0 (qrgb-deltae 10 20 30 200 100 0)))
+  (is (nearly= 1d-3 91.75d0 (qrgb-deltaeab 10 20 30 200 100 0)))
   (dolist (row *ciede2000-set*)
     (is (nearly= 1d-3
                  (nth 6 row)
-                 (apply #'deltae00
+                 (apply #'lab-deltae00
                         (append  (subseq row 0 3)
                                  (subseq row 3 6)))))))
 

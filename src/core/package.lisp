@@ -7,10 +7,9 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun gen-deltae-symbols (name)
     "Generates the function names of delta-E converters automatically."
-    (cons name
-	  (mapcar #'(lambda (term)
-		      (intern (format nil "~:@(~A-~A~)" term name) :keyword))
-		  '(qrgb xyz)))))
+    (mapcar #'(lambda (term)
+                (intern (format nil "~:@(~A-~A~)" term name) :keyword))
+            '(lab qrgb xyz))))
 
 (defpackage dufy-core
   (:use :cl :alexandria :dufy-internal)
@@ -164,6 +163,6 @@
 
       ;; deltae.lisp
       ,@(alexandria:mappend #'gen-deltae-symbols
-                            '(:deltae
+                            '(:deltaeab
                               :deltae94
                               :deltae00))))

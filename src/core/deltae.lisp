@@ -3,30 +3,30 @@
 ;; define delta-E functions for L*a*b*, xyz and qrgb
 (defmacro defdeltae (name args &body body)
   "Defines delta-E function for L*a*b* and other color spaces. Only
-&key arguments are allowed in sub-args. The following symbols cannot
-be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
+&key arguments are allowed in sub-args."
   (labels ((extract (lst) ; extract sub-args
 	     (reduce #'append
 		     (mapcar #'(lambda (pair)
-				 (list (intern (symbol-name (first pair)) :keyword)
+				 (list (make-keyword (first pair))
 				       (first pair)))
 			     lst))))
     (let* ((main-args (subseq args 0 6))
 	   (sub-args-with-key (subseq args 6))
 	   (sub-args (cdr sub-args-with-key))
-	   (qrgb-name (intern (format nil "QRGB-~A" name) :dufy-core))
-	   (xyz-name (intern (format nil "XYZ-~A" name) :dufy-core)))
+           (lab-name (intern (format nil "LAB-~A" name) *package*))
+	   (qrgb-name (intern (format nil "QRGB-~A" name) *package*))
+	   (xyz-name (intern (format nil "XYZ-~A" name) *package*)))
       `(progn
 	 ;; for L*a*b*
 	 (declaim (inline ,name))
-	 (defun ,name (,@main-args ,@sub-args-with-key)
+	 (defun ,lab-name (,@main-args ,@sub-args-with-key)
 	   ,@body)
 
 	 ;; for XYZ
 	 (declaim (inline ,xyz-name))
 	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
 	   (declare (optimize (speed 3) (safety 1)))
-	   (multiple-value-call #',name
+	   (multiple-value-call #',lab-name
 	     (xyz-to-lab (float x1 1d0) (float y1 1d0) (float z1 1d0)
                          :illuminant illuminant)
 	     (xyz-to-lab (float x2 1d0) (float y2 1d0) (float z2 1d0)
@@ -45,7 +45,7 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 	     :illuminant (rgbspace-illuminant rgbspace)))))))
 
 
-(defdeltae deltae (l1 a1 b1 l2 a2 b2)
+(defdeltae deltaeab (l1 a1 b1 l2 a2 b2)
   "CIE 1976. Euclidean distance in L*a*b* space."
   (declare (optimize (speed 3) (safety 1))
            (real l1 a1 b1 l2 a2 b2))
@@ -59,7 +59,8 @@ be used in ARGS: x1 y1 z1 x2 y2 z2 r1 g1 b1 r2 g2 b2"
 
 
 (defdeltae deltae94 (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
-  "CIE 1994. APPLICATION must be :graphic-arts or :textiles"
+  "CIE 1994. 
+APPLICATION::= :graphic-arts | :textiles"
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (l1 a1 b1 l2 a2 b2)
     (let ((c1 (sqrt (+ (* a1 a1) (* b1 b1))))
