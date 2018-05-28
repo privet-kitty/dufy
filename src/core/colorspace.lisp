@@ -14,17 +14,6 @@
   (clamp nil :type symbol)
   (neighbors nil :type list))
 
-;; (defstruct colorspace
-;;   "illuminant::= :illuminant | :rgbspace | [symbol of predefined illuminant]
-;; clamp::= :always-clamped | :clampable | nil
-;; "
-;;   (term nil :type symbol)
-;;   (args nil :type list)
-;;   (arg-types nil :type list)
-;;   (illuminant :illuminant :type symbol)
-;;   (clamp nil :type symbol)
-;;   (neighbors nil :type list))
-
 (defparameter *colorspace-table* (make-hash-table))
 
 (defun colorspace= (space1 space2)
