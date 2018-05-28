@@ -4,15 +4,11 @@
 ;;; RGB Color Space
 ;;;
 
-(define-colorspace lrgb ((lr double-float) (lg double-float) (lb double-float))
-  :illuminant :rgbspace)
-(define-colorspace rgb ((r double-float) (g double-float) (b double-float))
-  :illuminant :rgbspace)
+(define-colorspace lrgb ((lr double-float) (lg double-float) (lb double-float)))
+(define-colorspace rgb ((r double-float) (g double-float) (b double-float)))
 (define-colorspace qrgb ((qr fixnum) (qg fixnum) (qb fixnum))
-  :illuminant :rgbspace
   :clamp :clampable)
 (define-colorspace int ((int integer))
-  :illuminant :rgbspace
   :clamp :always-clamped)
 
 (defun gen-linearizer (gamma)
@@ -134,14 +130,14 @@ forcibly set to [0, 1]."
 
 (defvar +srgb+) ; later defined
 
-(define-primary-converter (xyz lrgb) (&key (rgbspace +srgb+))
+(define-primary-converter (xyz lrgb) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
 		    (float x 1d0)
 		    (float y 1d0)
 		    (float z 1d0)))
 
-(define-primary-converter (lrgb xyz) (&key (rgbspace +srgb+))
+(define-primary-converter (lrgb xyz) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
 		    (float lr 1d0)
@@ -175,14 +171,14 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
   (declare (optimize (speed 3) (safety 1)))
   (funcall (rgbspace-delinearizer rgbspace) (float x 1d0)))
 
-(define-primary-converter (lrgb rgb) (&key (rgbspace +srgb+))
+(define-primary-converter (lrgb rgb) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((delin (rgbspace-delinearizer rgbspace)))
     (values (funcall delin (float lr 1d0))
 	    (funcall delin (float lg 1d0))
 	    (funcall delin (float lb 1d0)))))
 
-(define-primary-converter (rgb lrgb) (&key (rgbspace +srgb+))
+(define-primary-converter (rgb lrgb) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((lin (rgbspace-linearizer rgbspace)))
     (values (funcall lin (float r 1d0))
@@ -239,7 +235,7 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
   (+ (rgbspace-min rgbspace)
      (* n (rgbspace-length/qmax-float rgbspace))))
 
-(define-primary-converter (rgb qrgb) (&key (rgbspace +srgb+) (clamp t))
+(define-primary-converter (rgb qrgb) ((rgbspace +srgb+) (clamp t))
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1],
 typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255},
 typically), though it accepts all the real values."
@@ -257,7 +253,7 @@ typically), though it accepts all the real values."
                   (round (* (- b min) qmax-float/length)))))))
 
 
-(define-primary-converter (qrgb rgb) (&key (rgbspace +srgb+))
+(define-primary-converter (qrgb rgb) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum qr qg qb))
   (let ((min (rgbspace-min rgbspace))
@@ -280,7 +276,7 @@ typically), though it accepts all the real values."
 (defconverter qrgb xyz)
 
 
-(define-primary-converter (qrgb int) (&key (rgbspace +srgb+))
+(define-primary-converter (qrgb int) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum qr qg qb))
   (let ((bpc (rgbspace-bit-per-channel rgbspace))
@@ -289,7 +285,7 @@ typically), though it accepts all the real values."
        (ash (clamp qg 0 qmax) bpc)
        (clamp qb 0 qmax))))
 
-(define-primary-converter (int qrgb) (&key (rgbspace +srgb+))
+(define-primary-converter (int qrgb) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer int))
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
@@ -352,14 +348,8 @@ typically), though it accepts all the real values."
 ;;; HSV/HSL
 ;;;
 
-(define-colorspace hsv ((hue double-float)
-                        (sat double-float)
-                        (val double-float))
-  :illuminant :rgbspace)
-(define-colorspace hsl ((hue double-float)
-                        (sat double-float)
-                        (lum double-float))
-  :illuminant :rgbspace)
+(define-colorspace hsv ((hue double-float) (sat double-float) (val double-float)))
+(define-colorspace hsl ((hue double-float) (sat double-float) (lum double-float)))
 
 (defmacro macrolet-applied-only-when (test definitions &body body)
   `(if ,test
@@ -369,7 +359,7 @@ typically), though it accepts all the real values."
                         collect `(,(car def) (arg) arg))
          ,@body)))
 
-(define-primary-converter (hsv rgb) (&key (rgbspace +srgb+))
+(define-primary-converter (hsv rgb) ((rgbspace +srgb+))
   "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0,
 1]; all the real values outside the interval are also acceptable."
   (declare (optimize (speed 3) (safety 1)))
@@ -411,7 +401,7 @@ typically), though it accepts all the real values."
 (defconverter hsv qrgb)
 (defconverter hsv xyz)
 
-(define-primary-converter (rgb hsv) (&key (rgbspace +srgb+))
+(define-primary-converter (rgb hsv) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
       ((%lerp (x) ; scale to the range [0, 1]
@@ -435,7 +425,7 @@ typically), though it accepts all the real values."
 (defconverter xyz hsv)
 
 
-(define-primary-converter (hsl rgb) (&key (rgbspace +srgb+))
+(define-primary-converter (hsl rgb) ((rgbspace +srgb+))
   "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0,
 1]; all the real values outside the interval are also acceptable."
   (declare (optimize (speed 3) (safety 1)))
@@ -477,7 +467,7 @@ typically), though it accepts all the real values."
 (defconverter hsl qrgb)
 (defconverter hsl xyz)
 
-(define-primary-converter (rgb hsl) (&key (rgbspace +srgb+))
+(define-primary-converter (rgb hsl) ((rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
       ((%lerp (x) ; scale to the range [0, 1]

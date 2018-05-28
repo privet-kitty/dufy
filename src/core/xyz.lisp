@@ -377,7 +377,7 @@ ILLUMINANT-SPD: SPD of illuminant"
               (* y normalizing-factor)
               (* z normalizing-factor)))))
 
-(define-primary-converter (spectrum xyz) (&key (illuminant +illum-d65+) (begin-wl 360) (end-wl 830) (band 1))
+(define-primary-converter (spectrum xyz) ((illuminant +illum-d65+) (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1)))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
 case. The function SPECTRUM, a spectral reflectance, must be defined
@@ -427,7 +427,7 @@ BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
                 (aref mat 2 2) a22))))
     (invert-matrix33 mat)))
 
-(define-primary-converter (xyz spectrum) (&key (illuminant +illum-d65+))
+(define-primary-converter (xyz spectrum) ((illuminant +illum-d65+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among
 many and may contain a negative spectral density."
   (if (illuminant-no-spd-p illuminant)

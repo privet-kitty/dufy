@@ -26,7 +26,7 @@
       (expt x #.(float 1/3 1d0))
       (+ (* #.(/ 24389/27 116d0) x) #.(float 16/116 1d0))))
 
-(define-primary-converter (xyz lab) (&key (illuminant +illum-d65+))
+(define-primary-converter (xyz lab) ((illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((fx (function-f (/ (float x 1d0) (illuminant-x illuminant))))
 	(fy (function-f (float y 1d0)))
@@ -36,7 +36,7 @@
 	    (* 200d0 (- fy fz)))))
 
 
-(define-primary-converter (lab xyz) (&key (illuminant +illum-d65+))
+(define-primary-converter (lab xyz) ((illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (let* ((fy (* (+ (float lstar 1d0) 16d0) 1/116))
 	 (fx (+ fy (* (float astar 1d0) 0.002d0)))
@@ -113,7 +113,7 @@
     (values (/ (* 4d0 x) denom)
 	    (/ (* 9d0 y) denom))))
 
-(define-primary-converter (xyz luv) (&key (illuminant +illum-d65+))
+(define-primary-converter (xyz luv) ((illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (x y z)
     (multiple-value-bind (uprime vprime)
@@ -129,7 +129,7 @@
 		  (* 13d0 lstar (- uprime urprime))
 		  (* 13d0 lstar (- vprime vrprime))))))))
 
-(define-primary-converter (luv xyz) (&key (illuminant +illum-d65+))
+(define-primary-converter (luv xyz) ((illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (lstar ustar vstar)
     (multiple-value-bind (urprime vrprime)

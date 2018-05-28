@@ -7,23 +7,23 @@
 (defun sane-symbol (symb)
   (intern (symbol-name symb) *package*))
 
-;; new
-;; (defstruct colorspace
-;;   (term nil :type symbol)
-;;   (args nil :type list)
-;;   (arg-types nil :type list)
-;;   (neighbors nil :type list))
-
 (defstruct colorspace
-  "illuminant::= :illuminant | :rgbspace | [symbol of predefined illuminant]
-clamp::= :always-clamped | :clampable | nil
-"
   (term nil :type symbol)
   (args nil :type list)
   (arg-types nil :type list)
-  (illuminant :illuminant :type symbol)
   (clamp nil :type symbol)
   (neighbors nil :type list))
+
+;; (defstruct colorspace
+;;   "illuminant::= :illuminant | :rgbspace | [symbol of predefined illuminant]
+;; clamp::= :always-clamped | :clampable | nil
+;; "
+;;   (term nil :type symbol)
+;;   (args nil :type list)
+;;   (arg-types nil :type list)
+;;   (illuminant :illuminant :type symbol)
+;;   (clamp nil :type symbol)
+;;   (neighbors nil :type list))
 
 (defparameter *colorspace-table* (make-hash-table))
 
@@ -31,22 +31,15 @@ clamp::= :always-clamped | :clampable | nil
   (eql (colorspace-term space1)
        (colorspace-term space2)))
 
-(defmacro define-colorspace (term args &key (illuminant :illuminant) clamp)
+(defmacro define-colorspace (term args &key clamp)
   (let ((key (make-keyword term)))
     `(eval-when (:compile-toplevel :load-toplevel :execute)
        (setf (gethash ,key *colorspace-table*)
              (make-colorspace :term ,key
-                              :args ',(mapcar #'(lambda (x)
-                                                  (if (consp x)
-                                                      (first x)
-                                                      x))
+                              :args ',(mapcar (compose #'first #'ensure-list)
                                               args)
-                              :arg-types ',(mapcar #'(lambda (x)
-                                                       (if (consp x)
-                                                           (second x)
-                                                           t))
+                              :arg-types ',(mapcar (compose #'second #'ensure-list)
                                                    args)
-                              :illuminant ',illuminant
                               :clamp ,clamp
                               :neighbors nil)))))
 
@@ -54,23 +47,21 @@ clamp::= :always-clamped | :clampable | nil
   (gethash term *colorspace-table*))
 (defun get-neighbors (term)
   (colorspace-neighbors (gethash term *colorspace-table*)))
+(defun get-clamp (term)
+  (colorspace-clamp (gethash term *colorspace-table*)))
 (defun get-args (term &optional (package nil))
   (mapcar (if package
-              #'sane-symbol
+              #'(lambda (x) (intern (symbol-name x) package))
               #'identity)
           (colorspace-args (gethash term *colorspace-table*))))
 (defun get-arg-types (term)
   (colorspace-arg-types (gethash term *colorspace-table*)))
-(defun get-clamp (term)
-  (colorspace-clamp (gethash term *colorspace-table*)))
-(defun get-illuminant (term)
-  (colorspace-illuminant (gethash term *colorspace-table*)))
 
 (defun print-colorspace-table ()
-  (format t "#<HASH-TABLE ~%")
+  (format t "~%#<HASH-TABLE ~%")
   (maphash-values #'(lambda (val) (format t "~S~%" val))
                   *colorspace-table*)
-  (format t ">~%"))
+  (format t ">"))
 
 
 
@@ -81,34 +72,39 @@ clamp::= :always-clamped | :clampable | nil
 (defun gen-converter-name (from-term to-term)
   (intern (format nil "~A-TO-~A" from-term to-term) *package*))
 
-(defun get-key-args-with-init (lambda-list)
+(defun extract-key-args-with-init (lambda-list)
   (cdr (member '&key lambda-list)))
 
-(defun get-key-args (lambda-list)
+(defun extract-key-args (lambda-list)
   (mapcar #'(lambda (x) (make-keyword (car (ensure-list x))))
-          (get-key-args-with-init lambda-list)))
+          (extract-key-args-with-init lambda-list)))
 
 (defstruct (primary-converter
             (:constructor make-primary-converter
                 (from-term to-term lambda-list
-                 &key (name (gen-converter-name from-term to-term))
+                 &key
+                   (name (gen-converter-name from-term to-term))
+                   (forced-bindings nil)
                  &aux
-                   (key-args-with-init (get-key-args-with-init lambda-list))
-                   (key-args (get-key-args lambda-list)))))
+                   (key-args-with-init (extract-key-args-with-init lambda-list))
+                   (key-args (extract-key-args lambda-list)))))
   (from-term nil :type symbol)
   (to-term nil :type symbol)
   (name nil :type symbol)
   (key-args-with-init nil :type list)
-  (key-args nil :type list))
+  (key-args nil :type list)
+  (forced-bindings nil :type list))
 
 (defparameter *primary-converter-table* (make-hash-table :test 'equal))
 
-(defun add-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)))
+(defun add-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)) (forced-bindings nil))
   (let ((from-space (get-colorspace from-term))
         (to-space (get-colorspace to-term)))
     (assert (and from-space to-space))
     (setf (gethash (list from-term to-term) *primary-converter-table*)
-          (make-primary-converter from-term to-term lambda-list :name name))
+          (make-primary-converter from-term to-term lambda-list
+                                  :name name
+                                  :forced-bindings forced-bindings))
     (pushnew to-term (colorspace-neighbors from-space))))
 
 (defun get-primary-converter (from-term to-term)
@@ -116,18 +112,21 @@ clamp::= :always-clamped | :clampable | nil
 (defun get-primary-converter-name (from-term to-term)
   (primary-converter-name (gethash (list from-term to-term)
                                     *primary-converter-table*)))
-(defun get-primary-converter-lambda-list (from-term to-term)
-  (primary-converter-lambda-list (gethash (list from-term to-term)
-                                          *primary-converter-table*)))
-(defun get-primary-converter-key-args (from-term to-term)
+(defun get-key-args-with-init (from-term to-term)
+  (primary-converter-key-args-with-init (gethash (list from-term to-term)
+                                                 *primary-converter-table*)))
+(defun get-key-args (from-term to-term)
   (primary-converter-key-args (gethash (list from-term to-term)
                                        *primary-converter-table*)))
+(defun get-forced-bindings (from-term to-term)
+  (primary-converter-forced-bindings (gethash (list from-term to-term)
+                                              *primary-converter-table*)))
 
 (defun print-primary-converter-table ()
-  (format t "#<HASH-TABLE ~%")
+  (format t "%#<HASH-TABLE ~%")
   (maphash-values #'(lambda (val) (format t "~S~%" val))
                   *primary-converter-table*)
-  (format t ">~%"))
+  (format t ">"))
 
 
 ;; simple queue structure
@@ -158,52 +157,49 @@ clamp::= :always-clamped | :clampable | nil
                      (enqueue (cons term path) path-queue)))))))
 
 
-(defmacro define-primary-converter ((begin-term dest-term &key (name (gen-converter-name begin-term dest-term))) args &body body)
+(defmacro define-primary-converter ((begin-term dest-term &key (name (gen-converter-name begin-term dest-term)) (forced-bindings nil)) key-args &body body)
   "Defines FOO-TO-BAR function as a primary converter."
-  (assert (and (symbolp begin-term) (symbolp dest-term) (listp args)))
+  (check-type begin-term symbol)
+  (check-type dest-term symbol)
+  (check-type key-args list)
+  (check-type forced-bindings list)
   (let* ((begin-term (make-keyword begin-term))
-         (dest-term (make-keyword dest-term)))
+         (dest-term (make-keyword dest-term))
+         (lambda-list (append (get-args begin-term *package*)
+                              (if key-args (cons '&key key-args) nil))))
     `(progn
        (declaim (inline ,name)
                 (ftype (function * (values ,@(get-arg-types dest-term) &optional)) ,name))
-       (defun ,name ,(append (get-args begin-term *package*) args)
+       (defun ,name ,lambda-list
          ,@body)
        (eval-when (:compile-toplevel :load-toplevel :execute)
          (add-primary-converter ,begin-term ,dest-term
-                                ',args
-                                :name ',name)))))
+                                ',lambda-list
+                                :name ',name
+                                :forced-bindings ',forced-bindings)))))
 
 
 (defun converter-clamp-p (term1 term2)
   (and (not (eql (get-clamp term1) :always-clamped))
        (eql (get-clamp term2) :clampable)))
 
-(defun global-clamp-p (terms)
+(defun global-clamp-arg-p (terms)
   (converter-clamp-p (car (last terms 2))
                      (car (last terms))))
+
 (defun get-local-illuminant-key (term1 term2)
   (let* ((conv (get-primary-converter term1 term2))
          (key-args (primary-converter-key-args conv)))
     (or (find :rgbspace key-args)
         (find :illuminant key-args))))
 
-(defun get-global-illuminant (terms)
-  "Determines the required illuminant for the converter chain"
+(defun get-global-illuminant-key (terms)
+  "Determines the required illuminant object for a given converter chain"
   (let ((conv-illum-keys (loop for (term1 term2) on terms
                                until (null term2)
-                               collect (get-local-illuminant-key term1 term2)))
-        (cs-illums (mapcar #'get-illuminant terms)))
+                               collect (get-local-illuminant-key term1 term2))))
     (or (find :rgbspace conv-illum-keys)
-        (find-if #'(lambda (x) (not (member x '(:rgbspace :illuminant nil))))
-                 cs-illums)
         (find :illuminant conv-illum-keys))))
-
-(defun get-global-illuminant-key (terms)
-  "Decides the keyword argument for illuminant"
-  (case (get-global-illuminant terms)
-    (:rgbspace :rgbspace)
-    (:illuminant :illuminant)
-    (otherwise nil)))
 
 (defun need-rgbspace-to-illuminant-p (terms)
   (let ((illum-keys (loop for (term1 term2) on terms
@@ -212,7 +208,7 @@ clamp::= :always-clamped | :clampable | nil
     (and (find :rgbspace illum-keys)
          (find :illuminant illum-keys))))
 
-(defun get-default-value (arg term1 term2)
+(defun get-init-form (arg term1 term2)
   "Returns the default value of an argument of the converter from
 term1 to term2"
   (funcall #'(lambda (x)
@@ -221,41 +217,56 @@ term1 to term2"
                         (if (consp x)
                             (string= arg (car x))
                             (string= arg x)))
-                    (get-key-args
-                     (get-primary-converter-lambda-list term1 term2)))))
+                    (get-key-args-with-init term1 term2))))
 
 (defun collect-key-args (terms &key (exclude-list nil))
   (remove-if #'(lambda (x) (member x exclude-list :test #'key-arg=))
-             (remove-duplicates
+             (delete-duplicates
               (loop for (term1 term2) on terms
                     until (null term2)
-                    append (get-primary-converter-key-args term1 term2)))))
+                    append (get-key-args term1 term2)))))
 
 (defun key-arg= (key1 key2)
   (string= (car (ensure-list key1))
            (car (ensure-list key2))))
 
 (defun collect-key-args-with-init (terms &key (exclude-list nil))
-  (remove-if #'(lambda (x) (member x exclude-list :test #'key-arg=))
-             (remove-duplicates
+  (delete-if #'(lambda (x) (member x exclude-list :test #'key-arg=))
+             (delete-duplicates
               (loop for (term1 term2) on terms
                     until (null term2)
                     append (mapcar #'(lambda (key)
                                        (list (sane-symbol key)
-                                             (get-default-value key term1 term2)))
-                                   (get-primary-converter-key-args term1 term2)))
+                                             (get-init-form key term1 term2)))
+                                   (get-key-args term1 term2)))
               :test #'key-arg=)))
 
+(defun collect-forced-bindings (terms)
+  (delete-duplicates
+   (loop for (term1 term2) on terms
+         until (null term2)
+         append (get-forced-bindings term1 term2))
+   :key (compose #'car #'ensure-list)
+   :test #'string=))
+(defun collect-forced-bounded-args (terms)
+  (mapcar (compose #'car #'ensure-list)
+          (collect-forced-bindings terms)))
+(defun collect-forced-bounded-key-args (terms)
+  (mapcar #'make-keyword
+          (collect-forced-bounded-args terms)))
+
+(defun find-duplicates (lst &key (key #'identity) (test #'eql))
+  (if (null lst)
+      nil
+      (or (member (car lst) (cdr lst) :test test :key key)
+          (find-duplicates (cdr lst)))))
+
 (defun gen-global-key-args (terms)
-  (remove nil
-          `(,(let ((illum-key (get-global-illuminant-key terms)))
-               (case illum-key
-                 (:rgbspace (list (sane-symbol illum-key) '+srgb+))
-                 (:illuminant (list (sane-symbol illum-key) '+illum-d65+))))
-            ,(when (global-clamp-p terms)
-               (list (sane-symbol :clamp) t))
-            ,@(collect-key-args-with-init terms
-                                          :exclude-list '(:rgbspace :illuminant :clamp)))))
+  (let ((exclude-lst (cons :clamp
+                           (collect-forced-bounded-key-args terms))))
+    `(,@(when (global-clamp-arg-p terms)
+          `((,(sane-symbol :clamp) t)))
+      ,@(collect-key-args-with-init terms :exclude-list exclude-lst))))
 
 (defun expand-key-args (arg-lst)
   (mappend #'(lambda (key)
@@ -263,8 +274,8 @@ term1 to term2"
            arg-lst))
 
 (defun gen-last-key-args (terms)
-  (expand-key-args
-   `(,@(when (global-clamp-p terms) '(:clamp)))))
+  `(,@(gen-local-key-args (car (last terms 2)) (lastcar terms))
+    ,@(when (global-clamp-arg-p terms) '(:clamp clamp))))
 
 (defun gen-local-key-args (term1 term2)
   (expand-key-args
@@ -278,13 +289,17 @@ term1 to term2"
          (global-name name)
          (chain (get-converter-chain begin-term dest-term))
          (global-key-args (gen-global-key-args chain))
-         (last-key-args (gen-last-key-args chain))
-         (global-illuminant (get-global-illuminant chain)))
+         (global-illuminant (get-global-illuminant-key chain)))
     (assert (>= (length chain) 3)
             (chain)
             "The length of converters path is ~a. It should be greater than 1."
             (- (length chain) 1))
-    (labels ((expand (term-lst code)
+    (labels ((expand-forced-bindings (code)
+               (let ((bindings (collect-forced-bindings chain)))
+                 (if bindings
+                     `(symbol-macrolet ,bindings ,code)
+                     code)))
+             (expand (term-lst code)
                (if (null (cdr term-lst))
                    code
                    (let* ((term1 (first term-lst))
@@ -295,11 +310,10 @@ term1 to term2"
                                     `(,name ,@(get-args term1 *package*)
                                             ,@(gen-local-key-args term1 term2))))
                            ((eql term2 dest-term) ; last conversion
-                            (expand (cdr term-lst)
-                                    `(multiple-value-call #',name
-                                       ,code
-                                       ,@(gen-local-key-args term1 term2)
-                                       ,@last-key-args)))
+                            (expand-forced-bindings
+                             `(multiple-value-call #',name
+                                ,code
+                                ,@(gen-last-key-args chain))))
                            (t (expand (cdr term-lst) ; intermediate conversion
                                       `(multiple-value-call #',name
                                          ,code
@@ -308,8 +322,8 @@ term1 to term2"
          (declaim #+dufy/inline(inline ,global-name)
                   (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-name))
          (defun ,global-name (,@(get-args begin-term *package*)
-                               ,@(when global-key-args
-                                   `(&key ,@global-key-args)))
+                              ,@(when global-key-args
+                                  `(&key ,@global-key-args)))
            (declare (optimize (speed 3) (safety 1)))
            ,@(ensure-list documentation)
            ,(case global-illuminant
@@ -320,7 +334,4 @@ term1 to term2"
                   ,(expand chain nil)))
               (:illuminant (expand chain nil))
               (nil (expand chain nil))
-              (otherwise
-               `(symbol-macrolet ((,(sane-symbol 'illuminant)
-                                    ,global-illuminant))
-                  ,(expand chain nil)))))))))
+              (otherwise (expand chain nil))))))))
