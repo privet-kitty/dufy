@@ -63,7 +63,7 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
                         (m double-float)
                         (s double-float)))
 
-(define-primary-converter (xyz lms) ((illuminant +illum-d65+) (cat +bradford+))
+(define-primary-converter (xyz lms) (x y z &key (illuminant +illum-d65+) (cat +bradford+))
   "If ILLUMINANT is NIL, the transform is virtually equivalent to that
 of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
@@ -87,7 +87,7 @@ of illuminant E. "
 	(multiply-mat-vec (cat-matrix cat) x y z))))
 	    
 
-(define-primary-converter (lms xyz) ((illuminant +illum-d65+) (cat +bradford+))
+(define-primary-converter (lms xyz) (l m s &key (illuminant +illum-d65+) (cat +bradford+))
   "If ILLUMINANT is NIL, the transform is virtually equivalent to that
 of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))

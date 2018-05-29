@@ -15,7 +15,7 @@
                         (y double-float)))
 (define-colorspace spectrum ((spectrum spectrum-function)))
 
-(define-primary-converter (xyy xyz) ()
+(define-primary-converter (xyy xyz) (small-x small-y y)
   "xyY to XYZ. The nominal range of Y is [0, 1], though all real
 values are accepted."
   (declare (optimize (speed 3) (safety 1)))
@@ -26,7 +26,7 @@ values are accepted."
 		y
 		(/ (* (- 1d0 small-x small-y) y) small-y)))))
 
-(define-primary-converter (xyz xyy) ()
+(define-primary-converter (xyz xyy) (x y z)
   "XYZ to xyY. The nominal range of Y is [0, 1], though all real
 values are accepted."
   (declare (optimize (speed 3) (safety 1)))
@@ -377,7 +377,7 @@ ILLUMINANT-SPD: SPD of illuminant"
               (* y normalizing-factor)
               (* z normalizing-factor)))))
 
-(define-primary-converter (spectrum xyz) ((illuminant +illum-d65+) (begin-wl 360) (end-wl 830) (band 1))
+(define-primary-converter (spectrum xyz) (spectrum &key (illuminant +illum-d65+) (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1)))
   "Computes XYZ values from SPECTRUM in reflective and transmissive
 case. The function SPECTRUM, a spectral reflectance, must be defined
@@ -427,7 +427,7 @@ BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
                 (aref mat 2 2) a22))))
     (invert-matrix33 mat)))
 
-(define-primary-converter (xyz spectrum) ((illuminant +illum-d65+))
+(define-primary-converter (xyz spectrum) (x y z &key (illuminant +illum-d65+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among
 many and may contain a negative spectral density."
   (if (illuminant-no-spd-p illuminant)

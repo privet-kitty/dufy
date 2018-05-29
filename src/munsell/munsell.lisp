@@ -253,7 +253,7 @@ smaller than 10^-5."
                            lchab
                            :name mhvc-to-lchab-illum-c
                            :forced-bindings ((illuminant +illum-c+)))
-    ()
+    (hue40 value chroma)
   "Illuminant C."
   (declare (optimize (speed 3) (safety 1)))
   (let ((hue40 (mod (float hue40 1d0) 40d0))
@@ -308,7 +308,7 @@ The illuminant of RGBSPACE must also be D65."
 	     (format stream "Invalid Munsell specification: ~A"
 		     (cond-spec condition)))))
 
-(define-primary-converter (munsell mhvc) ()
+(define-primary-converter (munsell mhvc) (munsellspec)
   "Usage Example:
  (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
 ;; => 36.008d0
@@ -353,7 +353,7 @@ but the capital letters and  '/' are reserved:
                         40d0))
              (values-list lst)))))
 
-(define-primary-converter (mhvc munsell) ((digits 2))
+(define-primary-converter (mhvc munsell) (hue40 value chroma &key (digits 2))
   (let ((directive (concatenate 'string "~," (write-to-string digits) "F")))
     (if (< chroma (* 0.5d0 (expt 0.1d0 digits))) ; if achromatic
 	(format nil (concatenate 'string "N " directive) value)
@@ -485,7 +485,7 @@ The illuminant of RGBSPACE must also be D65."
 (define-primary-converter (lchab mhvc
                                  :name lchab-to-mhvc-illum-c
                                  :forced-bindings ((illuminant +illum-c+)))
-    ((max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
+    (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "An inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
 algorithm like the one in \"An Open-Source Inversion Algorithm for the
 Munsell Renotation\" by Paul Centore, 2011:

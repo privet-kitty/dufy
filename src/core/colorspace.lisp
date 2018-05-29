@@ -33,18 +33,21 @@
                               :neighbors nil)))))
 
 (defun get-colorspace (term)
-  (gethash term *colorspace-table*))
+  (or (gethash term *colorspace-table*)
+      (error "No such color space: ~A" term)))
 (defun get-neighbors (term)
-  (colorspace-neighbors (gethash term *colorspace-table*)))
+  (colorspace-neighbors (get-colorspace term)))
+(defun (setf get-neighbors) (val term)
+  (setf (colorspace-neighbors (get-colorspace term)) val))
 (defun get-clamp (term)
-  (colorspace-clamp (gethash term *colorspace-table*)))
+  (colorspace-clamp (get-colorspace term)))
 (defun get-args (term &optional (package nil))
   (mapcar (if package
               #'(lambda (x) (intern (symbol-name x) package))
               #'identity)
-          (colorspace-args (gethash term *colorspace-table*))))
+          (colorspace-args (get-colorspace term))))
 (defun get-arg-types (term)
-  (colorspace-arg-types (gethash term *colorspace-table*)))
+  (colorspace-arg-types (get-colorspace term)))
 
 (defun print-colorspace-table ()
   (format t "~%#<HASH-TABLE ~%")
@@ -62,39 +65,56 @@
   (intern (format nil "~A-TO-~A" from-term to-term) *package*))
 
 (defun extract-key-args-with-init (lambda-list)
-  (cdr (member '&key lambda-list)))
+  (mapcar #'(lambda (node)
+              (list (cadar node) (second node)))
+          (nth-value 3 (parse-ordinary-lambda-list lambda-list))))
 
 (defun extract-key-args (lambda-list)
   (mapcar #'(lambda (x) (make-keyword (car (ensure-list x))))
           (extract-key-args-with-init lambda-list)))
 
-(defstruct (primary-converter
-            (:constructor make-primary-converter
-                (from-term to-term lambda-list
-                 &key
-                   (name (gen-converter-name from-term to-term))
-                   (forced-bindings nil)
-                 &aux
-                   (key-args-with-init (extract-key-args-with-init lambda-list))
-                   (key-args (extract-key-args lambda-list)))))
+(defstruct (primary-converter (:constructor %make-primary-converter))
   (from-term nil :type symbol)
   (to-term nil :type symbol)
   (name nil :type symbol)
   (key-args-with-init nil :type list)
   (key-args nil :type list)
+  (allow-other-keys nil :type boolean) ; not used yet
   (forced-bindings nil :type list))
 
 (defparameter *primary-converter-table* (make-hash-table :test 'equal))
 
+(defun lambda-list= (lambda-list1 lambda-list2)
+  (if (null lambda-list1)
+      (if (null lambda-list2) t nil)
+      (if (null lambda-list2)
+          nil
+          (and (string= (car lambda-list1) (car lambda-list2))
+               (lambda-list= (cdr lambda-list1) (cdr lambda-list2))))))
+
+(defun make-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)) (forced-bindings nil))
+  (multiple-value-bind (required optional rest keyword allow-other-keys aux)
+      (parse-ordinary-lambda-list lambda-list)
+    (declare (ignore keyword aux))
+    (when (or optional rest)
+      (error "primary converter cannot take either &optional or &rest arguments."))
+    (unless (lambda-list= required (get-args from-term))
+      (warn "given lambda list ~A isn't equal to the ARGS of color space ~A: ~A"
+            lambda-list from-term (get-args from-term)))
+    (%make-primary-converter :from-term from-term
+                             :to-term to-term
+                             :name name
+                             :key-args-with-init (extract-key-args-with-init lambda-list)
+                             :key-args (extract-key-args lambda-list)
+                             :allow-other-keys allow-other-keys
+                             :forced-bindings forced-bindings)))
+
 (defun add-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)) (forced-bindings nil))
-  (let ((from-space (get-colorspace from-term))
-        (to-space (get-colorspace to-term)))
-    (assert (and from-space to-space))
-    (setf (gethash (list from-term to-term) *primary-converter-table*)
-          (make-primary-converter from-term to-term lambda-list
-                                  :name name
-                                  :forced-bindings forced-bindings))
-    (pushnew to-term (colorspace-neighbors from-space))))
+  (setf (gethash (list from-term to-term) *primary-converter-table*)
+        (make-primary-converter from-term to-term lambda-list
+                                :name name
+                                :forced-bindings forced-bindings))
+  (pushnew to-term (get-neighbors from-term)))
 
 (defun get-primary-converter (from-term to-term)
   (gethash (list from-term to-term) *primary-converter-table*))
@@ -110,6 +130,9 @@
 (defun get-forced-bindings (from-term to-term)
   (primary-converter-forced-bindings (gethash (list from-term to-term)
                                               *primary-converter-table*)))
+(defun get-allow-other-keys (from-term to-term)
+  (primary-converter-allow-other-keys (gethash (list from-term to-term)
+                                               *primary-converter-table*)))
 
 (defun print-primary-converter-table ()
   (format t "%#<HASH-TABLE ~%")
@@ -146,16 +169,14 @@
                      (enqueue (cons term path) path-queue)))))))
 
 
-(defmacro define-primary-converter ((begin-term dest-term &key (name (gen-converter-name begin-term dest-term)) (forced-bindings nil)) key-args &body body)
+(defmacro define-primary-converter ((begin-term dest-term &key (name (gen-converter-name begin-term dest-term)) (forced-bindings nil)) lambda-list &body body)
   "Defines FOO-TO-BAR function as a primary converter."
   (check-type begin-term symbol)
   (check-type dest-term symbol)
-  (check-type key-args list)
+  (check-type lambda-list list)
   (check-type forced-bindings list)
   (let* ((begin-term (make-keyword begin-term))
-         (dest-term (make-keyword dest-term))
-         (lambda-list (append (get-args begin-term *package*)
-                              (if key-args (cons '&key key-args) nil))))
+         (dest-term (make-keyword dest-term)))
     `(progn
        (declaim (inline ,name)
                 (ftype (function * (values ,@(get-arg-types dest-term) &optional)) ,name))
@@ -175,6 +196,13 @@
 (defun global-clamp-arg-p (terms)
   (converter-clamp-p (car (last terms 2))
                      (car (last terms))))
+
+(defun global-allow-other-keys-p (terms)
+  (loop for (term1 term2) on terms
+        until (null term2)
+        do (when (get-allow-other-keys term1 term2)
+             (return t))
+        finally (return nil)))
 
 (defun get-local-illuminant-key (term1 term2)
   (let* ((conv (get-primary-converter term1 term2))
@@ -279,10 +307,9 @@ term1 to term2"
          (chain (get-converter-chain begin-term dest-term))
          (global-key-args (gen-global-key-args chain))
          (global-illuminant (get-global-illuminant-key chain)))
-    (assert (>= (length chain) 3)
-            (chain)
-            "The length of converters path is ~a. It should be greater than 1."
-            (- (length chain) 1))
+    (when (<= (length chain) 2)
+      (error "The length of converters path is ~a. It should be greater than 1."
+             (- (length chain) 1)))
     (labels ((expand-forced-bindings (code)
                (let ((bindings (collect-forced-bindings chain)))
                  (if bindings
@@ -308,7 +335,7 @@ term1 to term2"
                                          ,code
                                          ,@(gen-local-key-args term1 term2)))))))))
       `(progn
-         (declaim #+dufy/inline(inline ,global-name)
+         (declaim #+dufy/inline (inline ,global-name)
                   (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-name))
          (defun ,global-name (,@(get-args begin-term *package*)
                               ,@(when global-key-args
