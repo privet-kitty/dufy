@@ -286,6 +286,7 @@ term1 to term2"
 (defun gen-global-args (terms &optional exclude-args)
   (let ((global-key-args (gen-global-key-args terms exclude-args))
         (global-aux-args (gen-global-aux-args terms)))
+    ;; If duplicates between &key and &aux arguments exist, &aux takes priority.
     (dolist (x global-aux-args)
       (setf global-key-args
             (delete (car x) global-key-args :key #'car :test #'string=)))
@@ -294,6 +295,24 @@ term1 to term2"
               `(&key ,@global-key-args))
             (when global-aux-args
               `(&aux ,@global-aux-args)))))
+
+(defun expand-conversion-form (terms &key exclude-args)
+  (labels ((expand (term-lst code)
+              (if (null (cdr term-lst))
+                  code
+                  (let* ((term1 (first term-lst))
+                         (term2 (second term-lst))
+                         (name (get-primary-converter-name term1 term2)))
+                    (cond ((null term2) code) ; end
+                          ((null code)
+                           (expand (cdr term-lst) ; first conversion
+                                   `(,name ,@(get-args term1)
+                                           ,@(gen-local-key-args term1 term2 exclude-args))))
+                          (t (expand (cdr term-lst) ; intermediate conversion
+                                     `(multiple-value-call #',name
+                                        ,code
+                                        ,@(gen-local-key-args term1 term2 exclude-args)))))))))
+    (expand terms nil)))
 
 (defmacro defconverter (begin-term dest-term &key (name (gen-converter-name begin-term dest-term)) (exclude-args nil) (documentation nil))
   "Defines a converter function from BEGIN-TERM to DEST-TERM automatically."
@@ -304,26 +323,12 @@ term1 to term2"
     (when (<= (length chain) 2)
       (error "The length of converters path is ~a. It should be greater than 1."
              (- (length chain) 1)))
-    (labels ((expand (term-lst code)
-               (if (null (cdr term-lst))
-                   code
-                   (let* ((term1 (first term-lst))
-                          (term2 (second term-lst))
-                          (name (get-primary-converter-name term1 term2)))
-                     (cond ((null term2) code) ; end
-                           ((null code)
-                            (expand (cdr term-lst) ; first conversion
-                                    `(,name ,@(get-args term1)
-                                            ,@(gen-local-key-args term1 term2 exclude-args))))
-                           (t (expand (cdr term-lst) ; intermediate conversion
-                                      `(multiple-value-call #',name
-                                         ,code
-                                         ,@(gen-local-key-args term1 term2 exclude-args)))))))))
-      `(progn
-         (declaim #+dufy/inline (inline ,global-name)
-                  (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-name))
-         (defun ,global-name ,(gen-global-args chain exclude-args)
-           (declare (optimize (speed 3) (safety 1))
-                    (ignorable ,@(collect-aux-arg-names chain)))
-           ,@(ensure-list documentation)
-           ,(expand chain nil))))))
+    `(progn
+       (declaim #+dufy/inline (inline ,global-name)
+                (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-name))
+       (defun ,global-name ,(gen-global-args chain exclude-args)
+         (declare (optimize (speed 3) (safety 1))
+                  (ignorable ,@(collect-aux-arg-names chain)))
+         ,@(ensure-list documentation)
+         ,(expand-conversion-form chain :exclude-args exclude-args)))))
+
