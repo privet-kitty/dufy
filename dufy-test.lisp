@@ -160,20 +160,20 @@
 		    :rgbspace rgbspace))))))
   (is (equal '(0 5001 65535)
 	     (multiple-value-list
-	      (int-to-qrgb (qrgb-to-int 0 5001 65535 :rgbspace +bg-srgb-16+)
+	      (rgbpack-to-qrgb (qrgb-to-rgbpack 0 5001 65535 :rgbspace +bg-srgb-16+)
 			   :rgbspace +bg-srgb-16+))))
   (dolist (intrgb '(#x000011112222 #x5678abcdffff))
     (is (= intrgb
-           (multiple-value-call #'xyz-to-int
-             (int-to-xyz intrgb :rgbspace +bg-srgb-16+)
+           (multiple-value-call #'xyz-to-rgbpack
+             (rgbpack-to-xyz intrgb :rgbspace +bg-srgb-16+)
              :rgbspace +bg-srgb-16+)))
     (is (= intrgb
-           (multiple-value-call #'rgb-to-int
-             (int-to-rgb intrgb :rgbspace +bg-srgb-16+)
+           (multiple-value-call #'rgb-to-rgbpack
+             (rgbpack-to-rgb intrgb :rgbspace +bg-srgb-16+)
              :rgbspace +bg-srgb-16+)))
     (is (= intrgb
-           (multiple-value-call #'lrgb-to-int
-             (int-to-lrgb intrgb :rgbspace +bg-srgb-16+)
+           (multiple-value-call #'lrgb-to-rgbpack
+             (rgbpack-to-lrgb intrgb :rgbspace +bg-srgb-16+)
              :rgbspace +bg-srgb-16+))))
   ;; rgbspace changer
   (dolist (rgb *rgb-set*)

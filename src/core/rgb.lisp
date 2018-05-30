@@ -8,7 +8,13 @@
 (define-colorspace rgb ((r double-float) (g double-float) (b double-float)))
 (define-colorspace qrgb ((qr fixnum) (qg fixnum) (qb fixnum))
   :clamp :clampable)
-(define-colorspace int ((int integer))
+(define-colorspace rgbpack ((int integer))
+  :clamp :always-clamped)
+
+(define-colorspace rgba ((r double-float) (g double-float) (b double-float) (alpha double-float)))
+(define-colorspace qrgba ((qr fixnum) (qg fixnum) (qb fixnum) (qalpha fixnum))
+  :clamp :clampable)
+(define-colorspace rgbapack ((int integer))
   :clamp :always-clamped)
 
 (defun gen-linearizer (gamma)
@@ -78,30 +84,30 @@ gamma-corrected value is forcibly set to [0, 1]."
 	   ((function * double-float) linearizer delinearizer))
   (with-double-float (xr yr xg yg xb yb)
     (let ((coordinates
-	   (make-array '(3 3)
-		       :element-type 'double-float
-		       :initial-contents
-		       (list (list xr xg xb)
-			     (list yr yg yb)
-			     (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
+            (make-array '(3 3)
+                        :element-type 'double-float
+                        :initial-contents
+                        (list (list xr xg xb)
+                              (list yr yg yb)
+                              (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
       (multiple-value-bind (sr sg sb)
 	  (multiply-mat-vec (invert-matrix33 coordinates)
 			    (illuminant-x illuminant)
 			    1d0
 			    (illuminant-z illuminant))
 	(let* ((mat
-		(make-array '(3 3)
-			    :element-type 'double-float
-			    :initial-contents
-			    (list (list (* sr (aref coordinates 0 0))
-					(* sg (aref coordinates 0 1))
-					(* sb (aref coordinates 0 2)))
-				  (list (* sr (aref coordinates 1 0))
-					(* sg (aref coordinates 1 1))
-					(* sb (aref coordinates 1 2)))
-				  (list (* sr (aref coordinates 2 0))
-					(* sg (aref coordinates 2 1))
-					(* sb (aref coordinates 2 2))))))
+                 (make-array '(3 3)
+                             :element-type 'double-float
+                             :initial-contents
+                             (list (list (* sr (aref coordinates 0 0))
+                                         (* sg (aref coordinates 0 1))
+                                         (* sb (aref coordinates 0 2)))
+                                   (list (* sr (aref coordinates 1 0))
+                                         (* sg (aref coordinates 1 1))
+                                         (* sb (aref coordinates 1 2)))
+                                   (list (* sr (aref coordinates 2 0))
+                                         (* sg (aref coordinates 2 1))
+                                         (* sb (aref coordinates 2 2))))))
 	       (min (if force-normal 0d0 (funcall delinearizer lmin)))
 	       (max (if force-normal 1d0 (funcall delinearizer lmax)))
 	       (normal (and (= min 0d0) (= max 1d0)))
@@ -142,7 +148,6 @@ gamma-corrected value is forcibly set to [0, 1]."
 		    (float lr 1d0)
 		    (float lg 1d0)
 		    (float lb 1d0)))
-
 
 
 ;;;
@@ -251,7 +256,6 @@ typically), though it accepts all the real values."
                   (round (* (- g min) qmax-float/length))
                   (round (* (- b min) qmax-float/length)))))))
 
-
 (define-primary-converter (qrgb rgb) (qr qg qb &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum qr qg qb))
@@ -275,7 +279,7 @@ typically), though it accepts all the real values."
 (defconverter qrgb xyz)
 
 
-(define-primary-converter (qrgb int) (qr qg qb &key (rgbspace +srgb+))
+(define-primary-converter (qrgb rgbpack) (qr qg qb &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum qr qg qb))
   (let ((bpc (rgbspace-bit-per-channel rgbspace))
@@ -284,7 +288,7 @@ typically), though it accepts all the real values."
        (ash (clamp qg 0 qmax) bpc)
        (clamp qb 0 qmax))))
 
-(define-primary-converter (int qrgb) (int &key (rgbspace +srgb+))
+(define-primary-converter (rgbpack qrgb) (int &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer int))
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
@@ -293,14 +297,11 @@ typically), though it accepts all the real values."
 	    (logand (ash int minus-bpc) qmax)
 	    (logand int qmax))))
 
-
-;; For handling alpha channel.
-;; These are improvised and not exported.
-(defun qrgba-to-int (qr qg qb qalpha &optional (rgbspace +srgb+) (order :argb))
-  "The order can be :ARGB or :RGBA. Note that it is different from the
-  'physical' byte order in a machine, which depends on the endianess."
+(define-primary-converter (qrgba rgbapack) (qr qg qb qalpha &key (rgbspace +srgb+) (order :argb))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum qr qg qb qalpha))
+  "The order can be :ARGB or :RGBA. Note that it is different from the
+  'physical' byte order in a machine, which depends on the endianess."
   (let* ((bpc (rgbspace-bit-per-channel rgbspace))
 	 (2bpc (+ bpc bpc))
 	 (qmax (rgbspace-qmax rgbspace)))
@@ -314,11 +315,11 @@ typically), though it accepts all the real values."
 		(ash (clamp qg 0 qmax) 2bpc)
 		(ash (clamp qr 0 qmax) (+ 2bpc bpc)))))))
 
-(defun int-to-qrgba (int &optional (rgbspace +srgb+) (order :argb))
-  "The order can be :ARGB or :RGBA. Note that it is different from the
-  'physical' byte order in a machine, which depends on the endianess."
+(define-primary-converter (rgbapack qrgba) (int &key (rgbspace +srgb+) (order :argb))
   (declare (optimize (speed 3) (safety 1))
 	   (integer int))
+  "The order can be :ARGB or :RGBA. Note that it is different from the
+  'physical' byte order in a machine, which depends on the endianess."
   (let* ((-bpc (- (rgbspace-bit-per-channel rgbspace)))
 	 (-2bpc (+ -bpc -bpc))
 	 (qmax (rgbspace-qmax rgbspace)))
@@ -332,14 +333,14 @@ typically), though it accepts all the real values."
 		     (logand (ash int -bpc) qmax)
 		     (logand int qmax))))))
 
-(defconverter int rgb)
-(defconverter rgb int)
+(defconverter rgbpack rgb)
+(defconverter rgb rgbpack)
 
-(defconverter int lrgb)
-(defconverter lrgb int)
+(defconverter rgbpack lrgb)
+(defconverter lrgb rgbpack)
 
-(defconverter int xyz)
-(defconverter xyz int)
+(defconverter rgbpack xyz)
+(defconverter xyz rgbpack)
 
 
 

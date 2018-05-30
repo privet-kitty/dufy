@@ -120,14 +120,14 @@
       :xyz-to-qrgb
       :qrgb-to-xyz
       
-      :qrgb-to-int
-      :int-to-qrgb
-      :rgb-to-int
-      :int-to-rgb
-      :lrgb-to-int
-      :int-to-lrgb
-      :xyz-to-int
-      :int-to-xyz
+      :qrgb-to-rgbpack
+      :rgbpack-to-qrgb
+      :rgb-to-rgbpack
+      :rgbpack-to-rgb
+      :lrgb-to-rgbpack
+      :rgbpack-to-lrgb
+      :xyz-to-rgbpack
+      :rgbpack-to-xyz
 
       :gen-rgbspace-changer
       

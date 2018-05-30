@@ -8,6 +8,8 @@
   (intern (symbol-name symb) *package*))
 
 (defstruct colorspace
+  "A colorspace object is used as a vertex of converters graph.
+clamp::= :clampable | :always-clamped | nil"
   (term nil :type symbol)
   (args nil :type list)
   (arg-types nil :type list)
@@ -74,6 +76,7 @@
           (extract-key-args-with-init lambda-list)))
 
 (defstruct (primary-converter (:constructor %make-primary-converter))
+  "primary-converter is an edge that connects two colorspaces."
   (from-term nil :type symbol)
   (to-term nil :type symbol)
   (name nil :type symbol)
@@ -292,7 +295,7 @@ term1 to term2"
 
 (defun gen-last-key-args (terms)
   `(,@(gen-local-key-args (car (last terms 2)) (lastcar terms))
-    ,@(when (global-clamp-arg-p terms) '(:clamp clamp))))
+    ,@(when (global-clamp-arg-p terms) `(:clamp ,(sane-symbol 'clamp)))))
 
 (defun gen-local-key-args (term1 term2)
   (expand-key-args
