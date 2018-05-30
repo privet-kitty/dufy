@@ -267,13 +267,13 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 ;; 0.2344342037422755d0
 ;; change from sRGB to Adobe RGB.
 
-TARGET can be :LRGB, :RGB, :QRGB or :INT.
+TARGET can be :LRGB, :RGB, :QRGB or :RGBPACK.
 
 Note about clamping:
 LRGB case: no clamping;
 RGB case: no clamping;
 QRGB case: with clamping;
-INT case: with clamping."
+RGBPACK case: with clamping."
   (declare (optimize (speed 3) (safety 1)))
   (let ((mat (calc-cat-matrix-for-lrgb from-rgbspace to-rgbspace cat)))
     (ecase target
@@ -292,11 +292,11 @@ INT case: with clamping."
 		     mat
 		     (qrgb-to-lrgb qr qg qb :rgbspace from-rgbspace))
 		   :rgbspace to-rgbspace)))
-      (:int #'(lambda (int)
-		(multiple-value-call #'lrgb-to-int
+      (:rgbpack #'(lambda (int)
+		(multiple-value-call #'lrgb-to-rgbpack
 		  (multiple-value-call #'multiply-mat-vec
 		    mat
-		    (int-to-lrgb int :rgbspace from-rgbspace))
+		    (rgbpack-to-lrgb int :rgbspace from-rgbspace))
 		  :rgbspace to-rgbspace))))))
 
 

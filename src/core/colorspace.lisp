@@ -80,10 +80,9 @@ clamp::= :clampable | :always-clamped | nil"
   (from-term nil :type symbol)
   (to-term nil :type symbol)
   (name nil :type symbol)
-  (key-args-with-init nil :type list)
   (key-args nil :type list)
-  (allow-other-keys nil :type boolean) ; not used yet
-  (forced-bindings nil :type list))
+  (allow-other-keys nil :type boolean) ; not used for now
+  (aux-args nil :type list))
 
 (defparameter *primary-converter-table* (make-hash-table :test 'equal))
 
@@ -95,10 +94,9 @@ clamp::= :clampable | :always-clamped | nil"
           (and (string= (car lambda-list1) (car lambda-list2))
                (lambda-list= (cdr lambda-list1) (cdr lambda-list2))))))
 
-(defun make-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)) (forced-bindings nil))
+(defun make-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)))
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
       (parse-ordinary-lambda-list lambda-list)
-    (declare (ignore keyword aux))
     (when (or optional rest)
       (error "primary converter cannot take either &optional or &rest arguments."))
     (unless (lambda-list= required (get-args from-term))
@@ -107,35 +105,33 @@ clamp::= :clampable | :always-clamped | nil"
     (%make-primary-converter :from-term from-term
                              :to-term to-term
                              :name name
-                             :key-args-with-init (extract-key-args-with-init lambda-list)
-                             :key-args (extract-key-args lambda-list)
+                             :key-args keyword
                              :allow-other-keys allow-other-keys
-                             :forced-bindings forced-bindings)))
+                             :aux-args aux)))
 
-(defun add-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)) (forced-bindings nil))
+(defun add-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)))
   (setf (gethash (list from-term to-term) *primary-converter-table*)
         (make-primary-converter from-term to-term lambda-list
-                                :name name
-                                :forced-bindings forced-bindings))
+                                :name name))
   (pushnew to-term (get-neighbors from-term)))
 
 (defun get-primary-converter (from-term to-term)
-  (gethash (list from-term to-term) *primary-converter-table*))
+  (or (gethash (list from-term to-term) *primary-converter-table*)
+      (error "No primary converter found: from ~A to ~A" from-term to-term)))
 (defun get-primary-converter-name (from-term to-term)
-  (primary-converter-name (gethash (list from-term to-term)
-                                    *primary-converter-table*)))
-(defun get-key-args-with-init (from-term to-term)
-  (primary-converter-key-args-with-init (gethash (list from-term to-term)
-                                                 *primary-converter-table*)))
+  (primary-converter-name (get-primary-converter from-term to-term)))
 (defun get-key-args (from-term to-term)
-  (primary-converter-key-args (gethash (list from-term to-term)
-                                       *primary-converter-table*)))
-(defun get-forced-bindings (from-term to-term)
-  (primary-converter-forced-bindings (gethash (list from-term to-term)
-                                              *primary-converter-table*)))
+  (primary-converter-key-args (get-primary-converter from-term to-term)))
+(defun get-key-arg-key-names (from-term to-term)
+  (mapcar #'caar (get-key-args from-term to-term)))
+(defun get-key-arg-names (from-term to-term)
+  (mapcar #'cadar (get-key-args from-term to-term)))
+(defun get-aux-args (from-term to-term)
+  (primary-converter-aux-args (get-primary-converter from-term to-term)))
+(defun get-aux-names (from-term to-term)
+  (mapcar #'car (get-aux-args from-term to-term)))
 (defun get-allow-other-keys (from-term to-term)
-  (primary-converter-allow-other-keys (gethash (list from-term to-term)
-                                               *primary-converter-table*)))
+  (primary-converter-allow-other-keys (get-primary-converter from-term to-term)))
 
 (defun print-primary-converter-table ()
   (format t "%#<HASH-TABLE ~%")
@@ -172,12 +168,11 @@ clamp::= :clampable | :always-clamped | nil"
                      (enqueue (cons term path) path-queue)))))))
 
 
-(defmacro define-primary-converter ((begin-term dest-term &key (name (gen-converter-name begin-term dest-term)) (forced-bindings nil)) lambda-list &body body)
+(defmacro define-primary-converter ((begin-term dest-term &key (name (gen-converter-name begin-term dest-term))) lambda-list &body body)
   "Defines FOO-TO-BAR function as a primary converter."
   (check-type begin-term symbol)
   (check-type dest-term symbol)
   (check-type lambda-list list)
-  (check-type forced-bindings list)
   (let* ((begin-term (make-keyword begin-term))
          (dest-term (make-keyword dest-term)))
     `(progn
@@ -188,8 +183,7 @@ clamp::= :clampable | :always-clamped | nil"
        (eval-when (:compile-toplevel :load-toplevel :execute)
          (add-primary-converter ,begin-term ,dest-term
                                 ',lambda-list
-                                :name ',name
-                                :forced-bindings ',forced-bindings)))))
+                                :name ',name)))))
 
 
 (defun converter-clamp-p (term1 term2)
@@ -231,49 +225,28 @@ clamp::= :clampable | :always-clamped | nil"
 (defun get-init-form (arg term1 term2)
   "Returns the default value of an argument of the converter from
 term1 to term2"
-  (funcall #'(lambda (x)
-               (if (consp x) (second x) x))
+  (funcall #'second
            (find-if #'(lambda (x)
-                        (if (consp x)
-                            (string= arg (car x))
-                            (string= arg x)))
-                    (get-key-args-with-init term1 term2))))
+                        (if (keywordp arg)
+                            (eql arg (caar x))
+                            (string= arg (cadar x))))
+                    (get-key-args term1 term2))))
 
 (defun collect-key-args (terms &key (exclude-list nil))
   (remove-if #'(lambda (x) (member x exclude-list :test #'key-arg=))
              (delete-duplicates
               (loop for (term1 term2) on terms
                     until (null term2)
-                    append (get-key-args term1 term2)))))
+                    append (get-key-args term1 term2))
+              :key #'caar)))
+(defun collect-key-arg-names (terms)
+  (mapcar #'cadar (collect-key-args terms)))
+(defun collect-key-arg-key-names (terms)
+  (mapcar #'caar (collect-key-args terms)))
 
-(defun key-arg= (key1 key2)
-  (string= (car (ensure-list key1))
-           (car (ensure-list key2))))
-
-(defun collect-key-args-with-init (terms &key (exclude-list nil))
-  (delete-if #'(lambda (x) (member x exclude-list :test #'key-arg=))
-             (delete-duplicates
-              (loop for (term1 term2) on terms
-                    until (null term2)
-                    append (mapcar #'(lambda (key)
-                                       (list (sane-symbol key)
-                                             (get-init-form key term1 term2)))
-                                   (get-key-args term1 term2)))
-              :test #'key-arg=)))
-
-(defun collect-forced-bindings (terms)
-  (delete-duplicates
-   (loop for (term1 term2) on terms
-         until (null term2)
-         append (get-forced-bindings term1 term2))
-   :key (compose #'car #'ensure-list)
-   :test #'string=))
-(defun collect-forced-bounded-args (terms)
-  (mapcar (compose #'car #'ensure-list)
-          (collect-forced-bindings terms)))
-(defun collect-forced-bounded-key-args (terms)
-  (mapcar #'make-keyword
-          (collect-forced-bounded-args terms)))
+(defmacro aif (test-form then-form &optional else-form)
+  `(let ((it ,test-form))
+     (if it ,then-form ,else-form)))
 
 (defun find-duplicates (lst &key (key #'identity) (test #'eql))
   (if (null lst)
@@ -281,76 +254,73 @@ term1 to term2"
       (or (member (car lst) (cdr lst) :test test :key key)
           (find-duplicates (cdr lst)))))
 
+(defun collect-aux-args (terms)
+  (loop for (term1 term2) on terms
+        until (null term2)
+        append (get-aux-args term1 term2) into res
+        finally (aif (find-duplicates res :test #'(lambda (x y)
+                                                    (string= (car x) (car y))))
+                     (error "Duplicated &aux arguments found: ~A" it)
+                     (return res))))
+
+(defun collect-aux-arg-names (terms)
+  (mapcar #'car (collect-aux-args terms)))
+
+(defun key-arg= (key1 key2)
+  (string= (car (ensure-list key1))
+           (car (ensure-list key2))))
+
 (defun gen-global-key-args (terms)
-  (let ((exclude-lst (cons :clamp
-                           (collect-forced-bounded-key-args terms))))
-    `(,@(when (global-clamp-arg-p terms)
-          `((,(sane-symbol :clamp) t)))
-      ,@(collect-key-args-with-init terms :exclude-list exclude-lst))))
+  (mapcar #'(lambda (x) (list (cadar x) (second x)))
+          (collect-key-args terms)))
 
-(defun expand-key-args (arg-lst)
-  (mappend #'(lambda (key)
-               (list key (sane-symbol key)))
-           arg-lst))
+(defun gen-global-aux-args (terms)
+  (collect-aux-args terms))
 
-(defun gen-last-key-args (terms)
-  `(,@(gen-local-key-args (car (last terms 2)) (lastcar terms))
-    ,@(when (global-clamp-arg-p terms) `(:clamp ,(sane-symbol 'clamp)))))
+(defun gen-local-key-args (term1 term2 &optional exclude-args)
+  (mappend #'car (collect-key-args (list term1 term2))))
 
-(defun gen-local-key-args (term1 term2)
-  (expand-key-args
-   (collect-key-args (list term1 term2)
-                     :exclude-list '(:clamp))))
+(defun gen-global-args (terms &optional exclude-args)
+  (let ((global-key-args (gen-global-key-args terms))
+        (global-aux-args (gen-global-aux-args terms)))
+    (dolist (x global-aux-args)
+      (setf global-key-args
+            (delete (car x) global-key-args :key #'car :test #'string=)))
+    (append (get-args (car terms))
+            (when global-key-args
+              `(&key ,@global-key-args))
+            (when global-aux-args
+              `(&aux ,@global-aux-args)))))
 
 (defmacro defconverter (begin-term dest-term &key (name (gen-converter-name begin-term dest-term)) (exclude-args nil) (documentation nil))
   "Defines a converter function from BEGIN-TERM to DEST-TERM automatically."
   (let* ((begin-term (make-keyword begin-term))
          (dest-term (make-keyword dest-term))
          (global-name name)
-         (chain (get-converter-chain begin-term dest-term))
-         (global-key-args (gen-global-key-args chain))
-         (global-illuminant (get-global-illuminant-key chain)))
+         (chain (get-converter-chain begin-term dest-term)))
     (when (<= (length chain) 2)
       (error "The length of converters path is ~a. It should be greater than 1."
              (- (length chain) 1)))
-    (labels ((expand-forced-bindings (code)
-               (let ((bindings (collect-forced-bindings chain)))
-                 (if bindings
-                     `(symbol-macrolet ,bindings ,code)
-                     code)))
-             (expand (term-lst code)
+    (labels ((expand (term-lst code)
                (if (null (cdr term-lst))
                    code
                    (let* ((term1 (first term-lst))
                           (term2 (second term-lst))
                           (name (get-primary-converter-name term1 term2)))
-                     (cond ((null code)
+                     (cond ((null term2) code)
+                           ((null code)
                             (expand (cdr term-lst) ; first conversion
-                                    `(,name ,@(get-args term1 *package*)
-                                            ,@(gen-local-key-args term1 term2))))
-                           ((eql term2 dest-term) ; last conversion
-                            (expand-forced-bindings
-                             `(multiple-value-call #',name
-                                ,code
-                                ,@(gen-last-key-args chain))))
+                                    `(,name ,@(get-args term1)
+                                            ,@(gen-local-key-args term1 term2 exclude-args))))
                            (t (expand (cdr term-lst) ; intermediate conversion
                                       `(multiple-value-call #',name
                                          ,code
-                                         ,@(gen-local-key-args term1 term2)))))))))
+                                         ,@(gen-local-key-args term1 term2 exclude-args)))))))))
       `(progn
          (declaim #+dufy/inline (inline ,global-name)
                   (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-name))
-         (defun ,global-name (,@(get-args begin-term *package*)
-                              ,@(when global-key-args
-                                  `(&key ,@global-key-args)))
-           (declare (optimize (speed 3) (safety 1)))
+         (defun ,global-name ,(gen-global-args chain exclude-args)
+           (declare (optimize (speed 3) (safety 1))
+                    (ignorable ,@(collect-aux-arg-names chain)))
            ,@(ensure-list documentation)
-           ,(case global-illuminant
-              (:rgbspace
-               `(let ((,(sane-symbol 'illuminant)
-                        (dufy-core:rgbspace-illuminant ,(sane-symbol 'rgbspace))))
-                  (declare (ignorable ,(sane-symbol 'illuminant)))
-                  ,(expand chain nil)))
-              (:illuminant (expand chain nil))
-              (nil (expand chain nil))
-              (otherwise (expand chain nil))))))))
+           ,(expand chain nil))))))

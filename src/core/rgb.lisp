@@ -135,15 +135,17 @@ gamma-corrected value is forcibly set to [0, 1]."
 
 (defvar +srgb+) ; later defined
 
-(define-primary-converter (xyz lrgb) (x y z &key (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
+(define-primary-converter (xyz lrgb) (x y z &key (rgbspace +srgb+) &aux (illuminant (rgbspace-illuminant rgbspace)))
+  (declare (optimize (speed 3) (safety 1))
+           (ignorable illuminant))
   (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
 		    (float x 1d0)
 		    (float y 1d0)
 		    (float z 1d0)))
 
-(define-primary-converter (lrgb xyz) (lr lg lb &key (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
+(define-primary-converter (lrgb xyz) (lr lg lb &key (rgbspace +srgb+) &aux (illuminant (rgbspace-illuminant rgbspace)))
+  (declare (optimize (speed 3) (safety 1))
+           (ignorable illuminant))
   (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
 		    (float lr 1d0)
 		    (float lg 1d0)

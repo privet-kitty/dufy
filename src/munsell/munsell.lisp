@@ -249,13 +249,11 @@ smaller than 10^-5."
   (or (< value 0) (> value 10)
       (< chroma 0) (> chroma *maximum-chroma*)))
 
-(define-primary-converter (mhvc
-                           lchab
-                           :name mhvc-to-lchab-illum-c
-                           :forced-bindings ((illuminant +illum-c+)))
-    (hue40 value chroma)
+(define-primary-converter (mhvc lchab :name mhvc-to-lchab-illum-c)
+    (hue40 value chroma &aux (illuminant +illum-c+))
   "Illuminant C."
-  (declare (optimize (speed 3) (safety 1)))
+  (declare (optimize (speed 3) (safety 1))
+           (ignorable illuminant))
   (let ((hue40 (mod (float hue40 1d0) 40d0))
 	(value (clamp (float value 1d0) 0d0 10d0))
 	(chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
@@ -482,10 +480,11 @@ The illuminant of RGBSPACE must also be D65."
                                           (* factor delta-c)))))))))))
 
 
-(define-primary-converter (lchab mhvc
-                                 :name lchab-to-mhvc-illum-c
-                                 :forced-bindings ((illuminant +illum-c+)))
-    (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
+(define-primary-converter (lchab mhvc :name lchab-to-mhvc-illum-c)
+    (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6) &aux (illuminant +illum-c+))
+  (declare (optimize (speed 3) (safety 1))
+           (ignorable illuminant)
+           (fixnum max-iteration))
   "An inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
 algorithm like the one in \"An Open-Source Inversion Algorithm for the
 Munsell Renotation\" by Paul Centore, 2011:
@@ -506,8 +505,6 @@ MAX-ITERATION:
 :return40: Three 40d0s are returned.
 :raw: Just returns HVC as it is.
 "
-  (declare (optimize (speed 3) (safety 1))
-	   (fixnum max-iteration))
   (with-double-float (lstar cstarab hab factor threshold)
     (let ((init-h (* hab #.(float 40/360 1d0)))
 	  (init-c (* cstarab #.(/ 5.5d0))))
