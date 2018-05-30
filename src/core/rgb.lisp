@@ -258,6 +258,25 @@ typically), though it accepts all the real values."
                   (round (* (- g min) qmax-float/length))
                   (round (* (- b min) qmax-float/length)))))))
 
+(define-primary-converter (rgba qrgba) (r g b alpha &key (rgbspace +srgb+) (clamp t))
+  (declare (optimize (speed 3) (safety 1)))
+  "Quantizes RGBA values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1],
+typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255},
+typically), though it accepts all the real values."
+  (with-double-float (r g b alpha)
+    (let ((min (rgbspace-min rgbspace))
+	  (qmax-float/length (rgbspace-qmax-float/length rgbspace))
+	  (qmax (rgbspace-qmax rgbspace)))
+      (if clamp
+          (values (clamp (round (* (- r min) qmax-float/length)) 0 qmax)
+                  (clamp (round (* (- g min) qmax-float/length)) 0 qmax)
+                  (clamp (round (* (- b min) qmax-float/length)) 0 qmax)
+                  (clamp (round (* (- alpha min) qmax-float/length)) 0 qmax))
+          (values (round (* (- r min) qmax-float/length))
+                  (round (* (- g min) qmax-float/length))
+                  (round (* (- b min) qmax-float/length))
+                  (round (* (- alpha min) qmax-float/length)))))))
+
 (define-primary-converter (qrgb rgb) (qr qg qb &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum qr qg qb))
@@ -266,6 +285,16 @@ typically), though it accepts all the real values."
     (values (+ min (* qr length/qmax-float))
 	    (+ min (* qg length/qmax-float))
 	    (+ min (* qb length/qmax-float)))))
+
+(define-primary-converter (qrgba rgba) (qr qg qb qalpha &key (rgbspace +srgb+))
+  (declare (optimize (speed 3) (safety 1))
+	   (fixnum qr qg qb qalpha))
+  (let ((min (rgbspace-min rgbspace))
+	(length/qmax-float (rgbspace-length/qmax-float rgbspace)))
+    (values (+ min (* qr length/qmax-float))
+	    (+ min (* qg length/qmax-float))
+	    (+ min (* qb length/qmax-float))
+            (+ min (* qalpha length/qmax-float)))))
 
 (defconverter lrgb qrgb)
 (defconverter qrgb lrgb)
@@ -336,14 +365,16 @@ typically), though it accepts all the real values."
 		     (logand int qmax))))))
 
 (defconverter rgbpack rgb)
-(defconverter rgb rgbpack)
+(defconverter rgb rgbpack :exclude-args (clamp))
 
 (defconverter rgbpack lrgb)
-(defconverter lrgb rgbpack)
+(defconverter lrgb rgbpack :exclude-args (clamp))
 
 (defconverter rgbpack xyz)
-(defconverter xyz rgbpack)
+(defconverter xyz rgbpack :exclude-args (clamp))
 
+(defconverter rgbapack rgba)
+(defconverter rgba rgbapack)
 
 
 ;;;

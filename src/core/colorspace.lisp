@@ -100,8 +100,8 @@ clamp::= :clampable | :always-clamped | nil"
     (when (or optional rest)
       (error "primary converter cannot take either &optional or &rest arguments."))
     (unless (lambda-list= required (get-args from-term))
-      (warn "given lambda list ~A isn't equal to the ARGS of color space ~A: ~A"
-            lambda-list from-term (get-args from-term)))
+      (simple-style-warning "given lambda list ~A isn't equal to the ARGS ~A of color space ~A"
+                            lambda-list (get-args from-term) from-term))
     (%make-primary-converter :from-term from-term
                              :to-term to-term
                              :name name
@@ -270,18 +270,21 @@ term1 to term2"
   (string= (car (ensure-list key1))
            (car (ensure-list key2))))
 
-(defun gen-global-key-args (terms)
+(defun gen-global-key-args (terms &optional exclude-args)
   (mapcar #'(lambda (x) (list (cadar x) (second x)))
-          (collect-key-args terms)))
+          (delete-if #'(lambda (x) (member (caar x) exclude-args :test #'string=))
+                     (collect-key-args terms))))
 
 (defun gen-global-aux-args (terms)
   (collect-aux-args terms))
 
 (defun gen-local-key-args (term1 term2 &optional exclude-args)
-  (mappend #'car (collect-key-args (list term1 term2))))
+  (mappend #'car
+           (delete-if #'(lambda (x) (member (caar x) exclude-args :test #'string=))
+                      (collect-key-args (list term1 term2)))))
 
 (defun gen-global-args (terms &optional exclude-args)
-  (let ((global-key-args (gen-global-key-args terms))
+  (let ((global-key-args (gen-global-key-args terms exclude-args))
         (global-aux-args (gen-global-aux-args terms)))
     (dolist (x global-aux-args)
       (setf global-key-args
@@ -307,7 +310,7 @@ term1 to term2"
                    (let* ((term1 (first term-lst))
                           (term2 (second term-lst))
                           (name (get-primary-converter-name term1 term2)))
-                     (cond ((null term2) code)
+                     (cond ((null term2) code) ; end
                            ((null code)
                             (expand (cdr term-lst) ; first conversion
                                     `(,name ,@(get-args term1)
