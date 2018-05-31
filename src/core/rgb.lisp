@@ -396,11 +396,14 @@ value if its order is ARGB."
                         collect `(,(car def) (arg) arg))
          ,@body)))
 
-(define-primary-converter (hsv rgb) (hue sat val &key (rgbspace +srgb+))
+(define-primary-converter (hsv rgb) (hue sat val)
   (declare (optimize (speed 3) (safety 1)))
   "HUE is in the circle group R/360. The nominal range of SAT and VAL
 is [0, 1]. All the real values outside the interval are also
-acceptable."
+acceptable.
+
+Non-normal RGB space is also accepted, though it depends on the
+situation whether the returned values are meaningful."
   (let ((hue (the (double-float 0d0 360d0) (mod (float hue 1d0) 360d0)))
         (sat (float sat 1d0))
         (val (float val 1d0)))
@@ -409,62 +412,47 @@ acceptable."
            (h-prime-int (floor h-prime))
            (x (* c (- 1d0 (abs (- (mod h-prime 2d0) 1d0)))))
            (base (- val c)))
-      (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
-          ((%lerp (x) `(+ (rgbspace-min rgbspace)
-                          (* ,x (rgbspace-length rgbspace)))))
-        (cond ((= sat 0d0) (values (%lerp base) (%lerp base) (%lerp base)))
-              ((= 0 h-prime-int) (values (%lerp val)
-                                         (%lerp (+ base x))
-                                         (%lerp base)))
-              ((= 1 h-prime-int) (values (%lerp (+ base x))
-                                         (%lerp val)
-                                         (%lerp base)))
-              ((= 2 h-prime-int) (values (%lerp base)
-                                         (%lerp val)
-                                         (%lerp (+ base x))))
-              ((= 3 h-prime-int) (values (%lerp base)
-                                         (%lerp (+ base x))
-                                         (%lerp val)))
-              ((= 4 h-prime-int) (values (%lerp (+ base x))
-                                         (%lerp base)
-                                         (%lerp val)))
-              ((= 5 h-prime-int) (values (%lerp val)
-                                         (%lerp base)
-                                         (%lerp (+ base x))))
-              (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
-                 ))))))
+      (cond ((= sat 0d0) (values base base base))
+            ((= 0 h-prime-int) (values val (+ base x) base))
+            ((= 1 h-prime-int) (values (+ base x) val base))
+            ((= 2 h-prime-int) (values base val (+ base x)))
+            ((= 3 h-prime-int) (values base (+ base x) val))
+            ((= 4 h-prime-int) (values (+ base x) base val))
+            ((= 5 h-prime-int) (values val base (+ base x)))
+            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
+               )))))
 
 (defconverter hsv qrgb)
 (defconverter hsv xyz)
 
-(define-primary-converter (rgb hsv) (r g b &key (rgbspace +srgb+))
+(define-primary-converter (rgb hsv) (r g b)
   (declare (optimize (speed 3) (safety 1)))
-  (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
-      ((%lerp (x) ; scale to the range [0, 1]
-              `(* (- ,x (rgbspace-min rgbspace))
-                  (rgbspace-/length rgbspace))))
-    (let ((r (%lerp (float r 1d0)))
-          (g (%lerp (float g 1d0)))
-          (b (%lerp (float b 1d0))))
-      (let* ((maxrgb (max r g b))
-             (minrgb (min r g b))
-             (s (if (= maxrgb 0d0)
-                    0d0
-                    (/ (- maxrgb minrgb) maxrgb)))
-             (h (cond ((= minrgb maxrgb) 0d0)
-                      ((= minrgb b) (+ (* 60d0 (/ (- g r) (- maxrgb minrgb))) 60d0))
-                      ((= minrgb r) (+ (* 60d0 (/ (- b g) (- maxrgb minrgb))) 180d0))
-                      ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
-        (values h s maxrgb)))))
+  "Non-normal RGB space is also accepted, though it depends on the
+situation whether the returned values are meaningful."
+  (with-double-float (r g b)
+    (let* ((maxrgb (max r g b))
+           (minrgb (min r g b))
+           (s (if (= maxrgb 0d0)
+                  0d0
+                  (/ (- maxrgb minrgb) maxrgb)))
+           (h (cond ((= minrgb maxrgb) 0d0)
+                    ((= minrgb b) (+ (* 60d0 (/ (- g r) (- maxrgb minrgb))) 60d0))
+                    ((= minrgb r) (+ (* 60d0 (/ (- b g) (- maxrgb minrgb))) 180d0))
+                    ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
+      (values h s maxrgb))))
 
 (defconverter qrgb hsv)
 (defconverter xyz hsv)
 
 
-(define-primary-converter (hsl rgb) (hue sat lum &key (rgbspace +srgb+))
-  "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0,
-1]; all the real values outside the interval are also acceptable."
+(define-primary-converter (hsl rgb) (hue sat lum)
   (declare (optimize (speed 3) (safety 1)))
+    "HUE is in the circle group R/360. The nominal range of SAT and
+LUM is [0, 1]; all the real values outside the interval are also
+acceptable.
+
+Non-normal RGB space is also accepted, though it depends on the
+situation whether the returned values are meaningful."
   (with-double-float (hue sat lum)
     (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (+ lum lum -1d0)))))
 	   (max (+ lum tmp))
@@ -472,55 +460,47 @@ acceptable."
 	   (delta (- max min))
 	   (h-prime (floor (the (double-float 0d0 6d0)
 				(* (mod hue 360d0) 1/60)))))
-      (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
-          ((%lerp (x)
-                  `(+ (rgbspace-min rgbspace)
-                      (* ,x (rgbspace-length rgbspace)))))
-        (cond ((= sat 0d0) (values (%lerp max) (%lerp max) (%lerp max)))
-              ((= 0 h-prime) (values (%lerp max)
-                                     (%lerp (+ min (* delta hue 1/60)))
-                                     (%lerp min)))
-              ((= 1 h-prime) (values (%lerp (+ min (* delta (- 120d0 hue) 1/60)))
-                                     (%lerp max)
-                                     (%lerp min)))
-              ((= 2 h-prime) (values (%lerp min)
-                                     (%lerp max)
-                                     (%lerp (+ min (* delta (- hue 120d0) 1/60)))))
-              ((= 3 h-prime) (values (%lerp min)
-                                     (%lerp (+ min (* delta (- 240d0 hue) 1/60)))
-                                     (%lerp max)))
-              ((= 4 h-prime) (values (%lerp (+ min (* delta (- hue 240d0) 1/60)))
-                                     (%lerp min)
-                                     (%lerp max)))
-              ((= 5 h-prime) (values (%lerp max)
-                                     (%lerp min)
-                                     (%lerp (+ min (* delta (- 360d0 hue) 1/60)))))
-              (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
-                 ))))))
+      (cond ((= sat 0d0) (values max max max))
+            ((= 0 h-prime) (values max
+                                   (+ min (* delta hue 1/60))
+                                   min))
+            ((= 1 h-prime) (values (+ min (* delta (- 120d0 hue) 1/60))
+                                   max
+                                   min))
+            ((= 2 h-prime) (values min
+                                   max
+                                   (+ min (* delta (- hue 120d0) 1/60))))
+            ((= 3 h-prime) (values min
+                                   (+ min (* delta (- 240d0 hue) 1/60))
+                                   max))
+            ((= 4 h-prime) (values (+ min (* delta (- hue 240d0) 1/60))
+                                   min
+                                   max))
+            ((= 5 h-prime) (values max
+                                   min
+                                   (+ min (* delta (- 360d0 hue) 1/60))))
+            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
+               )))))
  
 (defconverter hsl qrgb)
 (defconverter hsl xyz)
 
-(define-primary-converter (rgb hsl) (r g b &key (rgbspace +srgb+))
+(define-primary-converter (rgb hsl) (r g b)
+  "Non-normal RGB space is also accepted, though it depends on the
+situation whether the returned values are meaningful."
   (declare (optimize (speed 3) (safety 1)))
-  (macrolet-applied-only-when (not (rgbspace-normal rgbspace))
-      ((%lerp (x) ; scale to the range [0, 1]
-              `(* (- ,x (rgbspace-min rgbspace))
-                  (rgbspace-/length rgbspace))))
-    (let ((r (%lerp (float r 1d0)))
-          (g (%lerp (float g 1d0)))
-          (b (%lerp (float b 1d0))))
-      (let ((minrgb (min r g b))
-            (maxrgb (max r g b)))
-        (values (cond ((= minrgb maxrgb) 0d0)
-                      ((= minrgb b) (+ 60d0 (* 60d0 (/ (- g r) (- maxrgb minrgb)))))
-                      ((= minrgb r) (+ 180d0 (* 60d0 (/ (- b g) (- maxrgb minrgb)))))
-                      ((= minrgb g) (+ 300d0 (* 60d0 (/ (- r b) (- maxrgb minrgb))))))
-                (let ((denom (- 1d0 (abs (+ maxrgb minrgb -1d0)))))
-                  (if (zerop denom)
-                      0d0
-                      (/ (- maxrgb minrgb) denom)))
-                (* 0.5d0 (+ maxrgb minrgb)))))))
+  (with-double-float (r g b)
+    (let ((minrgb (min r g b))
+          (maxrgb (max r g b)))
+      (values (cond ((= minrgb maxrgb) 0d0)
+                    ((= minrgb b) (+ 60d0 (* 60d0 (/ (- g r) (- maxrgb minrgb)))))
+                    ((= minrgb r) (+ 180d0 (* 60d0 (/ (- b g) (- maxrgb minrgb)))))
+                    ((= minrgb g) (+ 300d0 (* 60d0 (/ (- r b) (- maxrgb minrgb))))))
+              (let ((denom (- 1d0 (abs (+ maxrgb minrgb -1d0)))))
+                (if (zerop denom)
+                    0d0
+                    (/ (- maxrgb minrgb) denom)))
+              (* 0.5d0 (+ maxrgb minrgb))))))
 
 (defconverter qrgb hsl)
 (defconverter xyz hsl)
