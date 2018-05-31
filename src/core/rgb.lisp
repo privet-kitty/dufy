@@ -4,18 +4,25 @@
 ;;; RGB Color Space
 ;;;
 
-(define-colorspace lrgb ((lr double-float) (lg double-float) (lb double-float)))
-(define-colorspace rgb ((r double-float) (g double-float) (b double-float)))
+(define-colorspace lrgb ((lr double-float) (lg double-float) (lb double-float))
+  :documentation "Linear RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+(define-colorspace rgb ((r double-float) (g double-float) (b double-float))
+  :documentation "Gamma-corrected RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
 (define-colorspace qrgb ((qr fixnum) (qg fixnum) (qb fixnum))
-  :clamp :clampable)
-(define-colorspace rgbpack ((int integer))
-  :clamp :always-clamped)
+  :clamp :clampable
+  :documentation "Quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+(define-colorspace rgbpack ((int (integer 0)))
+  :clamp :always-clamped
+  :documentation "RGB, encoded to an unsigned integer. The size depends on the RGB space but is 24-bit for example.")
 
-(define-colorspace rgba ((r double-float) (g double-float) (b double-float) (alpha double-float)))
+(define-colorspace rgba ((r double-float) (g double-float) (b double-float) (alpha double-float))
+  :documentation "Gamma-corrected RGBA. The nominal range of each value depends on the RGB space but is typically [0, 1]")
 (define-colorspace qrgba ((qr fixnum) (qg fixnum) (qb fixnum) (qalpha fixnum))
-  :clamp :clampable)
+  :clamp :clampable
+  :documentation "Quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
 (define-colorspace rgbapack ((int integer))
-  :clamp :always-clamped)
+  :clamp :always-clamped
+  :documentation "RGB, encoded to an unsigned integer. The order can be ARGB or RGBA.")
 
 (defun gen-linearizer (gamma)
   "Returns a linearization function for a given gamma value. You
@@ -385,8 +392,10 @@ value if its order is ARGB."
 ;;; HSV/HSL
 ;;;
 
-(define-colorspace hsv ((hue double-float) (sat double-float) (val double-float)))
-(define-colorspace hsl ((hue double-float) (sat double-float) (lum double-float)))
+(define-colorspace hsv ((hue double-float) (sat double-float) (val double-float))
+  :documentation "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0, 1].")
+(define-colorspace hsl ((hue double-float) (sat double-float) (lum double-float))
+  :documentation "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0, 1].")
 
 (defmacro macrolet-applied-only-when (test definitions &body body)
   `(if ,test
@@ -398,11 +407,7 @@ value if its order is ARGB."
 
 (define-primary-converter (hsv rgb) (hue sat val)
   (declare (optimize (speed 3) (safety 1)))
-  "HUE is in the circle group R/360. The nominal range of SAT and VAL
-is [0, 1]. All the real values outside the interval are also
-acceptable.
-
-Non-normal RGB space is also accepted, though it depends on the
+  "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
   (let ((hue (the (double-float 0d0 360d0) (mod (float hue 1d0) 360d0)))
         (sat (float sat 1d0))
@@ -447,11 +452,7 @@ situation whether the returned values are meaningful."
 
 (define-primary-converter (hsl rgb) (hue sat lum)
   (declare (optimize (speed 3) (safety 1)))
-    "HUE is in the circle group R/360. The nominal range of SAT and
-LUM is [0, 1]; all the real values outside the interval are also
-acceptable.
-
-Non-normal RGB space is also accepted, though it depends on the
+    "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
   (with-double-float (hue sat lum)
     (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (+ lum lum -1d0)))))

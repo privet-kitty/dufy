@@ -59,9 +59,7 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 
 
 
-(define-colorspace lms ((l double-float)
-                        (m double-float)
-                        (s double-float)))
+(define-colorspace lms ((l double-float) (m double-float) (s double-float)))
 
 (define-primary-converter (xyz lms) (x y z &key (illuminant +illum-d65+) (cat +bradford+))
   "If ILLUMINANT is NIL, the transform is virtually equivalent to that

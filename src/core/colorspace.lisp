@@ -14,6 +14,7 @@ clamp::= :clampable | :always-clamped | nil"
   (args nil :type list)
   (arg-types nil :type list)
   (clamp nil :type symbol)
+  (documentation nil :type (or null string))
   (neighbors nil :type list))
 
 (defparameter *colorspace-table* (make-hash-table))
@@ -22,7 +23,7 @@ clamp::= :clampable | :always-clamped | nil"
   (eql (colorspace-term space1)
        (colorspace-term space2)))
 
-(defmacro define-colorspace (term args &key clamp)
+(defmacro define-colorspace (term args &key clamp documentation)
   (let ((key (make-keyword term)))
     `(eval-when (:compile-toplevel :load-toplevel :execute)
        (setf (gethash ,key *colorspace-table*)
@@ -32,6 +33,7 @@ clamp::= :clampable | :always-clamped | nil"
                               :arg-types ',(mapcar (compose #'second #'ensure-list)
                                                    args)
                               :clamp ,clamp
+                              :documentation ,documentation
                               :neighbors nil)))))
 
 (defun get-colorspace (term)

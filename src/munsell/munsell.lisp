@@ -23,8 +23,10 @@
 
 (define-colorspace mhvc ((hue40 (double-float 0d0 40d0))
                          (value double-float)
-                         (chroma (double-float 0d0 #.*maximum-chroma*))))
-(define-colorspace munsell ((munsellspec string)))
+                         (chroma (double-float 0d0 #.*maximum-chroma*)))
+  :documentation "Three-number specification of Munsell color. HUE40 is in the circle group R/40. The nominal range of VALUE is [0, 10].")
+(define-colorspace munsell ((munsellspec string))
+  :documentation "Official string specification of Munsell color.")
 
 (declaim (ftype (function * (integer 0 50)) max-chroma-in-mrd))
 (defun max-chroma-in-mrd (hue40 value &key (use-dark t))

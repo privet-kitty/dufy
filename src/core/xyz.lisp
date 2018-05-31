@@ -7,13 +7,13 @@
 
 (deftype spectrum-function () '(function * (values double-float &optional)))
 
-(define-colorspace xyz ((x double-float)
-                        (y double-float)
-                        (z double-float)))
-(define-colorspace xyy ((small-x double-float)
-                        (small-y double-float)
-                        (y double-float)))
-(define-colorspace spectrum ((spectrum spectrum-function)))
+(define-colorspace xyz ((x double-float) (y double-float) (z double-float))
+  :documentation "Y is normalized: i.e. the nominal range of Y is [0, 1]")
+(define-colorspace xyy ((small-x double-float) (small-y double-float) (y double-float))
+  :documentation "Y is normalized: i.e. the nominal range of Y is [0, 1]")
+(define-colorspace spectrum ((spectrum spectrum-function))
+  :documentation "A spectrum is just a function which receives a real number as
+wavelength (nm) and returns a double-float.")
 
 (define-primary-converter (xyy xyz) (small-x small-y y)
   "xyY to XYZ. The nominal range of Y is [0, 1], though all real
@@ -38,10 +38,7 @@ values are accepted."
 
 
 (defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
-  "A spectrum is just a function which receives a real number as
-wavelength (nm) and returns a double-float.
-
-GEN-SPECTRUM returns a spectral power distribution
+  "GEN-SPECTRUM returns a spectral power distribution
 function, #'(lambda (wavelength-nm) ...), which interpolates
 SPECTRUM-SEQ linearly.
 
