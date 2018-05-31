@@ -69,14 +69,14 @@
 
 (define-primary-converter (lab lchab) (lstar astar bstar)
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (astar bstar)
+  (with-double-float (lstar astar bstar)
     (values lstar
 	    (sqrt (+ (* astar astar) (* bstar bstar)))
 	    (mod (* (atan bstar astar) +360/TWO-PI+) 360d0))))
 
 (define-primary-converter (lchab lab) (lstar cstarab hab)
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (cstarab hab)
+  (with-double-float (lstar cstarab hab)
     (let ((hue-two-pi (* hab +TWO-PI/360+)))
       (values lstar
 	      (* cstarab (cos hue-two-pi))
@@ -156,8 +156,8 @@
 
 (define-primary-converter (lchuv luv) (lstar cstaruv huv)
   (declare (optimize (speed 3) (safety 1)))
-  (let ((cstaruv (float cstaruv 1d0)))
-    (let ((hue-two-pi (* (float huv 1d0) +TWO-PI/360+)))
+  (with-double-float (lstar cstaruv huv)
+    (let ((hue-two-pi (* huv +TWO-PI/360+)))
       (values lstar
 	      (* cstaruv (cos hue-two-pi))
 	      (* cstaruv (sin hue-two-pi))))))

@@ -76,12 +76,12 @@ clamp::= :clampable | :always-clamped | nil"
           (extract-key-args-with-init lambda-list)))
 
 (defstruct (primary-converter (:constructor %make-primary-converter))
-  "primary-converter is an edge that connects two colorspaces."
+  "PRIMARY-CONVERTER object is an edge that connects two colorspaces."
   (from-term nil :type symbol)
   (to-term nil :type symbol)
   (name nil :type symbol)
   (key-args nil :type list)
-  (allow-other-keys nil :type boolean) ; not used for now
+  (allow-other-keys nil :type boolean) ; currently not used
   (aux-args nil :type list))
 
 (defparameter *primary-converter-table* (make-hash-table :test 'equal))
@@ -318,17 +318,53 @@ term1 to term2"
   "Defines a converter function from BEGIN-TERM to DEST-TERM automatically."
   (let* ((begin-term (make-keyword begin-term))
          (dest-term (make-keyword dest-term))
-         (global-name name)
          (chain (get-converter-chain begin-term dest-term)))
     (when (<= (length chain) 2)
       (error "The length of converters path is ~a. It should be greater than 1."
              (- (length chain) 1)))
     `(progn
-       (declaim #+dufy/inline (inline ,global-name)
-                (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,global-name))
-       (defun ,global-name ,(gen-global-args chain exclude-args)
+       (declaim #+dufy/inline (inline ,name)
+                (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,name))
+       (defun ,name ,(gen-global-args chain exclude-args)
          (declare (optimize (speed 3) (safety 1))
                   (ignorable ,@(collect-aux-arg-names chain)))
          ,@(ensure-list documentation)
          ,(expand-conversion-form chain :exclude-args exclude-args)))))
 
+(defmacro let-converter (definitions &body body)
+  "local version of defconverter
+
+definitions ::= (definition*)
+definition ::= (name begin-term dest-term &key exclude-args)
+
+Example:
+ (let-converter ((rgbpack-to-lchab rgbpack lchab)
+                 (lchab-to-rgbpack lchab rgbpack :exclude-args (clamp)))
+  (format t \"~X~%\" (multiple-value-call #'lchab-to-rgbpack
+                       (rgbpack-to-lchab #xAABBCC))))   
+;; AABBCC
+;; => NIL"
+  (let ((name-lst nil)
+        (arg-types-lst nil))
+    `(labels
+         ,(loop
+            for def in definitions
+            collect
+            (destructuring-bind (name begin-term dest-term &key (exclude-args nil)) def
+              (let* ((begin-term (make-keyword begin-term))
+                     (dest-term (make-keyword dest-term))
+                     (chain (get-converter-chain begin-term dest-term)))
+                (when (<= (length chain) 2)
+                  (error "The length of converters path from ~a to ~a is ~a. It should be greater than 1."
+                         begin-term dest-term (- (length chain) 1)))
+                (push name name-lst)
+                (push (get-arg-types (lastcar chain)) arg-types-lst)
+                `(,name ,(gen-global-args chain exclude-args)
+                        (declare (optimize (speed 3) (safety 1))
+                                 (ignorable ,@(collect-aux-arg-names chain)))
+                        ,(expand-conversion-form chain :exclude-args exclude-args)))))
+       (declare (inline ,@name-lst)
+                ,@(loop for arg-types in arg-types-lst
+                        for name in name-lst
+                        collect `(ftype (function * (values ,@arg-types &optional)) ,name)))
+       ,@body)))
