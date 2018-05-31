@@ -69,7 +69,10 @@ converter_tree
     lrgb [ label = "LRGB\n(linear RGB)" ]
     rgb [ label = "RGB\n(gamma-corrected RGB)" ]
     qrgb [ label = "QRGB\n(quantized RGB)" ]
-    int [ label = "INT" ]
+    rgbpack [ label = "RGBPACK\n(packed to an int.)" ]
+    rgba [ label = "RGBA\n(gamma-corrected RGBA)" ]
+    qrgba [ label = "QRGBA\n(quantized RGBA)" ]
+    rgbapack [ label = "RGBAPACK\n(packed to an int.)" ]
     lab [ label = "LAB" ]
     lchab [ label = "LCHAB" ]
     luv [ label = "LUV" ]
@@ -86,7 +89,10 @@ converter_tree
     xyz -- lrgb
     lrgb -- rgb
     rgb -- qrgb
-    qrgb -- int
+    qrgb -- rgbpack
+
+    rgba -- qrgba
+    qrgba -- rgbapack
   
     xyz -- lab
     lab -- lchab
@@ -98,6 +104,7 @@ converter_tree
     lchab -- mhvc  [ label = "(illuminant C)" ]
     mhvc -- munsell
 
+    { rank=same; rgb rgba }
   }
 converter_tree
 </details>

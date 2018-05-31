@@ -322,6 +322,10 @@ typically), though it accepts all the real values."
 (define-primary-converter (rgbpack qrgb) (int &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer int))
+  "Decodes a packed RGB value (whoze type depends on RGBSPACE but is typically 24-bit integer).
+
+It is guaranteed that this converter can also process a packed RGBA
+value if its order is ARGB."
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
 	(qmax (rgbspace-qmax rgbspace)))
     (values (logand (ash int (+ minus-bpc minus-bpc)) qmax)
