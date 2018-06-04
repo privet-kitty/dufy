@@ -13,7 +13,7 @@
   :documentation "Quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
 (define-colorspace rgbpack ((int (integer 0)))
   :clamp :always-clamped
-  :documentation "RGB, encoded to an unsigned integer. The size depends on the RGB space but is 24-bit for example.")
+  :documentation "RGB, encoded to an unsigned integer. The size depends on the RGB space but is 24 bit for example.")
 
 (define-colorspace rgba ((r double-float) (g double-float) (b double-float) (alpha double-float))
   :documentation "Gamma-corrected RGBA. The nominal range of each value depends on the RGB space but is typically [0, 1]")

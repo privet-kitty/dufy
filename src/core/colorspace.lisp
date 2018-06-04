@@ -10,7 +10,7 @@
 (defstruct colorspace
   "A colorspace object is used as a vertex of converters graph.
 clamp::= :clampable | :always-clamped | nil"
-  (term nil :type symbol)
+  (name nil :type symbol)
   (args nil :type list)
   (arg-types nil :type list)
   (clamp nil :type symbol)
@@ -20,14 +20,14 @@ clamp::= :clampable | :always-clamped | nil"
 (defparameter *colorspace-table* (make-hash-table))
 
 (defun colorspace= (space1 space2)
-  (eql (colorspace-term space1)
-       (colorspace-term space2)))
+  (eql (colorspace-name space1)
+       (colorspace-name space2)))
 
-(defmacro define-colorspace (term args &key clamp documentation)
-  (let ((key (make-keyword term)))
+(defmacro define-colorspace (name args &key clamp documentation)
+  (let ((key (make-keyword name)))
     `(eval-when (:compile-toplevel :load-toplevel :execute)
        (setf (gethash ,key *colorspace-table*)
-             (make-colorspace :term ,key
+             (make-colorspace :name ,key
                               :args ',(mapcar (compose #'first #'ensure-list)
                                               args)
                               :arg-types ',(mapcar (compose #'second #'ensure-list)
@@ -36,22 +36,29 @@ clamp::= :clampable | :always-clamped | nil"
                               :documentation ,documentation
                               :neighbors nil)))))
 
-(defun get-colorspace (term)
-  (or (gethash term *colorspace-table*)
-      (error "No such color space: ~A" term)))
-(defun get-neighbors (term)
-  (colorspace-neighbors (get-colorspace term)))
-(defun (setf get-neighbors) (val term)
-  (setf (colorspace-neighbors (get-colorspace term)) val))
-(defun get-clamp (term)
-  (colorspace-clamp (get-colorspace term)))
-(defun get-args (term &optional (package nil))
+(defun ensure-colorspace (thing)
+  (if (typep thing 'colorspace)
+      thing
+      (or (gethash thing *colorspace-table*)
+          (error "No such color space: ~A" thing))))
+(defun ensure-colorspace-name (thing)
+  (etypecase thing
+    (symbol (make-keyword thing))
+    (colorspace (colorspace-name thing))))
+
+(defun get-neighbors (name)
+  (colorspace-neighbors (ensure-colorspace name)))
+(defun (setf get-neighbors) (val name)
+  (setf (colorspace-neighbors (ensure-colorspace name)) val))
+(defun get-clamp (name)
+  (colorspace-clamp (ensure-colorspace name)))
+(defun get-args (name &optional (package nil))
   (mapcar (if package
               #'(lambda (x) (intern (symbol-name x) package))
               #'identity)
-          (colorspace-args (get-colorspace term))))
-(defun get-arg-types (term)
-  (colorspace-arg-types (get-colorspace term)))
+          (colorspace-args (ensure-colorspace name))))
+(defun get-arg-types (name)
+  (colorspace-arg-types (ensure-colorspace name)))
 
 (defun print-colorspace-table ()
   (format t "~%#<HASH-TABLE ~%")
@@ -65,8 +72,11 @@ clamp::= :clampable | :always-clamped | nil"
 ;;; Primary converter
 ;;;
 
-(defun gen-converter-name (from-term to-term)
-  (intern (format nil "~A-TO-~A" from-term to-term) *package*))
+(defun gen-converter-name (from-colorspace to-colorspace)
+  (intern (format nil "~A-TO-~A"
+                  (ensure-colorspace-name from-colorspace)
+                  (ensure-colorspace-name to-colorspace))
+          *package*))
 
 (defun extract-key-args-with-init (lambda-list)
   (mapcar #'(lambda (node)
@@ -79,8 +89,8 @@ clamp::= :clampable | :always-clamped | nil"
 
 (defstruct (primary-converter (:constructor %make-primary-converter))
   "PRIMARY-CONVERTER object is an edge that connects two colorspaces."
-  (from-term nil :type symbol)
-  (to-term nil :type symbol)
+  (from-colorspace nil :type symbol)
+  (to-colorspace nil :type symbol)
   (name nil :type symbol)
   (key-args nil :type list)
   (allow-other-keys nil :type boolean) ; currently not used
@@ -96,44 +106,44 @@ clamp::= :clampable | :always-clamped | nil"
           (and (string= (car lambda-list1) (car lambda-list2))
                (lambda-list= (cdr lambda-list1) (cdr lambda-list2))))))
 
-(defun make-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)))
+(defun make-primary-converter (from-colorspace to-colorspace lambda-list &key (name (gen-converter-name from-colorspace to-colorspace)))
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
       (parse-ordinary-lambda-list lambda-list)
     (when (or optional rest)
       (error "primary converter cannot take either &optional or &rest arguments."))
-    (unless (lambda-list= required (get-args from-term))
+    (unless (lambda-list= required (get-args from-colorspace))
       (simple-style-warning "given lambda list ~A isn't equal to the ARGS ~A of color space ~A"
-                            lambda-list (get-args from-term) from-term))
-    (%make-primary-converter :from-term from-term
-                             :to-term to-term
+                            lambda-list (get-args from-colorspace) from-colorspace))
+    (%make-primary-converter :from-colorspace from-colorspace
+                             :to-colorspace to-colorspace
                              :name name
                              :key-args keyword
                              :allow-other-keys allow-other-keys
                              :aux-args aux)))
 
-(defun add-primary-converter (from-term to-term lambda-list &key (name (gen-converter-name from-term to-term)))
-  (setf (gethash (list from-term to-term) *primary-converter-table*)
-        (make-primary-converter from-term to-term lambda-list
+(defun add-primary-converter (from-colorspace to-colorspace lambda-list &key (name (gen-converter-name from-colorspace to-colorspace)))
+  (setf (gethash (list from-colorspace to-colorspace) *primary-converter-table*)
+        (make-primary-converter from-colorspace to-colorspace lambda-list
                                 :name name))
-  (pushnew to-term (get-neighbors from-term)))
+  (pushnew to-colorspace (get-neighbors from-colorspace)))
 
-(defun get-primary-converter (from-term to-term)
-  (or (gethash (list from-term to-term) *primary-converter-table*)
-      (error "No primary converter found: from ~A to ~A" from-term to-term)))
-(defun get-primary-converter-name (from-term to-term)
-  (primary-converter-name (get-primary-converter from-term to-term)))
-(defun get-key-args (from-term to-term)
-  (primary-converter-key-args (get-primary-converter from-term to-term)))
-(defun get-key-arg-key-names (from-term to-term)
-  (mapcar #'caar (get-key-args from-term to-term)))
-(defun get-key-arg-names (from-term to-term)
-  (mapcar #'cadar (get-key-args from-term to-term)))
-(defun get-aux-args (from-term to-term)
-  (primary-converter-aux-args (get-primary-converter from-term to-term)))
-(defun get-aux-names (from-term to-term)
-  (mapcar #'car (get-aux-args from-term to-term)))
-(defun get-allow-other-keys (from-term to-term)
-  (primary-converter-allow-other-keys (get-primary-converter from-term to-term)))
+(defun get-primary-converter (from-colorspace to-colorspace)
+  (or (gethash (list from-colorspace to-colorspace) *primary-converter-table*)
+      (error "No primary converter found: from ~A to ~A" from-colorspace to-colorspace)))
+(defun get-primary-converter-name (from-colorspace to-colorspace)
+  (primary-converter-name (get-primary-converter from-colorspace to-colorspace)))
+(defun get-key-args (from-colorspace to-colorspace)
+  (primary-converter-key-args (get-primary-converter from-colorspace to-colorspace)))
+(defun get-key-arg-key-names (from-colorspace to-colorspace)
+  (mapcar #'caar (get-key-args from-colorspace to-colorspace)))
+(defun get-key-arg-names (from-colorspace to-colorspace)
+  (mapcar #'cadar (get-key-args from-colorspace to-colorspace)))
+(defun get-aux-args (from-colorspace to-colorspace)
+  (primary-converter-aux-args (get-primary-converter from-colorspace to-colorspace)))
+(defun get-aux-names (from-colorspace to-colorspace)
+  (mapcar #'car (get-aux-args from-colorspace to-colorspace)))
+(defun get-allow-other-keys (from-colorspace to-colorspace)
+  (primary-converter-allow-other-keys (get-primary-converter from-colorspace to-colorspace)))
 
 (defun print-primary-converter-table ()
   (format t "%#<HASH-TABLE ~%")
@@ -155,35 +165,35 @@ clamp::= :clampable | :always-clamped | nil"
 (defun dequeue (queue)
   (pop (queue-list queue)))
 
-(defun get-converter-chain (begin-term dest-term)
+(defun get-converter-chain (from-colorspace to-colorspace)
   "Finds the shortest path in the graph of color spaces with BFS."
   (let ((visited (make-hash-table))
-        (path-queue (enqueue (list begin-term) (make-queue))))
+        (path-queue (enqueue (list from-colorspace) (make-queue))))
     (loop for path = (dequeue path-queue)
-          for current-term = (car path)
-          do (when (null current-term)
-               (error "No route found: from ~S to ~S" begin-term dest-term))
-             (if (eql current-term dest-term)
+          for current-colorspace = (car path)
+          do (when (null current-colorspace)
+               (error "No route found: from ~S to ~S" from-colorspace to-colorspace))
+             (if (eql current-colorspace to-colorspace)
                  (return (nreverse path))
-                 (unless (nth-value 1 (ensure-gethash current-term visited t))
-                   (dolist (term (get-neighbors current-term))
+                 (unless (nth-value 1 (ensure-gethash current-colorspace visited t))
+                   (dolist (term (get-neighbors current-colorspace))
                      (enqueue (cons term path) path-queue)))))))
 
 
-(defmacro define-primary-converter ((begin-term dest-term &key (name (gen-converter-name begin-term dest-term))) lambda-list &body body)
+(defmacro define-primary-converter ((from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace))) lambda-list &body body)
   "Defines FOO-TO-BAR function as a primary converter."
-  (check-type begin-term symbol)
-  (check-type dest-term symbol)
+  (check-type from-colorspace symbol)
+  (check-type to-colorspace symbol)
   (check-type lambda-list list)
-  (let* ((begin-term (make-keyword begin-term))
-         (dest-term (make-keyword dest-term)))
+  (let* ((from-colorspace (make-keyword from-colorspace))
+         (to-colorspace (make-keyword to-colorspace)))
     `(progn
        (declaim (inline ,name)
-                (ftype (function * (values ,@(get-arg-types dest-term) &optional)) ,name))
+                (ftype (function * (values ,@(get-arg-types to-colorspace) &optional)) ,name))
        (defun ,name ,lambda-list
          ,@body)
        (eval-when (:compile-toplevel :load-toplevel :execute)
-         (add-primary-converter ,begin-term ,dest-term
+         (add-primary-converter ,from-colorspace ,to-colorspace
                                 ',lambda-list
                                 :name ',name)))))
 
@@ -316,11 +326,11 @@ term1 to term2"
                                         ,@(gen-local-key-args term1 term2 exclude-args)))))))))
     (expand terms nil)))
 
-(defmacro defconverter (begin-term dest-term &key (name (gen-converter-name begin-term dest-term)) (exclude-args nil) (documentation nil))
-  "Defines a converter function from BEGIN-TERM to DEST-TERM automatically."
-  (let* ((begin-term (make-keyword begin-term))
-         (dest-term (make-keyword dest-term))
-         (chain (get-converter-chain begin-term dest-term)))
+(defmacro defconverter (from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace)) (exclude-args nil) (documentation nil))
+  "Defines a converter function from FROM-COLORSPACE to TO-COLORSPACE automatically."
+  (let* ((from-colorspace (make-keyword from-colorspace))
+         (to-colorspace (make-keyword to-colorspace))
+         (chain (get-converter-chain from-colorspace to-colorspace)))
     (when (<= (length chain) 2)
       (error "The length of converters path is ~a. It should be greater than 1."
              (- (length chain) 1)))
@@ -337,7 +347,7 @@ term1 to term2"
   "local version of defconverter
 
 definitions ::= (definition*)
-definition ::= (name begin-term dest-term &key exclude-args)
+definition ::= (name from-colorspace to-colorspace &key exclude-args)
 
 Example:
  (let-converter ((rgbpack-to-lchab rgbpack lchab)
@@ -352,13 +362,13 @@ Example:
          ,(loop
             for def in definitions
             collect
-            (destructuring-bind (name begin-term dest-term &key (exclude-args nil)) def
-              (let* ((begin-term (make-keyword begin-term))
-                     (dest-term (make-keyword dest-term))
-                     (chain (get-converter-chain begin-term dest-term)))
+            (destructuring-bind (name from-colorspace to-colorspace &key (exclude-args nil)) def
+              (let* ((from-colorspace (make-keyword from-colorspace))
+                     (to-colorspace (make-keyword to-colorspace))
+                     (chain (get-converter-chain from-colorspace to-colorspace)))
                 (when (<= (length chain) 2)
                   (error "The length of converters path from ~a to ~a is ~a. It should be greater than 1."
-                         begin-term dest-term (- (length chain) 1)))
+                         from-colorspace to-colorspace (- (length chain) 1)))
                 (push name name-lst)
                 (push (get-arg-types (lastcar chain)) arg-types-lst)
                 `(,name ,(gen-global-args chain exclude-args)
@@ -370,3 +380,45 @@ Example:
                         for name in name-lst
                         collect `(ftype (function * (values ,@arg-types &optional)) ,name)))
        ,@body)))
+
+
+(defstruct (functional (:constructor %make-functional))
+  (name nil :type symbol)
+  (term nil :type symbol)
+  (colorspace nil :type symbol)
+  (key-args nil :type list)
+  (allow-other-keys nil :type boolean) ; currently not used
+  (aux-args nil :type list))
+
+(defun make-functional (name colorspace lambda-list &key (term name))
+  (multiple-value-bind (required optional rest keyword allow-other-keys aux)
+      (parse-ordinary-lambda-list lambda-list)
+    (when (or optional rest)
+      (error "primary converter cannot take either &optional or &rest arguments."))
+    (unless (length= required (get-args colorspace))
+      (error "given lambda list ~A isn't consistent with the ARGS ~A of color space ~A"
+             lambda-list (get-args colorspace) colorspace))
+    (%make-functional :name name
+                      :term term
+                      :colorspace colorspace
+                      :key-args keyword
+                      :aux-args aux
+                      :allow-other-keys allow-other-keys)))
+
+(defparameter *functional-table* (make-hash-table))
+
+(defun add-functional (name colorspace lambda-list &key (term name))
+  (setf (gethash term *functional-table*)
+        (make-functional name colorspace lambda-list
+                         :term term)))
+
+(defmacro define-functional ((name colorspace &key (term name)) lambda-list &body body)
+  `(progn
+     (defun ,name ,lambda-list
+       ,@body)
+     (eval-when (:compile-toplevel :load-toplevel :execute)
+       (add-functional ',name ',colorspace ',lambda-list :term ',term))))
+
+
+;; (define-functional (rgb-test :rgb :term test) (r g b)
+;;   (+ r g b))
