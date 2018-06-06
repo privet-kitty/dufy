@@ -15,6 +15,7 @@
   (:use :cl :alexandria :dufy-internal)
   #.`(:export
       ;; xyz.lisp
+      :xyz :xyy :spectrum
       :xyy-to-xyz
       :xyz-to-xyy
       
@@ -55,6 +56,8 @@
       :gen-cat-function
       :define-cat-function
 
+      ;; cat.lisp
+      :lms
       :cat
       :make-cat
       :cat-matrix
@@ -70,6 +73,8 @@
       :+cat02+
 
       ;; rgb.lisp
+      :lrgb :rgb :qrgb :rgbpack
+      :rgba :qrgba :rgbapack
       :rgbspace
       :+srgb+
       :+bg-srgb-10+ :+bg-srgb-12+ :+bg-srgb-16+
@@ -130,7 +135,8 @@
       :rgbpack-to-xyz
 
       :gen-rgbspace-changer
-      
+
+      :hsv
       :hsv-to-rgb
       :rgb-to-hsv
       :hsv-to-qrgb
@@ -138,6 +144,7 @@
       :hsv-to-xyz
       :xyz-to-hsv
 
+      :hsl
       :hsl-to-rgb
       :rgb-to-hsl
       :hsl-to-qrgb
@@ -146,6 +153,7 @@
       :xyz-to-hsl
 
       ;; lab-and-luv.lisp
+      :lab :lchab
       :xyz-to-lab
       :lab-to-xyz
       :lstar-to-y
@@ -154,6 +162,7 @@
       :xyz-to-lchab
       :lchab-to-xyz
 
+      :luv :lchuv
       :xyz-to-luv
       :luv-to-xyz
       :luv-to-lchuv
