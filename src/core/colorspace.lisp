@@ -4,16 +4,10 @@
 
 (in-package :dufy-core)
 
-(defun sane-symbol (symb)
-  (intern (symbol-name symb) *package*))
-
 (defstruct colorspace
-  "A colorspace object is used as a vertex of converters graph.
-clamp::= :clampable | :always-clamped | nil"
   (name nil :type symbol)
   (args nil :type list)
   (arg-types nil :type list)
-  (clamp nil :type symbol)
   (documentation nil :type (or null string))
   (neighbors nil :type list))
 
@@ -23,7 +17,7 @@ clamp::= :clampable | :always-clamped | nil"
   (eql (colorspace-name space1)
        (colorspace-name space2)))
 
-(defmacro define-colorspace (name args &key clamp documentation)
+(defmacro define-colorspace (name args &key documentation)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      (setf (gethash ',name *colorspace-table*)
            (make-colorspace :name ',name
@@ -31,7 +25,6 @@ clamp::= :clampable | :always-clamped | nil"
                                             args)
                             :arg-types ',(mapcar (compose #'second #'ensure-list)
                                                  args)
-                            :clamp ,clamp
                             :documentation ,documentation
                             :neighbors nil))))
 
@@ -49,8 +42,6 @@ clamp::= :clampable | :always-clamped | nil"
   (colorspace-neighbors (ensure-colorspace name)))
 (defun (setf get-neighbors) (val name)
   (setf (colorspace-neighbors (ensure-colorspace name)) val))
-(defun get-clamp (name)
-  (colorspace-clamp (ensure-colorspace name)))
 (defun get-args (name &key (package nil) (suffix ""))
   (mapcar (if package
               #'(lambda (x) (intern (format nil "~A~A" x suffix)
@@ -70,7 +61,7 @@ clamp::= :clampable | :always-clamped | nil"
 
 
 ;;;
-;;; Primary converter
+;;; Converter between color spaces
 ;;;
 
 (defun gen-converter-name (from-colorspace to-colorspace)
@@ -197,14 +188,6 @@ clamp::= :clampable | :always-clamped | nil"
                               :name ',name))))
 
 
-(defun converter-clamp-p (term1 term2)
-  (and (not (eql (get-clamp term1) :always-clamped))
-       (eql (get-clamp term2) :clampable)))
-
-(defun global-clamp-arg-p (terms)
-  (converter-clamp-p (car (last terms 2))
-                     (car (last terms))))
-
 (defun global-allow-other-keys-p (terms)
   (loop for (term1 term2) on terms
         until (null term2)
@@ -318,7 +301,8 @@ term1 to term2"
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
       (parse-ordinary-lambda-list (gen-global-args terms
                                                    :exclude-args exclude-args
-                                                   :extra-suffix suffix))
+                                                   :extra-suffix suffix
+                                                   :with-aux nil))
     (declare (ignore optional rest allow-other-keys aux))
     (append required
             (mappend #'car keyword))))
@@ -386,6 +370,11 @@ Example:
                         collect `(ftype (function * (values ,@arg-types &optional)) ,name)))
        ,@body)))
 
+
+
+;;;
+;;; Functional on color space
+;;;
 
 (defstruct (primary-functional (:constructor %make-primary-functional))
   (name nil :type symbol)

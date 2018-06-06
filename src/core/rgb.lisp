@@ -9,19 +9,15 @@
 (define-colorspace rgb ((r double-float) (g double-float) (b double-float))
   :documentation "Gamma-corrected RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
 (define-colorspace qrgb ((qr fixnum) (qg fixnum) (qb fixnum))
-  :clamp :clampable
   :documentation "Quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
 (define-colorspace rgbpack ((int (integer 0)))
-  :clamp :always-clamped
   :documentation "RGB, encoded to an unsigned integer. The size depends on the RGB space but is 24 bit for example.")
 
 (define-colorspace rgba ((r double-float) (g double-float) (b double-float) (alpha double-float))
   :documentation "Gamma-corrected RGBA. The nominal range of each value depends on the RGB space but is typically [0, 1]")
 (define-colorspace qrgba ((qr fixnum) (qg fixnum) (qb fixnum) (qalpha fixnum))
-  :clamp :clampable
   :documentation "Quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
 (define-colorspace rgbapack ((int integer))
-  :clamp :always-clamped
   :documentation "RGB, encoded to an unsigned integer. The order can be ARGB or RGBA.")
 
 (defun gen-linearizer (gamma)
