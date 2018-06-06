@@ -174,4 +174,5 @@
       ,@(alexandria:mappend #'gen-deltae-symbols
                             '(:deltaeab
                               :deltae94
-                              :deltae00))))
+                              :deltae00
+                              :deltaecmc))))

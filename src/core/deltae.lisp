@@ -1,48 +1,8 @@
+;;;
+;;; Several color difference functions
+;;;
+
 (in-package :dufy-core)
-
-;; define delta-E functions for L*a*b*, xyz and qrgb
-(defmacro defdeltae (name args &body body)
-  "Defines delta-E function for L*a*b* and other color spaces. Only
-&key arguments are allowed in sub-args."
-  (labels ((extract (lst) ; extract sub-args
-	     (reduce #'append
-		     (mapcar #'(lambda (pair)
-				 (list (make-keyword (first pair))
-				       (first pair)))
-			     lst))))
-    (let* ((main-args (subseq args 0 6))
-	   (sub-args-with-key (subseq args 6))
-	   (sub-args (cdr sub-args-with-key))
-           (lab-name (intern (format nil "LAB-~A" name) *package*))
-	   (qrgb-name (intern (format nil "QRGB-~A" name) *package*))
-	   (xyz-name (intern (format nil "XYZ-~A" name) *package*)))
-      `(progn
-	 ;; for L*a*b*
-	 (declaim (inline ,name))
-	 (defun ,lab-name (,@main-args ,@sub-args-with-key)
-	   ,@body)
-
-	 ;; for XYZ
-	 (declaim (inline ,xyz-name))
-	 (defun ,xyz-name (x1 y1 z1 x2 y2 z2 &key ,@sub-args (illuminant +illum-d65+))
-	   (declare (optimize (speed 3) (safety 1)))
-	   (multiple-value-call #',lab-name
-	     (xyz-to-lab (float x1 1d0) (float y1 1d0) (float z1 1d0)
-                         :illuminant illuminant)
-	     (xyz-to-lab (float x2 1d0) (float y2 1d0) (float z2 1d0)
-                         :illuminant illuminant)
-	     ,@(extract sub-args)))
-
-	 ;; for quantized RGB
-	 (declaim (inline ,qrgb-name))
-	 (defun ,qrgb-name (qr1 qg1 qb1 qr2 qg2 qb2 &key ,@sub-args (rgbspace +srgb+))
-	   (declare (optimize (speed 3) (safety 1))
-		    (integer qr1 qg1 qb1 qr2 qg2 qb2))
-	   (multiple-value-call #',xyz-name
-	     (qrgb-to-xyz qr1 qg1 qb1 :rgbspace rgbspace)
-	     (qrgb-to-xyz qr2 qg2 qb2 :rgbspace rgbspace)
-	     ,@(extract sub-args)
-	     :illuminant (rgbspace-illuminant rgbspace)))))))
 
 (define-primary-functional (lab-deltaeab lab :term deltaeab) (l1 a1 b1 l2 a2 b2)
   "CIE 1976. Euclidean distance in L*a*b* space."
@@ -57,6 +17,7 @@
 
 (define-secondary-functional xyz-deltaeab deltaeab xyz)
 (define-secondary-functional qrgb-deltaeab deltaeab qrgb)
+
 
 
 (define-primary-functional (lab-deltae94 lab :term deltae94) (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
@@ -80,15 +41,16 @@ APPLICATION::= :graphic-arts | :textiles"
 	      (:textiles (values 2d0 0.048d0 0.014d0)))
 	  (let ((sc (+ 1d0 (* k1 c1)))
 		(sh (+ 1d0 (* k2 c1))))
-	    (let ((term1 (/ delta-l kL))
-		  (term2 (/ delta-c sc))
-		  (term3 (/ delta-h sh)))
-	      (sqrt (+ (* term1 term1)
-		       (* term2 term2)
-		       (* term3 term3))))))))))
+	    (let ((diff-l (/ delta-l kL))
+		  (diff-c (/ delta-c sc))
+		  (diff-h (/ delta-h sh)))
+	      (sqrt (+ (* diff-l diff-l)
+		       (* diff-c diff-c)
+		       (* diff-h diff-h))))))))))
 
 (define-secondary-functional xyz-deltae94 deltae94 xyz)
 (define-secondary-functional qrgb-deltae94 deltae94 qrgb)
+
 
 
 (define-primary-functional (lab-deltae00 lab :term deltae00) (l1 a1 b1 l2 a2 b2)
@@ -149,20 +111,18 @@ APPLICATION::= :graphic-arts | :textiles"
                       (sqrt (/ Cmeanprime7 (+ Cmeanprime7 #.(expt 25 7))))
                       (sin (* 60d0
                               (exp (- (expt (* (- Hmeanprime 275d0) 1/25) 2)))
-                              #.(/ PI 180))))))
+                              #.(/ PI 180)))))
+           (diff-l (/ deltaLprime varSL))
+           (diff-c (/ deltaCprime varSC))
+           (diff-h (/ deltalargeHprime varSH)))
       (sqrt (the (double-float 0d0)
-                 (+ (/ (* deltaLprime deltaLprime)
-                       (* varSL varSL))
-                    (/ (* deltaCprime deltaCPrime)
-                       (* varSC varSC))
-                    (/ (* deltalargeHprime deltalargeHprime)
-                       (* varSH varSH))
+                 (+ (* diff-l diff-l)
+                    (* diff-c diff-c)
+                    (* diff-h diff-h)
                     (* varRT (/ deltaCprime varSC) (/ deltalargeHprime varSH))))))))
 
 (define-secondary-functional xyz-deltae00 deltae00 xyz)
 (define-secondary-functional qrgb-deltae00 deltae00 qrgb)
-
-
 
 (defun bench-deltae00 (&optional (num 1000000))
   (declare (optimize (speed 3) (safety 1)))
@@ -171,4 +131,40 @@ APPLICATION::= :graphic-arts | :textiles"
       (qrgb-deltae00 (random 65536) (random 65536) (random 65536)
                      (random 65536) (random 65536) (random 65536)
                      :rgbspace +bg-srgb-16+))))
+
+
+
+(define-primary-functional (lab-deltaecmc lab :term deltaecmc) (l1 a1 b1 l2 a2 b2 &key (l-factor 2d0) (c-factor 1d0))
+  (declare (optimize (speed 3) (safety 1)))
+  "CMC l:c"
+  (with-double-float (l1 a1 b1 l2 a2 b2 l-factor c-factor)
+    (let* ((deltaa (- a1 a2))
+           (deltab (- b1 b2))
+           (deltal (- l1 l2))
+           (c1-2 (+ (* a1 a1) (* b1 b1)))
+           (c1 (sqrt c1-2))
+           (c1-4 (* c1-2 c1-2))
+           (c2 (sqrt (+ (* a2 a2) (* b2 b2))))
+           (deltac (- c1 c2))
+           (deltah-2 (+ (* deltaa deltaa) (* deltab deltab) (- (* deltac deltac))))
+           (h1 (mod (atan b1 a1) TWO-PI))
+           (f (sqrt (/ c1-4 (+ 1900d0 c1-4))))
+           (tt (if (or (< h1 #.(* 164d0 +TWO-PI/360+))
+                       (< #.(* 345d0 +TWO-PI/360+) h1))
+                   (+ 0.36d0 (abs (* 0.4d0 (cos (+ h1 #.(* 35d0 +TWO-PI/360+))))))
+                   (+ 0.56d0 (abs (* 0.2d0 (cos (+ h1 #.(* 168d0 +TWO-PI/360+))))))))
+           (sl (if (< l1 16d0)
+                   0.511d0
+                   (/ (* 0.040975d0 l1) (1+ (* 0.01765d0 l1)))))
+           (sc (+ 0.638d0 (/ (* 0.0638d0 c1) (1+ (* 0.0131d0 c1)))))
+           (sh (* sc (+ 1d0 (* f tt) (- f))))
+           (diff-l (/ deltal (* l-factor sl)))
+           (diff-c (/ deltac (* c-factor sc)))
+           (diff-h-2 (the (double-float 0d0) (/ deltah-2 (* sh sh)))))
+      (sqrt (+ (* diff-l diff-l)
+               (* diff-c diff-c)
+               diff-h-2)))))
+
+(define-secondary-functional xyz-deltaecmc deltaecmc xyz)
+(define-secondary-functional qrgb-deltaecmc deltaecmc qrgb)
 
