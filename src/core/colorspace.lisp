@@ -21,10 +21,8 @@
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      (setf (gethash ',name *colorspace-table*)
            (make-colorspace :name ',name
-                            :args ',(mapcar (compose #'first #'ensure-list)
-                                            args)
-                            :arg-types ',(mapcar (compose #'second #'ensure-list)
-                                                 args)
+                            :args ',(mapcar (compose #'first #'ensure-list) args)
+                            :arg-types ',(mapcar (compose #'second #'ensure-list) args)
                             :documentation ,documentation
                             :neighbors nil))))
 
@@ -43,20 +41,18 @@
 (defun (setf get-neighbors) (val name)
   (setf (colorspace-neighbors (ensure-colorspace name)) val))
 (defun get-args (name &key (package nil) (suffix ""))
-  (mapcar (if package
-              #'(lambda (x) (intern (format nil "~A~A" x suffix)
-                                    package))
-              #'(lambda (x) (intern (format nil "~A~A" x suffix)
-                                    (symbol-package x))))
+  (mapcar #'(lambda (x) (intern (format nil "~A~A" x suffix)
+                                (or package (symbol-package x))))
           (colorspace-args (ensure-colorspace name))))
 (defun get-arg-types (name)
   (colorspace-arg-types (ensure-colorspace name)))
 
-(defun print-colorspace-table ()
+(defun print-hash-table (hash)
   (format t "~%#<HASH-TABLE ~%")
-  (maphash-values #'(lambda (val) (format t "~S~%" val))
-                  *colorspace-table*)
+  (maphash-values #'(lambda (val) (format t "~S~%" val)) hash)
   (format t ">"))
+(defun print-colorspace-table ()
+  (print-hash-table *colorspace-table*))
 
 
 
@@ -69,15 +65,6 @@
                   (ensure-colorspace-name from-colorspace)
                   (ensure-colorspace-name to-colorspace))
           *package*))
-
-(defun extract-key-args-with-init (lambda-list)
-  (mapcar #'(lambda (node)
-              (list (cadar node) (second node)))
-          (nth-value 3 (parse-ordinary-lambda-list lambda-list))))
-
-(defun extract-key-args (lambda-list)
-  (mapcar #'(lambda (x) (make-keyword (car (ensure-list x))))
-          (extract-key-args-with-init lambda-list)))
 
 (defstruct (primary-converter (:constructor %make-primary-converter))
   "PRIMARY-CONVERTER object is an edge that connects two colorspaces."
@@ -98,11 +85,23 @@
           (and (string= (car lambda-list1) (car lambda-list2))
                (lambda-list= (cdr lambda-list1) (cdr lambda-list2))))))
 
+(defun find-duplicates (lst &key (key #'identity) (test #'eql))
+  (if (null lst)
+      nil
+      (or (member (car lst) (cdr lst) :test test :key key)
+          (find-duplicates (cdr lst)))))
+
+(defun duplicate-aux-and-key-p (key-args aux-args)
+  (find-duplicates (append (mapcar #'caar key-args)
+                           (mapcar #'car aux-args))))
+
 (defun make-primary-converter (from-colorspace to-colorspace lambda-list &key (name (gen-converter-name from-colorspace to-colorspace)))
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
       (parse-ordinary-lambda-list lambda-list)
     (when (or optional rest)
       (error "primary converter cannot take either &optional or &rest arguments."))
+    (when (duplicate-aux-and-key-p keyword aux)
+      (error "Duplicated names in &key and &aux arguments are not allowed."))
     (unless (lambda-list= required (get-args from-colorspace))
       (simple-style-warning "given lambda list ~A isn't equal to the ARGS ~A of color space ~A"
                             lambda-list (get-args from-colorspace) from-colorspace))
@@ -138,10 +137,7 @@
   (primary-converter-allow-other-keys (get-primary-converter from-colorspace to-colorspace)))
 
 (defun print-primary-converter-table ()
-  (format t "%#<HASH-TABLE ~%")
-  (maphash-values #'(lambda (val) (format t "~S~%" val))
-                  *primary-converter-table*)
-  (format t ">"))
+  (print-hash-table *primary-converter-table*))
 
 
 ;; simple queue structure
@@ -173,7 +169,9 @@
 
 
 (defmacro define-primary-converter ((from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace))) lambda-list &body body)
-  "Defines FOO-TO-BAR function as a primary converter."
+  "Defines FOO-TO-BAR function as a primary converter. Only &key
+arguments (without supplied-p-parameter) and &aux arguments are
+allowed. "
   (check-type from-colorspace symbol)
   (check-type to-colorspace symbol)
   (check-type lambda-list list)
@@ -188,107 +186,69 @@
                               :name ',name))))
 
 
-(defun global-allow-other-keys-p (terms)
-  (loop for (term1 term2) on terms
+(defun global-allow-other-keys-p (chain)
+  (loop for (term1 term2) on chain
         until (null term2)
         do (when (get-allow-other-keys term1 term2)
              (return t))
         finally (return nil)))
 
-(defun get-local-illuminant-key (term1 term2)
-  (let* ((conv (get-primary-converter term1 term2))
-         (key-args (primary-converter-key-args conv)))
-    (or (find :rgbspace key-args)
-        (find :illuminant key-args))))
-
-(defun get-global-illuminant-key (terms)
-  "Determines the required illuminant object for a given converter chain"
-  (let ((conv-illum-keys (loop for (term1 term2) on terms
-                               until (null term2)
-                               collect (get-local-illuminant-key term1 term2))))
-    (or (find :rgbspace conv-illum-keys)
-        (find :illuminant conv-illum-keys))))
-
-(defun need-rgbspace-to-illuminant-p (terms)
-  (let ((illum-keys (loop for (term1 term2) on terms
-                          until (null term2)
-                          collect (get-local-illuminant-key term1 term2))))
-    (and (find :rgbspace illum-keys)
-         (find :illuminant illum-keys))))
-
-(defun get-init-form (arg term1 term2)
-  "Returns the default value of an argument of the converter from
-term1 to term2"
-  (funcall #'second
-           (find-if #'(lambda (x)
-                        (if (keywordp arg)
-                            (eql arg (caar x))
-                            (string= arg (cadar x))))
-                    (get-key-args term1 term2))))
-
-(defun collect-key-args (terms &key (exclude-list nil))
+(defun collect-key-args (chain &key (exclude-list nil))
   (remove-if #'(lambda (x) (member x exclude-list :test #'key-arg=))
              (delete-duplicates
-              (loop for (term1 term2) on terms
+              (loop for (term1 term2) on chain
                     until (null term2)
                     append (get-key-args term1 term2))
               :key #'caar)))
-(defun collect-key-arg-names (terms)
-  (mapcar #'cadar (collect-key-args terms)))
-(defun collect-key-arg-key-names (terms)
-  (mapcar #'caar (collect-key-args terms)))
+(defun collect-key-arg-names (chain)
+  (mapcar #'cadar (collect-key-args chain)))
+(defun collect-key-arg-key-names (chain)
+  (mapcar #'caar (collect-key-args chain)))
 
 (defmacro aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
 
-(defun find-duplicates (lst &key (key #'identity) (test #'eql))
-  (if (null lst)
-      nil
-      (or (member (car lst) (cdr lst) :test test :key key)
-          (find-duplicates (cdr lst)))))
-
-(defun collect-aux-args (terms)
-  (loop for (term1 term2) on terms
+(defun collect-aux-args (chain)
+  (loop for (term1 term2) on chain
         until (null term2)
         append (get-aux-args term1 term2) into res
-        finally (aif (find-duplicates res :test #'(lambda (x y)
-                                                    (string= (car x) (car y))))
-                     (error "Duplicated &aux arguments found: ~A" it)
+        finally (aif (find-duplicates res :test #'string= :key #'car)
+                     (error "Duplicated &aux arguments are not allowed: ~A" it)
                      (return res))))
 
-(defun collect-aux-arg-names (terms)
-  (mapcar #'car (collect-aux-args terms)))
+(defun collect-aux-arg-names (chain)
+  (mapcar #'car (collect-aux-args chain)))
 
 (defun key-arg= (key1 key2)
   (string= (car (ensure-list key1))
            (car (ensure-list key2))))
 
-(defun gen-global-key-args (terms &optional exclude-args)
+(defun gen-global-key-args (chain &optional exclude-args)
   (mapcar #'(lambda (x) (list (cadar x) (second x)))
           (delete-if #'(lambda (x) (member (caar x) exclude-args :test #'string=))
-                     (collect-key-args terms))))
+                     (collect-key-args chain))))
 
-(defun gen-global-aux-args (terms)
-  (collect-aux-args terms))
+(defun gen-global-aux-args (chain)
+  (collect-aux-args chain))
 
 (defun gen-local-key-args (term1 term2 &optional exclude-args)
   (mappend #'car
            (delete-if #'(lambda (x) (member (caar x) exclude-args :test #'string=))
                       (collect-key-args (list term1 term2)))))
 
-(defun gen-global-args (terms &key exclude-args extra-key-args (with-aux t) (dimension 1) (extra-suffix ""))
+(defun gen-global-args (chain &key exclude-args extra-key-args (with-aux t) (dimension 1) (extra-suffix ""))
   (check-type dimension (integer 1))
-  (let ((global-key-args (gen-global-key-args terms exclude-args))
-        (global-aux-args (gen-global-aux-args terms)))
+  (let ((global-key-args (gen-global-key-args chain exclude-args))
+        (global-aux-args (gen-global-aux-args chain)))
     ;; If duplicates between &key and &aux arguments exist, &aux takes priority.
     (dolist (x global-aux-args)
       (setf global-key-args
             (delete (car x) global-key-args :key #'car :test #'string=)))
     (append (if (= dimension 1)
-                (get-args (car terms) :suffix extra-suffix)
+                (get-args (car chain) :suffix extra-suffix)
                 (loop for d from 1 to dimension
-                      append (get-args (car terms)
+                      append (get-args (car chain)
                                        :suffix (format nil "~A~A" d extra-suffix))))
             (when global-key-args
               `(&key ,@global-key-args
@@ -297,9 +257,9 @@ term1 to term2"
             (when (and global-aux-args with-aux)
               `(&aux ,@global-aux-args)))))
 
-(defun gen-passed-global-args (terms &key exclude-args (suffix ""))
+(defun gen-passed-global-args (chain &key exclude-args (suffix ""))
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
-      (parse-ordinary-lambda-list (gen-global-args terms
+      (parse-ordinary-lambda-list (gen-global-args chain
                                                    :exclude-args exclude-args
                                                    :extra-suffix suffix
                                                    :with-aux nil))
@@ -307,7 +267,7 @@ term1 to term2"
     (append required
             (mappend #'car keyword))))
 
-(defun expand-conversion-form (terms &key exclude-args)
+(defun expand-conversion-form (chain &key exclude-args)
   (labels ((expand (term-lst code)
               (if (null (cdr term-lst))
                   code
@@ -323,7 +283,7 @@ term1 to term2"
                                      `(multiple-value-call #',name
                                         ,code
                                         ,@(gen-local-key-args term1 term2 exclude-args)))))))))
-    (expand terms nil)))
+    (expand chain nil)))
 
 (defmacro defconverter (from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace)) (exclude-args nil) (documentation nil))
   "Defines a converter function from FROM-COLORSPACE to TO-COLORSPACE automatically."
@@ -406,10 +366,7 @@ Example:
 (defparameter *primary-functional-table* (make-hash-table))
 
 (defun print-primary-functional-table ()
-  (format t "%#<HASH-TABLE ~%")
-  (maphash-values #'(lambda (val) (format t "~S~%" val))
-                  *primary-functional-table*)
-  (format t ">"))
+  (print-hash-table *primary-functional-table*))
 
 (defun add-primary-functional (name colorspace lambda-list &key (term name))
   (setf (gethash term *primary-functional-table*)
