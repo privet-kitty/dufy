@@ -9,6 +9,6 @@
   :components ((:module "internal"
                 :components
                 ((:file "package")
-                 (:file "general")
+                 (:file "utilities")
                  (:file "matrix")))))
 
