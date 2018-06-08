@@ -213,3 +213,47 @@ THETA2] in a circle group."
 	     (<= x-m theta2))
 	(or (<= theta1-m x-m)
 	    (<= x-m theta2)))))
+
+
+;;;
+;;; Miscellaneous arithmetic
+;;;
+
+(defmacro fast-expt (base power)
+  "POWER must be a literal of type (integer 1)."
+  (check-type power (integer 1))
+  (labels ((floor-to-power-of-2 (num)
+             (let* ((approx (log num 2))
+                    (flo (expt 2 (floor approx)))
+                    (ceil (expt 2 (ceiling approx))))
+               (if (<= ceil num) ceil flo)))
+           (decompose-to-sum-of-powers-of-2 (num res)
+             (if (zerop num)
+                 res
+                 (let ((k (floor-to-power-of-2 num)))
+                   (decompose-to-sum-of-powers-of-2 (- num k) (cons k res))))))
+    (let* ((parts (decompose-to-sum-of-powers-of-2 power nil))
+           (m (apply #'max (cons 1 parts)))
+           (vars (apply #'vector
+                        (loop for i from 0 to (round (log m 2))
+                              collect (gensym (format nil "POW~A-" (expt 2 i)))))))
+      `(let* ((,(aref vars 0) ,base) 
+              ,@(loop for i from 1
+                      for num = (expt 2 i)
+                      until (> num m)
+                      collect `(,(aref vars i) (* ,(aref vars (- i 1))
+                                                  ,(aref vars (- i 1))))))
+         ,(if (= 1 (length parts))
+              (alexandria:last-elt vars)
+              `(* ,@(loop for num in parts
+                          collect (aref vars (round (log num 2))))))))))
+
+(declaim (inline square))
+(defun square (x) (* x x))
+(define-compiler-macro square (x)
+  (let ((var (gensym)))
+    (if (atom x)
+        `(* ,x ,x)
+        `(let ((,var ,x))
+           (* ,var ,var)))))
+

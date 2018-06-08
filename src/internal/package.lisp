@@ -22,6 +22,8 @@
    :circular-lerp-loose
    :circular-lerp
    :circular-member
+   :square
+   :fast-expt
 
    :matrix33
    :+identity-matrix+
