@@ -256,4 +256,3 @@ THETA2] in a circle group."
         `(* ,x ,x)
         `(let ((,var ,x))
            (* ,var ,var)))))
-
