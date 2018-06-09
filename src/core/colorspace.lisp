@@ -88,7 +88,7 @@
 (defun find-duplicates (lst &key (key #'identity) (test #'eql))
   (if (null lst)
       nil
-      (or (member (car lst) (cdr lst) :test test :key key)
+      (or (member (funcall key (car lst)) (cdr lst) :test test :key key)
           (find-duplicates (cdr lst)))))
 
 (defun duplicate-aux-and-key-p (key-args aux-args)
@@ -286,7 +286,8 @@ allowed. "
     (expand chain nil)))
 
 (defmacro defconverter (from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace)) (exclude-args nil) (documentation nil))
-  "Defines a converter function from FROM-COLORSPACE to TO-COLORSPACE automatically."
+  "Generates and defines a converter function from FROM-COLORSPACE to
+TO-COLORSPACE automatically with linking primary converters."
   (let ((chain (get-converter-chain from-colorspace to-colorspace)))
     `(progn
        (declaim #+dufy/inline (inline ,name)
@@ -336,7 +337,7 @@ Example:
 ;;; Functional on color space
 ;;;
 
-(defstruct (primary-functional (:constructor %make-primary-functional))
+(defstruct (functional (:constructor %make-functional))
   (name nil :type symbol)
   (term nil :type symbol)
   (colorspace nil :type symbol)
@@ -345,71 +346,68 @@ Example:
   (allow-other-keys nil :type boolean) ; currently not used
   (aux-args nil :type list))
 
-(defun make-primary-functional (name colorspace lambda-list &key (term name))
+(defun make-functional (name colorspace lambda-list &key (term name))
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
       (parse-ordinary-lambda-list lambda-list)
     (when (or optional rest)
       (error "primary converter cannot take either &optional or &rest arguments."))
     (multiple-value-bind (dim rem) (floor (length required)
-                                           (length (get-args colorspace)))
+                                          (length (get-args colorspace)))
       (unless (= rem 0)
         (error "The number of the required args ~A must be multiples of the number of ARGS ~A of color space ~A"
                required (get-args colorspace) colorspace))
-      (%make-primary-functional :name name
-                                :term term
-                                :colorspace colorspace
-                                :dimension dim
-                                :key-args keyword
-                                :aux-args aux
-                                :allow-other-keys allow-other-keys))))
+      (%make-functional :name name
+                        :term term
+                        :colorspace colorspace
+                        :dimension dim
+                        :key-args keyword
+                        :aux-args aux
+                        :allow-other-keys allow-other-keys))))
 
-(defparameter *primary-functional-table* (make-hash-table))
+(defparameter *functional-table* (make-hash-table))
 
-(defun print-primary-functional-table ()
-  (print-hash-table *primary-functional-table*))
+(defun print-functional-table ()
+  (print-hash-table *functional-table*))
 
-(defun add-primary-functional (name colorspace lambda-list &key (term name))
-  (setf (gethash term *primary-functional-table*)
-        (make-primary-functional name colorspace lambda-list
-                                 :term term)))
+(defun add-functional (name colorspace lambda-list &key (term name))
+  (setf (gethash term *functional-table*)
+        (make-functional name colorspace lambda-list
+                         :term term)))
 
-(defun get-primary-functional (term)
-  (or (gethash term *primary-functional-table*)
+(defun get-functional (term)
+  (or (gethash term *functional-table*)
       (error "No functional found: ~A" term)))
 
-(defmacro define-primary-functional ((name colorspace &key (term name)) lambda-list &body body)
+(defmacro define-functional ((fname colorspace &key (term fname)) lambda-list &body body)
   `(progn
-     (declaim (inline ,name))
-     (defun ,name ,lambda-list
+     (declaim (inline ,fname))
+     (defun ,fname ,lambda-list
        ,@body)
      (eval-when (:compile-toplevel :load-toplevel :execute)
-       (add-primary-functional ',name ',colorspace ',lambda-list :term ',term))))
+       (add-functional ',fname ',colorspace ',lambda-list :term ',term))))
 
-(defmacro define-secondary-functional (name term colorspace &key (exclude-args nil) (documentation nil))
-  (let* ((functional (get-primary-functional term))
-         (primary-func-name (primary-functional-name functional))
-         (primary-func-key-args (primary-functional-key-args functional))
-         (dimension (primary-functional-dimension functional))
-         (to-colorspace (primary-functional-colorspace functional))
+(defmacro define-secondary-functional (term colorspace &key (fname (intern (format nil "~A-~A" (ensure-colorspace-name colorspace) term))) (exclude-args nil) (documentation nil))
+  "Generates and defines a functional on another color space."
+  (let* ((functional (get-functional term))
+         (func-name (functional-name functional))
+         (extra-key-args (functional-key-args functional))
+         (dimension (functional-dimension functional))
+         (to-colorspace (functional-colorspace functional))
          (from-colorspace colorspace)
          (chain (get-converter-chain from-colorspace to-colorspace))
          (transform (gensym "TRANSFORM")))
-    `(defun ,name ,(gen-global-args chain
-                    :exclude-args exclude-args
-                    :extra-key-args primary-func-key-args
-                    :with-aux nil
-                    :dimension dimension)
+    `(defun ,fname ,(gen-global-args chain
+                     :exclude-args exclude-args
+                     :extra-key-args extra-key-args
+                     :with-aux nil
+                     :dimension dimension)
        (declare (optimize (speed 3) (safety 1)))
        ,@(ensure-list documentation)
        (let-converter ((,transform ,from-colorspace ,to-colorspace
                                    :exclude-args ,exclude-args))
-         (multiple-value-call #',primary-func-name
+         (multiple-value-call #',func-name
            ,@(if (= dimension 1)
                  `((,transform ,@(gen-passed-global-args chain :exclude-args exclude-args)))
                  (loop for d from 1 to dimension
                        collect `(,transform ,@(gen-passed-global-args chain :exclude-args exclude-args :suffix d))))
-           ,@(mappend #'car primary-func-key-args))))))
-
-;; (define-primary-functional (test-func rgbpack :term test) (int1 int2 &key (c 10)) (+ int1 int2 c))
-;; (define-secondary-functional lab-test test lab :exclude-args (clamp) :documentation "test doc.")
-
+           ,@(mappend #'car extra-key-args))))))

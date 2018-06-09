@@ -5,7 +5,7 @@
 (in-package :dufy-core)
 
 
-(define-primary-functional (lab-deltaeab lab :term deltaeab) (l1 a1 b1 l2 a2 b2)
+(define-functional (lab-deltaeab lab :term deltaeab) (l1 a1 b1 l2 a2 b2)
   "CIE 1976. Euclidean distance in L*a*b* space."
   (declare (optimize (speed 3) (safety 1))
            (real l1 a1 b1 l2 a2 b2))
@@ -14,11 +14,11 @@
              (square (- a1 a2))
              (square (- b1 b2))))))
 
-(define-secondary-functional xyz-deltaeab deltaeab xyz)
-(define-secondary-functional qrgb-deltaeab deltaeab qrgb)
+(define-secondary-functional deltaeab xyz)
+(define-secondary-functional deltaeab qrgb)
 
 
-(define-primary-functional (lab-deltae94 lab :term deltae94) (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
+(define-functional (lab-deltae94 lab :term deltae94) (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
   "CIE 1994. 
 APPLICATION::= :graphic-arts | :textiles"
   (declare (optimize (speed 3) (safety 1)))
@@ -43,11 +43,11 @@ APPLICATION::= :graphic-arts | :textiles"
                      (square (/ delta-c sc))
                      (square (/ delta-h sh))))))))))
 
-(define-secondary-functional xyz-deltae94 deltae94 xyz)
-(define-secondary-functional qrgb-deltae94 deltae94 qrgb)
+(define-secondary-functional deltae94 xyz)
+(define-secondary-functional deltae94 qrgb)
 
 
-(define-primary-functional (lab-deltae00 lab :term deltae00) (l1 a1 b1 l2 a2 b2)
+(define-functional (lab-deltae00 lab :term deltae00) (l1 a1 b1 l2 a2 b2)
   "CIEDE2000."
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (l1 a1 b1 l2 a2 b2)
@@ -98,7 +98,8 @@ APPLICATION::= :graphic-arts | :textiles"
            (varRT  (* -2d0
                       (sqrt (/ Cmeanprime7 (+ Cmeanprime7 #.(expt 25 7))))
                       (sin (* #.(* 60d0 +TWO-PI/360+)
-                              (exp (- (expt (* (- largeHmeanprime #.(* 275d0 +TWO-PI/360+)) #.(/ (* 25d0 +TWO-PI/360+))) 2)))))))
+                              (exp (- (square (* (- largeHmeanprime #.(* 275d0 +TWO-PI/360+))
+                                                 #.(/ (* 25d0 +TWO-PI/360+))))))))))
            (diff-l (/ deltaLprime varSL))
            (diff-c (/ deltaCprime varSC))
            (diff-h (/ deltalargeHprime varSH)))
@@ -108,8 +109,8 @@ APPLICATION::= :graphic-arts | :textiles"
                     (square diff-h)
                     (* varRT diff-c diff-h)))))))
 
-(define-secondary-functional xyz-deltae00 deltae00 xyz)
-(define-secondary-functional qrgb-deltae00 deltae00 qrgb)
+(define-secondary-functional deltae00 xyz)
+(define-secondary-functional deltae00 qrgb)
 
 (defun bench-deltae00 (&optional (num 1000000))
   (declare (optimize (speed 3) (safety 1)))
@@ -120,19 +121,20 @@ APPLICATION::= :graphic-arts | :textiles"
                      :rgbspace +bg-srgb-16+))))
 
 
-(define-primary-functional (lab-deltaecmc lab :term deltaecmc) (l1 a1 b1 l2 a2 b2 &key (l-factor 2d0) (c-factor 1d0))
+(define-functional (lab-deltaecmc lab :term deltaecmc) (l1 a1 b1 l2 a2 b2 &key (l-factor 2d0) (c-factor 1d0))
   (declare (optimize (speed 3) (safety 1)))
   "CMC l:c"
   (with-double-float (l1 a1 b1 l2 a2 b2 l-factor c-factor)
     (let* ((deltaa (- a1 a2))
            (deltab (- b1 b2))
            (deltal (- l1 l2))
-           (c1-2 (+ (* a1 a1) (* b1 b1)))
-           (c1 (sqrt c1-2))
-           (c1-4 (* c1-2 c1-2))
+           (c1-squared (+ (square a1) (square b1)))
+           (c1 (sqrt c1-squared))
+           (c1-4 (square c1-squared))
            (c2 (sqrt (+ (* a2 a2) (* b2 b2))))
            (deltac (- c1 c2))
-           (deltah-2 (the (double-float 0d0) (+ (* deltaa deltaa) (* deltab deltab) (- (* deltac deltac)))))
+           (deltah-2 (the (double-float 0d0)
+                          (+ (square deltaa) (square deltab) (- (square deltac)))))
            (h1 (mod (atan b1 a1) TWO-PI))
            (f (sqrt (/ c1-4 (+ 1900d0 c1-4))))
            (tt (if (or (< h1 #.(* 164d0 +TWO-PI/360+))
@@ -151,6 +153,5 @@ APPLICATION::= :graphic-arts | :textiles"
                (* diff-c diff-c)
                diff-h-2)))))
 
-(define-secondary-functional xyz-deltaecmc deltaecmc xyz)
-(define-secondary-functional qrgb-deltaecmc deltaecmc qrgb)
-
+(define-secondary-functional deltaecmc xyz)
+(define-secondary-functional deltaecmc qrgb)
