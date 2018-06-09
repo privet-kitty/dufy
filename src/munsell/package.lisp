@@ -7,6 +7,7 @@
    dufy-core::define-colorspace
    dufy-core::defconverter)
   (:export
+   :mhvc :munsell
    :invalid-mhvc-error
    :munsellspec-parse-error
    :large-approximation-error

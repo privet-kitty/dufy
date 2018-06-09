@@ -222,7 +222,7 @@ THETA2] in a circle group."
 (defmacro fast-expt (base power)
   "POWER must be a literal of type (integer 1)."
   (check-type power (integer 1))
-  (labels ((floor-to-power-of-2 (num)
+  (labels ((round-off-to-power-of-2 (num)
              (let* ((approx (log num 2))
                     (flo (expt 2 (floor approx)))
                     (ceil (expt 2 (ceiling approx))))
@@ -230,7 +230,7 @@ THETA2] in a circle group."
            (decompose-to-sum-of-powers-of-2 (num res)
              (if (zerop num)
                  res
-                 (let ((k (floor-to-power-of-2 num)))
+                 (let ((k (round-off-to-power-of-2 num)))
                    (decompose-to-sum-of-powers-of-2 (- num k) (cons k res))))))
     (let* ((parts (decompose-to-sum-of-powers-of-2 power nil))
            (m (apply #'max (cons 1 parts)))
@@ -244,7 +244,7 @@ THETA2] in a circle group."
                       collect `(,(aref vars i) (* ,(aref vars (- i 1))
                                                   ,(aref vars (- i 1))))))
          ,(if (= 1 (length parts))
-              (alexandria:last-elt vars)
+              (last-elt vars)
               `(* ,@(loop for num in parts
                           collect (aref vars (round (log num 2))))))))))
 

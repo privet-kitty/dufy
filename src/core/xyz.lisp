@@ -118,7 +118,7 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
     (call-next-method)))
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
-  "Generates an observer based on CMF arrays, which must
+  "Generates an observer object based on CMF arrays, which must
 be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
   (labels ((gen-cmf-1 (arr num &optional (begin-wl 360) (end-wl 830))
 	     ;; fix me
