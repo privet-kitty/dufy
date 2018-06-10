@@ -26,36 +26,26 @@
 
 (defun print-make-array (var-name array &optional (stream t) (declaration t) (load-time-value nil))
   "Prints a code like (defparameter VAR-NAME (make-array ...))"
-  (let ((typ (array-element-type array))
-	(dims (array-dimensions array)))
-    (when declaration
-      (format stream "~S~%"
-              `(declaim (type (simple-array ,typ ,dims)
-                              ,(intern (string-upcase var-name))))))
-    (format stream "(DEFPARAMETER ~A ~A~% #.~S~A)~%"
-            var-name
-            (if load-time-value "(load-time-value" "")
-            `(make-array ',dims
-                         :element-type ',typ
-                         :initial-contents ',(array-to-list array))
-            (if load-time-value " t)" ""))))
-
-;; (defun plot-spectrum (spectrum &optional (band 5) (begin 360) (end 830))
-;;   "Plots a spectrum function with gnuplot."
-;;   (let ((x-lst (loop for x from begin to end by band collect x)))
-;;     (clgp:plot (mapcar spectrum x-lst)
-;;                :x-seq x-lst)))
+  (labels ((wrap-with-load-time-value (form)
+             `(load-time-value ,form t)))
+    (let ((typ (array-element-type array))
+          (dims (array-dimensions array)))
+      (when declaration
+        (format stream "~S~%"
+                `(declaim (type (simple-array ,typ ,dims)
+                                ,(intern (string-upcase var-name))))))
+      (format stream "(DEFPARAMETER ~A~% ~S)~%"
+              var-name
+              (funcall (if load-time-value
+                           #'wrap-with-load-time-value
+                           #'identity)
+                       `(make-array ',dims
+                                    :element-type ',typ
+                                    :initial-contents ',(array-to-list array)))))))
 
 (define-constant TWO-PI (float (+ PI PI) 1d0))
-
-(defmacro subseq-values (start end number form)
-  "analogous to NTH-VALUE"
-  (let ((vars (loop for i from 0 below number collect (gensym))))
-    `(multiple-value-bind ,vars ,form
-       (declare (ignore ,@(subseq vars 0 start)
-                        ,@(subseq vars end number)))
-       (values ,@(subseq vars start end)))))
-
+(define-constant +TWO-PI/360+ (/ TWO-PI 360))
+(define-constant +360/TWO-PI+ (/ 360 TWO-PI))
 
 (defmacro dotimes-unroll ((var count &optional result) &body body)
   `(block nil
@@ -107,7 +97,7 @@
             collect (stime-after-gc ,@body)))))
 
 #+sbcl
-(defmacro with-profile (&body body)
+(defmacro with-profiling (&body body)
   "For devel."
   `(unwind-protect
         (progn (sb-profile:profile "DUFY")

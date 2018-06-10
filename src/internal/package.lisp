@@ -10,9 +10,10 @@
    :time-after-gc
    :stime-after-gc
    :time-median
-   :with-profile
+   :with-profiling
 
-   :two-pi
+   :TWO-PI
+   :+TWO-PI/360+ :+360/TWO-PI+
    :nearly=
    :nearly<=
    :nearly-equal

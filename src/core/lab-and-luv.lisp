@@ -68,9 +68,6 @@
   (declare (optimize (speed 3) (safety 1)))
   (- (* 116d0 (function-f (float y 1d0))) 16d0))
 
-(define-constant +TWO-PI/360+ (/ TWO-PI 360))
-(define-constant +360/TWO-PI+ (/ 360 TWO-PI))
-
 (define-primary-converter (lab lchab) (lstar astar bstar)
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (lstar astar bstar)
