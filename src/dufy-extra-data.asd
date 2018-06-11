@@ -8,5 +8,6 @@
   :components ((:module "extra-data"
 		:components
 		((:file "package")
-                 (:file "illuminants-data")))))
+                 (:file "illuminants-data")
+                 (:file "illuminants-f3-series")))))
 
