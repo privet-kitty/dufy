@@ -401,18 +401,18 @@ BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
         (spectrum-to-xyz spctrm :illuminant illuminant)))))
 
 
-(defun calc-to-spectrum-matrix (illuminant-spd observer)
+(defun calc-to-spectrum-matrix (illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
   "Used for XYZ-to-spectrum conversion."
   (declare (optimize (speed 3) (safety 1)))
   (let ((mat (load-time-value
               (make-array '(3 3) :element-type 'double-float
                                  :initial-element 0d0))))
     (multiple-value-bind (a00 a10 a20)
-        (spectrum-to-xyz-primitive (observer-cmf-x observer) illuminant-spd observer)
+        (spectrum-to-xyz-primitive (observer-cmf-x observer) illuminant-spd observer begin-wl end-wl band)
       (multiple-value-bind (a01 a11 a21)
-          (spectrum-to-xyz-primitive (observer-cmf-y observer) illuminant-spd observer)
+          (spectrum-to-xyz-primitive (observer-cmf-y observer) illuminant-spd observer begin-wl end-wl band)
         (multiple-value-bind (a02 a12 a22)
-            (spectrum-to-xyz-primitive (observer-cmf-z observer) illuminant-spd observer)
+            (spectrum-to-xyz-primitive (observer-cmf-z observer) illuminant-spd observer begin-wl end-wl band)
           (setf (aref mat 0 0) a00
                 (aref mat 0 1) a01
                 (aref mat 0 2) a02
@@ -439,7 +439,7 @@ many and may contain a negative spectral density."
                  (* fac-z (funcall (observer-cmf-z observer) wl))))))))
     
 	    
-(defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil))
+(defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil) (begin-wl 360) (end-wl 830) (band 1))
   "Generates an illuminant with an SPD. Although the white point (X,
 1d0, Z) is automatically calculated if X and Z are nil, you can
 designate X and Z explicitly. Note that no error occurs, even if the
@@ -454,31 +454,36 @@ calculated at compile time."
   (declare (ignore compile-time))
   (macrolet
       ((make (x z)
-         `(%make-illuminant :x (float ,x 1d0)
-                            :z (float ,z 1d0)
-                            :spectrum spectrum
-                            :observer observer
-                            :to-spectrum-matrix (calc-to-spectrum-matrix spectrum
-                                                                         observer))))
+         `(%make-illuminant
+           :x (float ,x 1d0)
+           :z (float ,z 1d0)
+           :spectrum (or spectrum #'empty-spectrum)
+           :observer observer
+           :to-spectrum-matrix (if spectrum
+                                   (calc-to-spectrum-matrix spectrum observer begin-wl end-wl band)
+                                   +empty-matrix+))))
     (if (and (null x) (null z))
         (multiple-value-bind (x y z)
-            (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer)
+            (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer begin-wl end-wl band)
           (declare (ignore y))
           (make x z))
         (make x z))))
 
-(define-compiler-macro make-illuminant (&whole form &key x z spectrum (observer '+obs-cie1931+) (compile-time nil))
+(define-compiler-macro make-illuminant (&whole form &key x z spectrum (observer '+obs-cie1931+) (begin-wl 360) (end-wl 830) (band 1) (compile-time nil))
   (if (and compile-time (null x) (null z))
       (let ((spctrm (eval spectrum))
-            (obs (eval observer)))
+            (obs (eval observer))
+            (bwl (eval begin-wl))
+            (ewl (eval end-wl))
+            (bnd (eval band)))
         (multiple-value-bind (x y z)
-            (spectrum-to-xyz-primitive #'flat-spectrum spctrm obs)
+            (spectrum-to-xyz-primitive #'flat-spectrum spctrm obs bwl ewl bnd)
           (declare (ignore y))
-          `(%make-illuminant :x (float ,x 1d0)
-                             :z (float ,z 1d0)
-                             :spectrum ,spectrum
-                             :observer ,observer
-                             :to-spectrum-matrix ,(calc-to-spectrum-matrix spctrm
-                                                                           obs))))
+          `(%make-illuminant
+            :x (float ,x 1d0)
+            :z (float ,z 1d0)
+            :spectrum ,spectrum
+            :observer ,observer
+            :to-spectrum-matrix ,(calc-to-spectrum-matrix spctrm obs bwl ewl bnd))))
       form))
 
