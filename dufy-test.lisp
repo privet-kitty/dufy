@@ -31,6 +31,9 @@
   (make-illuminant :spectrum (gen-illum-d-spectrum 5500 :rectify t)
                    :observer +obs-cie1964+))
 
+(defparameter *illum-b*
+  (make-illuminant :x 0.9909274174750896d0 :z 0.8531327231885476d0))
+
 
 (defparameter *lchuv-set*
   '((20 30 40) (0.5 0.2 240) (99.9 0.1 359.9)))
@@ -89,7 +92,13 @@
                                                         :illuminant *illum-d55-10*)
 						xyz)
 					 340d0 850d0 0.23d0)
-					:illuminant *illum-d55-10*))))))
+					:illuminant *illum-d55-10*)))))
+  (is (eql 'escaped
+           (block no-spd
+             (handler-bind ((no-spd-error (lambda (c)
+                                            (declare (ignore c))
+                                            (return-from no-spd 'escaped))))
+               (spectrum-to-xyz #'flat-spectrum :illuminant *illum-b*))))))
 
 (test test-xyy
   (dolist (xyz *xyz-set*)
