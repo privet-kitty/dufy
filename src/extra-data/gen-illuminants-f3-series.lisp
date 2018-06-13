@@ -6,7 +6,7 @@
 
 (defparameter this-dir-path (uiop:pathname-directory-pathname *load-pathname*))
 (defparameter dat-path (merge-pathnames #P"FL3.x.tsv" dufy-internal:*dat-dir-path*))
-(defparameter obj-name "illuminants-F3-series.lisp")
+(defparameter obj-name "illuminants-f3-series.lisp")
 (defparameter obj-path (merge-pathnames (pathname obj-name) this-dir-path))
 
 (eval
