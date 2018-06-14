@@ -98,38 +98,50 @@
 
 (defparameter +illum-f1+
   (make-illuminant :spectrum (gen-spectrum +illum-f1-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f2+
   (make-illuminant :spectrum (gen-spectrum +illum-f2-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f3+
   (make-illuminant :spectrum (gen-spectrum +illum-f3-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f4+
   (make-illuminant :spectrum (gen-spectrum +illum-f4-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f5+
   (make-illuminant :spectrum (gen-spectrum +illum-f5-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f6+
   (make-illuminant :spectrum (gen-spectrum +illum-f6-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f7+
   (make-illuminant :spectrum (gen-spectrum +illum-f7-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f8+
   (make-illuminant :spectrum (gen-spectrum +illum-f8-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f9+
   (make-illuminant :spectrum (gen-spectrum +illum-f9-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f10+
   (make-illuminant :spectrum (gen-spectrum +illum-f10-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f11+
   (make-illuminant :spectrum (gen-spectrum +illum-f11-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 (defparameter +illum-f12+
   (make-illuminant :spectrum (gen-spectrum +illum-f12-arr+ 380 780)
+                   :begin-wl 380 :end-wl 780
                    :compile-time t))
 

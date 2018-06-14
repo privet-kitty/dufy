@@ -4,6 +4,8 @@
   (asdf:load-system :alexandria)
   (asdf:load-system :dufy-internal))
 
+(use-package :dufy-internal)
+
 (defparameter this-dir-path (uiop:pathname-directory-pathname *load-pathname*))
 (defparameter dat-path (merge-pathnames #P"FL3.x.tsv" dufy-internal:*dat-dir-path*))
 (defparameter obj-name "illuminants-f3-series.lisp")
@@ -43,6 +45,7 @@
                (dufy:make-illuminant :spectrum
                                      (dufy:gen-spectrum ,(intern (format nil "+F3.~A-ARR+" i))
                                                         380 780)
+                                     :begin-wl 380 :end-wl 780
                                      :compile-time t))
             out)))
 
