@@ -36,11 +36,10 @@ values are accepted."
 	  (values 0d0 0d0 y)
 	  (values (/ x sum) (/ y sum) y)))))
 
-
 (defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
   "GEN-SPECTRUM returns a spectral power distribution
 function, #'(lambda (wavelength-nm) ...), which interpolates
-SPECTRUM-SEQ linearly.
+SPECTRUM-SEQ linearly. 
 
 Note: SPECTRUM-SEQ must be a sequence of double-float.
 If the type of SPECTRUM-SEQ is (simple-array double-float (*)), it is
@@ -119,90 +118,89 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
   "Generates an observer object based on CMF arrays, which must
-be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
-  (labels ((gen-cmf-1 (arr num &optional (begin-wl 360) (end-wl 830))
-	     ;; fix me
-             ;; verbose, almost equivalent to GEN-SPECTRUM
-	     (declare ((simple-array double-float (* 3)) arr))
-	     (let* ((size (- (array-dimension arr 0) 1))
-		    (begin-wl-f (float begin-wl 1d0))
-		    (end-wl-f (float end-wl 1d0)))
-	       (if (= size (- end-wl begin-wl))
-		   #'(lambda (wl)
-		       (declare (optimize (speed 3) (safety 1)))
-		       (multiple-value-bind (quot rem)
-			   (floor (- (clamp (float wl 1d0)
-                                            begin-wl-f
-                                            end-wl-f)
-                                     begin-wl-f))
-			 (lerp rem
-			       (aref arr quot num)
-			       (aref arr (min (1+ quot) size) num))))
-		   (let* ((band (/ (- end-wl-f begin-wl-f) size))
-			  (/band (/ band)))
-		     #'(lambda (wl)
-			 (declare (optimize (speed 3) (safety 1)))
-			 (let* ((wl$ (- (clamp (float wl 1d0)
-                                               begin-wl-f
-                                               end-wl-f)
-                                        begin-wl-f))
-				(frac (mod wl$ band))
-				(coef (* frac /band))
-				(idx (round (* (- wl$ frac) /band))))
-			   (lerp coef
-				 (aref arr idx num)
-				 (aref arr (min (+ idx 1) size) num))))))))
-	   (gen-cmf-3 (arr &optional (begin-wl 360) (end-wl 830))
-	     (declare ((simple-array double-float (* 3)) arr))
-	     (let* ((size (- (array-dimension arr 0) 1))
-		    (begin-wl-f (float begin-wl 1d0))
-		    (end-wl-f (float end-wl 1d0)))
-	       (if (= size (- end-wl begin-wl))
-		   #'(lambda (wl)
-		       (declare (optimize (speed 3) (safety 1)))
-		       (multiple-value-bind (quot rem)
-			   (floor (- (clamp (float wl 1d0)
-                                            begin-wl-f
-                                            end-wl-f)
-                                     begin-wl-f))
-			 (values (lerp rem
-				       (aref arr quot 0)
-				       (aref arr (min (1+ quot) size) 0))
-				 (lerp rem
-				       (aref arr quot 1)
-				       (aref arr (min (1+ quot) size) 1))
-				 (lerp rem
-				       (aref arr quot 2)
-				       (aref arr (min (1+ quot) size) 2)))))
-		   (let* ((band (/ (- end-wl-f begin-wl-f) size))
-			  (/band (/ band)))
-		     #'(lambda (wl)
-			 (declare (optimize (speed 3) (safety 1)))
-			 (let* ((wl$ (- (clamp (float wl 1d0)
-                                               begin-wl-f
-                                               end-wl-f)
-                                        begin-wl-f))
-				(frac (mod wl$ band))
-				(coef (* frac /band))
-				(idx (round (* (- wl$ frac) /band)))
-                                (idx+1 (min (1+ idx) size)))
-			   (values (lerp coef
-					 (aref arr idx 0)
-					 (aref arr idx+1 0))
-				   (lerp coef
-					 (aref arr idx 1)
-					 (aref arr idx+1 1))
-				   (lerp coef
-					 (aref arr idx 2)
-					 (aref arr idx+1 2))))))))))
-    (%make-observer
-     :begin-wl begin-wl
-     :end-wl end-wl
-     :cmf-arr cmf-arr
-     :cmf-x (gen-cmf-1 cmf-arr 0 begin-wl end-wl)
-     :cmf-y (gen-cmf-1 cmf-arr 1 begin-wl end-wl)
-     :cmf-z (gen-cmf-1 cmf-arr 2 begin-wl end-wl)
-     :cmf (gen-cmf-3 cmf-arr begin-wl end-wl))))
+be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3)). The response out of the interval
+[begin-wl, end-wl] is regarded as 0."
+  (let ((begin-wl-f (float begin-wl 1d0))
+        (end-wl-f (float end-wl 1d0)))
+    (labels ((gen-cmf-1 (arr num &optional (begin-wl 360) (end-wl 830))
+               ;; fix me
+               ;; verbose, almost equivalent to GEN-SPECTRUM
+               (declare ((simple-array double-float (* 3)) arr))
+               (let ((size (- (array-dimension arr 0) 1)))
+                 (if (= size (- end-wl begin-wl))
+                     #'(lambda (wl)
+                         (declare (optimize (speed 3) (safety 1)))
+                         (let ((wl (float wl 1d0)))
+                           (if (or (< wl begin-wl-f) (< end-wl-f wl))
+                               0d0
+                               (multiple-value-bind (quot rem)
+                                   (floor (- wl begin-wl-f))
+                                 (lerp rem
+                                       (aref arr quot num)
+                                       (aref arr (min (1+ quot) size) num))))))
+                     (let* ((band (/ (- end-wl-f begin-wl-f) size))
+                            (/band (/ band)))
+                       #'(lambda (wl)
+                           (declare (optimize (speed 3) (safety 1)))
+                           (let ((wl (float wl 1d0)))
+                             (if (or (< wl begin-wl-f) (< end-wl-f wl))
+                                 0d0
+                                 (let* ((wl$ (- wl begin-wl-f))
+                                        (frac (mod wl$ band))
+                                        (coef (* frac /band))
+                                        (idx (round (* (- wl$ frac) /band))))
+                                   (lerp coef
+                                         (aref arr idx num)
+                                         (aref arr (min (+ idx 1) size) num))))))))))
+             (gen-cmf-3 (arr &optional (begin-wl 360) (end-wl 830))
+               (declare ((simple-array double-float (* 3)) arr))
+               (let ((size (- (array-dimension arr 0) 1)))
+                 (if (= size (- end-wl begin-wl))
+                     #'(lambda (wl)
+                         (declare (optimize (speed 3) (safety 1)))
+                         (let ((wl (float wl 1d0)))
+                           (if (or (< wl begin-wl-f) (< end-wl-f wl))
+                               0d0
+                               (multiple-value-bind (quot rem)
+                                   (floor (- wl begin-wl-f))
+                                 (values (lerp rem
+                                               (aref arr quot 0)
+                                               (aref arr (min (1+ quot) size) 0))
+                                         (lerp rem
+                                               (aref arr quot 1)
+                                               (aref arr (min (1+ quot) size) 1))
+                                         (lerp rem
+                                               (aref arr quot 2)
+                                               (aref arr (min (1+ quot) size) 2)))))))
+                     (let* ((band (/ (- end-wl-f begin-wl-f) size))
+                            (/band (/ band)))
+                       #'(lambda (wl)
+                           (declare (optimize (speed 3) (safety 1)))
+                           (let ((wl (float wl 1d0)))
+                             (if (or (< wl begin-wl-f) (< end-wl-f wl))
+                                 0d0
+                                 (let* ((wl$ (- wl begin-wl-f))
+                                        (frac (mod wl$ band))
+                                        (coef (* frac /band))
+                                        (idx (round (* (- wl$ frac) /band)))
+                                        (idx+1 (min (1+ idx) size)))
+                                   (values (lerp coef
+                                                 (aref arr idx 0)
+                                                 (aref arr idx+1 0))
+                                           (lerp coef
+                                                 (aref arr idx 1)
+                                                 (aref arr idx+1 1))
+                                           (lerp coef
+                                                 (aref arr idx 2)
+                                                 (aref arr idx+1 2))))))))))))
+      (%make-observer
+       :begin-wl begin-wl
+       :end-wl end-wl
+       :cmf-arr cmf-arr
+       :cmf-x (gen-cmf-1 cmf-arr 0 begin-wl end-wl)
+       :cmf-y (gen-cmf-1 cmf-arr 1 begin-wl end-wl)
+       :cmf-z (gen-cmf-1 cmf-arr 2 begin-wl end-wl)
+       :cmf (gen-cmf-3 cmf-arr begin-wl end-wl)))))
 
 (defparameter +obs-cie1931+ (make-observer cmf-arr-cie1931)
   "CIE 1931 Standard Colorimetric Observer (2-degree).")
@@ -261,8 +259,9 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3))."
 
 (defun gen-illum-d-spectrum (temperature &key rectify)
   "Generates the spectrum of the illuminant series D for a given
-temperature. If RECTIFY is t, the temperature multiplied by (/
-1.43880 1.438) is used instead. (roughly 6504K for 6500K, etc.)"
+temperature (from 300 nm to 830 nm with band-width 1 nm). If RECTIFY
+is t, the temperature multiplied by (/ 1.43880 1.438) is used
+instead. (roughly 6504K for 6500K, etc.)"
   (let ((temp (if rectify
                   (* temperature #.(/ 1.43880d0 1.438d0))
                   temperature)))
