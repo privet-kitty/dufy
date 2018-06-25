@@ -338,7 +338,7 @@ Example:
 ;;;
 
 (defstruct (functional (:constructor %make-functional))
-  (name nil :type symbol)
+  (fname nil :type symbol) ; function name
   (term nil :type symbol)
   (colorspace nil :type symbol)
   (dimension 1 :type (integer 1))
@@ -346,7 +346,7 @@ Example:
   (allow-other-keys nil :type boolean) ; currently not used
   (aux-args nil :type list))
 
-(defun make-functional (name colorspace lambda-list &key (term name))
+(defun make-functional (fname colorspace lambda-list &key (term fname))
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
       (parse-ordinary-lambda-list lambda-list)
     (when (or optional rest)
@@ -356,7 +356,7 @@ Example:
       (unless (= rem 0)
         (error "The number of the required args ~A must be multiples of the number of ARGS ~A of color space ~A"
                required (get-args colorspace) colorspace))
-      (%make-functional :name name
+      (%make-functional :fname fname
                         :term term
                         :colorspace colorspace
                         :dimension dim
@@ -369,9 +369,9 @@ Example:
 (defun print-functional-table ()
   (print-hash-table *functional-table*))
 
-(defun add-functional (name colorspace lambda-list &key (term name))
+(defun add-functional (fname colorspace lambda-list &key (term fname))
   (setf (gethash term *functional-table*)
-        (make-functional name colorspace lambda-list
+        (make-functional fname colorspace lambda-list
                          :term term)))
 
 (defun get-functional (term)
@@ -387,9 +387,10 @@ Example:
        (add-functional ',fname ',colorspace ',lambda-list :term ',term))))
 
 (defmacro extend-functional (term colorspace &key (fname (intern (format nil "~A-~A" (ensure-colorspace-name colorspace) term))) (exclude-args nil) (documentation nil))
-  "Generates and defines a functional on another color space."
+  "Generates and defines a functional on another color space. The name
+of the function is [COLORSPACE]-[TERM] if FNAME is not given."
   (let* ((functional (get-functional term))
-         (func-name (functional-name functional))
+         (func-name (functional-fname functional))
          (extra-key-args (functional-key-args functional))
          (dimension (functional-dimension functional))
          (to-colorspace (functional-colorspace functional))
