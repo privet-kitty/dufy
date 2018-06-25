@@ -386,7 +386,7 @@ Example:
      (eval-when (:compile-toplevel :load-toplevel :execute)
        (add-functional ',fname ',colorspace ',lambda-list :term ',term))))
 
-(defmacro define-secondary-functional (term colorspace &key (fname (intern (format nil "~A-~A" (ensure-colorspace-name colorspace) term))) (exclude-args nil) (documentation nil))
+(defmacro extend-functional (term colorspace &key (fname (intern (format nil "~A-~A" (ensure-colorspace-name colorspace) term))) (exclude-args nil) (documentation nil))
   "Generates and defines a functional on another color space."
   (let* ((functional (get-functional term))
          (func-name (functional-name functional))

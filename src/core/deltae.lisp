@@ -14,8 +14,8 @@
              (square (- a1 a2))
              (square (- b1 b2))))))
 
-(define-secondary-functional deltaeab xyz)
-(define-secondary-functional deltaeab qrgb)
+(extend-functional deltaeab xyz)
+(extend-functional deltaeab qrgb)
 
 
 (define-functional (lab-deltae94 lab :term deltae94) (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
@@ -43,8 +43,8 @@ APPLICATION::= :graphic-arts | :textiles"
                      (square (/ delta-c sc))
                      (square (/ delta-h sh))))))))))
 
-(define-secondary-functional deltae94 xyz)
-(define-secondary-functional deltae94 qrgb)
+(extend-functional deltae94 xyz)
+(extend-functional deltae94 qrgb)
 
 
 (define-functional (lab-deltae00 lab :term deltae00) (l1 a1 b1 l2 a2 b2)
@@ -109,8 +109,8 @@ APPLICATION::= :graphic-arts | :textiles"
                     (square diff-h)
                     (* varRT diff-c diff-h)))))))
 
-(define-secondary-functional deltae00 xyz)
-(define-secondary-functional deltae00 qrgb)
+(extend-functional deltae00 xyz)
+(extend-functional deltae00 qrgb)
 
 (defun bench-deltae00 (&optional (num 1000000))
   (declare (optimize (speed 3) (safety 1)))
@@ -153,5 +153,5 @@ APPLICATION::= :graphic-arts | :textiles"
                (* diff-c diff-c)
                diff-h-2)))))
 
-(define-secondary-functional deltaecmc xyz)
-(define-secondary-functional deltaecmc qrgb)
+(extend-functional deltaecmc xyz)
+(extend-functional deltaecmc qrgb)
