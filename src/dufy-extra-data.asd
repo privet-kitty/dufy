@@ -9,5 +9,6 @@
 		:components
 		((:file "package")
                  (:file "illuminants-data")
-                 (:file "illuminants-f3-series")))))
+                 (:file "illuminants-f3-series")
+                 (:file "illuminants-gas-discharge-lamps")))))
 

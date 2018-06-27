@@ -8,6 +8,7 @@
 (define-cat-function c-to-d65 +illum-c+ +illum-d65+ :cat +bradford+)
 (define-cat-function d65-to-c +illum-d65+ +illum-c+ :cat +bradford+)
 
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *most-positive-fixnum-bit-length* #.(floor (log most-positive-fixnum 2))))
 
@@ -20,6 +21,7 @@
     some cases less than MOST-POSITIVE-DOUBLE-FLOAT because of
     efficiency: e.g. in SBCL (64-bit) it is desirable that a float F
     fulfills (typep (round F) '(SIGNED-BYTE 64))"))
+
 
 (define-colorspace mhvc ((hue40 (double-float 0d0 40d0))
                          (value double-float)
@@ -77,9 +79,9 @@ formula is based on ASTM D1535-08e1:"
 (declaim (inline y-to-munsell-value))
 (defun y-to-munsell-value (y)
   "Interpolates the inversion table of MUNSELL-VALUE-TO-Y linearly,
-whose band width is 10^-3. The
+whose band width is 1e-3. The
 error, (abs (- (y (munsell-value-to-y (y-to-munsell-value y))))), is
-smaller than 10^-5."
+smaller than 1e-5."
   (declare (optimize (speed 3) (safety 1)))
   (let* ((y1000 (* (clamp (float y 1d0) 0d0 1d0) 1000))
 	 (y1 (floor y1000))
@@ -91,7 +93,7 @@ smaller than 10^-5."
 	     (* r (aref y-to-munsell-value-arr y2)))))))
 
 (defun test-value-to-y (&optional (num 100000000))
-  "For devel. Evaluates error of y-to-munsell-value"
+  "For devel. Evaluates the error of y-to-munsell-value"
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum num))
   (let ((max-error 0d0)
@@ -326,7 +328,7 @@ as follows are also available:
 but the capital letters and  '/' are reserved:
 
  (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #X0FFFFFF\")
-=> ERROR,
+;; => ERROR,
 "
   (declare (optimize (speed 3) (safety 1))
            (string munsellspec))

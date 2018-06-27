@@ -12,8 +12,9 @@
 (define-colorspace xyy ((small-x double-float) (small-y double-float) (y double-float))
   :documentation "Y is normalized: i.e. the nominal range of Y is [0, 1]")
 (define-colorspace spectrum ((spectrum spectrum-function))
-  :documentation "A spectrum is just a function which receives a real number as
-wavelength (nm) and returns a double-float.")
+  :documentation "A spectrum is just a function which receives a
+wavelength (nm) as a real number and returns a double-float: (function
+* (values double-float &optional))")
 
 (define-primary-converter (xyy xyz) (small-x small-y y)
   "xyY to XYZ. The nominal range of Y is [0, 1], though all real
@@ -160,7 +161,7 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3)). The response out of the interval
                          (declare (optimize (speed 3) (safety 1)))
                          (let ((wl (float wl 1d0)))
                            (if (or (< wl begin-wl-f) (< end-wl-f wl))
-                               0d0
+                               (values 0d0 0d0 0d0)
                                (multiple-value-bind (quot rem)
                                    (floor (- wl begin-wl-f))
                                  (values (lerp rem
@@ -178,7 +179,7 @@ be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3)). The response out of the interval
                            (declare (optimize (speed 3) (safety 1)))
                            (let ((wl (float wl 1d0)))
                              (if (or (< wl begin-wl-f) (< end-wl-f wl))
-                                 0d0
+                                 (values 0d0 0d0 0d0)
                                  (let* ((wl$ (- wl begin-wl-f))
                                         (frac (mod wl$ band))
                                         (coef (* frac /band))
@@ -375,10 +376,10 @@ ILLUMINANT-SPD: SPD of illuminant"
 
 (define-primary-converter (spectrum xyz) (spectrum &key (illuminant +illum-d65+) (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1)))
-  "Computes XYZ values from SPECTRUM in reflective and transmissive
+  "Computes XYZ values from SPECTRUM in reflective or transmissive
 case. The function SPECTRUM, a spectral reflectance, must be defined
 at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL,
-BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., END-WL."
+BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
   (if (illuminant-no-spd-p illuminant)
       (error (make-condition 'no-spd-error :illuminant illuminant))
       (spectrum-to-xyz-primitive spectrum
@@ -439,14 +440,18 @@ many and may contain a negative spectral density."
     
 	    
 (defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil) (begin-wl 360) (end-wl 830) (band 1))
-  "Generates an illuminant with an SPD. Although the white point (X,
+  "Generates an illuminant. If the SPECTRUM is nil, the returned
+illuminant contains only a white point. Although the white point (X,
 1d0, Z) is automatically calculated if X and Z are nil, you can
 designate X and Z explicitly. Note that no error occurs, even if the
 given white point and SPD contradicts to each other.
 
+ (make-illuminant :x 1.0 :z 1.0)
+;; => illuminant without SPD
+
  (make-illuminant :x 1.0 :z 1.0 :spectrum #'flat-spectrum)
  (make-illuminant :spectrum #'flat-spectrum)
-;; => almost same illuminants
+;; => illuminant with SPD
 
 If X and Y are NIL and COMPILE-TIME is T, the white point is
 calculated at compile time."

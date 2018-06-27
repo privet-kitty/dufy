@@ -122,8 +122,8 @@ APPLICATION::= :graphic-arts | :textiles"
 
 
 (define-functional (lab-deltaecmc lab :term deltaecmc) (l1 a1 b1 l2 a2 b2 &key (l-factor 2d0) (c-factor 1d0))
-  (declare (optimize (speed 3) (safety 1)))
   "CMC l:c"
+  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (l1 a1 b1 l2 a2 b2 l-factor c-factor)
     (let* ((deltaa (- a1 a2))
            (deltab (- b1 b2))
