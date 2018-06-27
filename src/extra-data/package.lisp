@@ -1,11 +1,11 @@
 (cl:in-package :cl-user)
 
 (defpackage dufy-extra-data
-  (:nicknames :dufyex)
   (:use :common-lisp :dufy-core)
   #.`(:export
       :+illum-d55+
       :+illum-d75+
+      :+illum-b+
       ,@(loop for i from 1 to 12
               collect (intern (format nil "+ILLUM-F~A+" i) :keyword))
       ,@(loop for i from 1 to 15
