@@ -91,7 +91,8 @@
      (internal-real-time ,@body)))
 
 (defmacro time-median (num &body body)
-  "Repeats BODY NUM times and returns the median of elapsed times"
+  "Repeats BODY NUM times and returns the median of elapsed (internal
+real) times"
   (let ((i (gensym)))
     `(alexandria:median
       (loop for ,i below ,num
@@ -114,12 +115,14 @@
 ;;;
 
 (defun nearly= (threshold number &rest more-numbers)
+  "THRESHOLD means acceptable absolute error."
   (if (null more-numbers)
       t
       (and (<= (abs (- number (car (the cons more-numbers)))) threshold)
 	   (apply #'nearly= threshold more-numbers))))
 
 (defun nearly-equal (threshold lst1 &rest lsts)
+  "THRESHOLD means acceptable absolute error."
   (if (null lst1)
       t
       (and (apply #'nearly= threshold
@@ -140,7 +143,6 @@
 ;;;
 ;;; Some arithmetic in a circle group
 ;;;
-
 
 (declaim (inline subtract-with-mod
 		 circular-nearer
@@ -218,11 +220,11 @@ THETA2] in a circle group."
                     (flo (expt 2 (floor approx)))
                     (ceil (expt 2 (ceiling approx))))
                (if (<= ceil num) ceil flo)))
-           (decompose-to-sum-of-powers-of-2 (num res)
+           (decompose-to-sum-of-powers-of-2 (num result)
              (if (zerop num)
-                 res
+                 result
                  (let ((k (round-off-to-power-of-2 num)))
-                   (decompose-to-sum-of-powers-of-2 (- num k) (cons k res))))))
+                   (decompose-to-sum-of-powers-of-2 (- num k) (cons k result))))))
     (let* ((parts (decompose-to-sum-of-powers-of-2 power nil))
            (m (apply #'max (cons 1 parts)))
            (vars (apply #'vector
