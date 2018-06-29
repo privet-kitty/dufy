@@ -109,7 +109,7 @@ converter_tree
 converter_tree
 </details>
 
-The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-to-` and `-to-xyz` converters for all other color spaces. Every converter function just receives numbers and returns multiple numbers:
+The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-to-` and `-to-xyz` converters for all other (connected) color spaces. Every converter function just receives numbers and returns multiple numbers:
 
 ```lisp
 (dufy:lab-to-xyz 87.07 -78.15 -20.51)  ; L*=87.07, a*=-78.15, b*=-20.51

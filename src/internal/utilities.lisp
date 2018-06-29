@@ -70,8 +70,8 @@
 ;;; For benchmark
 ;;;
 
-(defmacro simple-time (&body body)
-  "For devel. Returns (internal real) time"
+(defmacro internal-real-time (&body body)
+  "For development. Returns (internal real) time"
   (let ((start (gensym)))
     `(let ((,start (get-internal-real-time)))
        ,@body
@@ -84,17 +84,18 @@
      #+ccl(ccl:gc)
      (time ,@body)))
 
-(defmacro stime-after-gc (&body body)
+(defmacro internal-real-time-after-gc (&body body)
   `(progn
      #+sbcl(sb-ext:gc :full t)
      #+ccl(ccl:gc)
-     (simple-time ,@body)))
+     (internal-real-time ,@body)))
 
 (defmacro time-median (num &body body)
+  "Repeats BODY NUM times and returns the median of elapsed times"
   (let ((i (gensym)))
     `(alexandria:median
       (loop for ,i below ,num
-            collect (stime-after-gc ,@body)))))
+            collect (internal-real-time-after-gc ,@body)))))
 
 #+sbcl
 (defmacro with-profiling (&body body)

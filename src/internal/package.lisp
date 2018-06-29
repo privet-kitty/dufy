@@ -8,7 +8,7 @@
    :print-make-array
    :with-double-float
    :time-after-gc
-   :stime-after-gc
+   :internal-real-time-after-gc
    :time-median
    :with-profiling
 
