@@ -112,19 +112,6 @@
                              :allow-other-keys allow-other-keys
                              :aux-args aux)))
 
-(defun cause-cycle-p (from-colorspace to-colorspace)
-  "Checks if adding the path between FROM-COLORSPACE and TO-COLORSPACE
-gives a simple cycle with length n >= 3. Returns the cycle, if true."
-  (let ((visited (make-hash-table)))
-    (setf (gethash from-colorspace visited) t)
-    (labels ((find-cycle (path) ; DFS
-               (let ((cs (first path)))
-                 (if (nth-value 1 (ensure-gethash cs visited t))
-                     (return-from cause-cycle-p (reverse path))
-                     (dolist (next-cs (remove (second path) (get-neighbors cs)))
-                       (find-cycle (cons next-cs path)))))))
-      (find-cycle (list to-colorspace from-colorspace)))))
-
 (defun add-primary-converter (from-colorspace to-colorspace lambda-list &key (name (gen-converter-name from-colorspace to-colorspace)))
   (let ((path (find-converter-path from-colorspace to-colorspace :if-does-not-exist nil)))
     (when (> (length path) 2)
