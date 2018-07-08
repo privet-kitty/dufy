@@ -112,11 +112,28 @@
                              :allow-other-keys allow-other-keys
                              :aux-args aux)))
 
+(defun cause-cycle-p (from-colorspace to-colorspace)
+  "Checks if adding the path between FROM-COLORSPACE and TO-COLORSPACE
+gives a simple cycle with length n >= 3. Returns the cycle, if true."
+  (let ((visited (make-hash-table)))
+    (setf (gethash from-colorspace visited) t)
+    (labels ((find-cycle (path) ; DFS
+               (let ((cs (first path)))
+                 (if (nth-value 1 (ensure-gethash cs visited t))
+                     (return-from cause-cycle-p (reverse path))
+                     (dolist (next-cs (remove (second path) (get-neighbors cs)))
+                       (find-cycle (cons next-cs path)))))))
+      (find-cycle (list to-colorspace from-colorspace)))))
+
 (defun add-primary-converter (from-colorspace to-colorspace lambda-list &key (name (gen-converter-name from-colorspace to-colorspace)))
+  (let ((path (find-converter-path from-colorspace to-colorspace :if-does-not-exist nil)))
+    (when (> (length path) 2)
+      (error "A path from ~a to ~a already exists: ~a" from-colorspace to-colorspace path)))
   (setf (gethash (list from-colorspace to-colorspace) *primary-converter-table*)
         (make-primary-converter from-colorspace to-colorspace lambda-list
                                 :name name))
-  (pushnew to-colorspace (get-neighbors from-colorspace)))
+  (pushnew to-colorspace (get-neighbors from-colorspace))
+  name)
 
 (defun get-primary-converter (from-colorspace to-colorspace)
   (or (gethash (list from-colorspace to-colorspace) *primary-converter-table*)
@@ -153,20 +170,22 @@
 (defun dequeue (queue)
   (pop (queue-list queue)))
 
-(defun get-converter-chain (from-colorspace to-colorspace)
+(defun find-converter-path (from-colorspace to-colorspace &key (if-does-not-exist :error))
   "Finds the shortest path in the graph of color spaces with BFS."
   (let ((visited (make-hash-table))
         (path-queue (enqueue (list from-colorspace) (make-queue))))
     (loop for path = (dequeue path-queue)
           for current-colorspace = (car path)
           do (when (null current-colorspace)
-               (error "No route found: from ~S to ~S" from-colorspace to-colorspace))
+               (ecase if-does-not-exist
+                 (:error
+                  (error "No route found: from ~S to ~S" from-colorspace to-colorspace))
+                 ((nil) (return nil))))
              (if (eql current-colorspace to-colorspace)
                  (return (nreverse path))
                  (unless (nth-value 1 (ensure-gethash current-colorspace visited t))
                    (dolist (term (get-neighbors current-colorspace))
                      (enqueue (cons term path) path-queue)))))))
-
 
 (defmacro define-primary-converter ((from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace))) lambda-list &body body)
   "Defines FOO-TO-BAR function as a primary converter. Only &key
@@ -288,7 +307,7 @@ allowed. "
 (defmacro defconverter (from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace)) (exclude-args nil) (documentation nil))
   "Generates and defines a converter function from FROM-COLORSPACE to
 TO-COLORSPACE automatically with linking primary converters."
-  (let ((chain (get-converter-chain from-colorspace to-colorspace)))
+  (let ((chain (find-converter-path from-colorspace to-colorspace)))
     `(progn
        (declaim #+dufy/inline (inline ,name)
                 (ftype (function * (values ,@(get-arg-types (lastcar chain)) &optional)) ,name))
@@ -318,7 +337,7 @@ Example:
             for def in definitions
             collect
             (destructuring-bind (name from-colorspace to-colorspace &key (exclude-args nil)) def
-              (let ((chain (get-converter-chain from-colorspace to-colorspace)))
+              (let ((chain (find-converter-path from-colorspace to-colorspace)))
                 (push name name-lst)
                 (push (get-arg-types (lastcar chain)) arg-types-lst)
                 `(,name ,(gen-global-args chain :exclude-args exclude-args)
@@ -395,7 +414,7 @@ of the function is [COLORSPACE]-[TERM] if FNAME is not given."
          (dimension (functional-dimension functional))
          (to-colorspace (functional-colorspace functional))
          (from-colorspace colorspace)
-         (chain (get-converter-chain from-colorspace to-colorspace))
+         (chain (find-converter-path from-colorspace to-colorspace))
          (transform (gensym "TRANSFORM")))
     `(defun ,fname ,(gen-global-args chain
                      :exclude-args exclude-args
