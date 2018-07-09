@@ -370,7 +370,7 @@ EXTEND-FUNCTIONAL."
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
       (parse-ordinary-lambda-list lambda-list)
     (when (or optional rest)
-      (error "primary converter cannot take either &optional or &rest arguments."))
+      (error "Primary converter cannot take either &optional or &rest arguments."))
     (multiple-value-bind (dim rem) (floor (length required)
                                           (length (get-args colorspace)))
       (unless (= rem 0)

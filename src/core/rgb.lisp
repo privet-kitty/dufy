@@ -68,7 +68,7 @@ shouldn't call the returned function on your own, as it is not safe."
   (/length 1d0 :type double-float) ; reciprocal
   (normal t :type boolean) ; t, if min = 0d0 and max = 1d0
 
-  ;; quantization
+  ;; quantization characteristics
   (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
   (qmax 255 :type (integer 1 #.most-positive-fixnum)) ; maximum of quantized values
   (qmax-float 255d0 :type double-float)
@@ -245,9 +245,9 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
      (* n (rgbspace-length/qmax-float rgbspace))))
 
 (define-primary-converter (rgb qrgb) (r g b &key (rgbspace +srgb+) (clamp t))
-  "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1],
-typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255},
-typically), though it accepts all the real values."
+  "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1]
+typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255} typically),
+though it accepts all the real values."
   (declare (optimize (speed 3) (safety 1)))
   (with-double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
@@ -325,10 +325,11 @@ typically), though it accepts all the real values."
 (define-primary-converter (rgbpack qrgb) (int &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1))
 	   (integer int))
-  "Decodes a packed RGB value (whose type depends on RGBSPACE but is typically 24-bit integer).
+  "Decodes a packed RGB value, whose type depends on RGBSPACE but is
+typically unsigned 24-bit integer.
 
 It is guaranteed that this converter can also process a packed RGBA
-value properly if its order is ARGB."
+value correctly if its order is ARGB."
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
 	(qmax (rgbspace-qmax rgbspace)))
     (values (logand (ash int (+ minus-bpc minus-bpc)) qmax)
@@ -338,8 +339,11 @@ value properly if its order is ARGB."
 (define-primary-converter (qrgba rgbapack) (qr qg qb qalpha &key (rgbspace +srgb+) (order :argb))
   (declare (optimize (speed 3) (safety 1))
 	   (fixnum qr qg qb qalpha))
-  "The order can be :ARGB or :RGBA. Note that it is different from the
-  'physical' byte order in a machine, which depends on the endianess."
+  "Decodes a packed RGBA value, whose type depends on RGBSPACE but is
+typically unsigned 32-bit integer.
+
+The order can be :ARGB or :RGBA. Note that it is different from the
+'physical' byte order in a machine, which depends on the endianess."
   (let* ((bpc (rgbspace-bit-per-channel rgbspace))
 	 (2bpc (+ bpc bpc))
 	 (qmax (rgbspace-qmax rgbspace)))
