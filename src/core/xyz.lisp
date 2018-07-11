@@ -7,19 +7,25 @@
 
 (deftype spectrum-function () '(function * (values double-float &optional)))
 
-(define-colorspace xyz ((x double-float) (y double-float) (z double-float))
+(define-colorspace xyz (x y z)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float)
   :documentation "Y is normalized: i.e. the nominal range of Y is [0, 1]")
-(define-colorspace xyy ((small-x double-float) (small-y double-float) (y double-float))
+(define-colorspace xyy (small-x small-y y)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float)
   :documentation "Y is normalized: i.e. the nominal range of Y is [0, 1]")
-(define-colorspace spectrum ((spectrum spectrum-function))
+(define-colorspace spectrum (spectrum)
+  :arg-types (spectrum-function)
+  :return-types (spectrum-function)
   :documentation "A spectrum is just a function which receives a
 wavelength (nm) as a real number and returns a double-float: (function
 * (values double-float &optional))")
 
 (define-primary-converter (xyy xyz) (small-x small-y y)
+  (declare (optimize (speed 3) (safety 1)))
   "xyY to XYZ. The nominal range of Y is [0, 1], though all real
 values are accepted."
-  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (small-x small-y y)
     (if (zerop small-y)
 	(values 0d0 y 0d0)
@@ -28,9 +34,9 @@ values are accepted."
 		(/ (* (- 1d0 small-x small-y) y) small-y)))))
 
 (define-primary-converter (xyz xyy) (x y z)
+  (declare (optimize (speed 3) (safety 1)))
   "XYZ to xyY. The nominal range of Y is [0, 1], though all real
 values are accepted."
-  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (x y z)
     (let ((sum (+ x y z)))
       (if (= sum 0)

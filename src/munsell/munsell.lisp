@@ -23,12 +23,14 @@
     fulfills (typep (round F) '(SIGNED-BYTE 64))"))
 
 
-(define-colorspace mhvc ((hue40 (double-float 0d0 40d0))
-                         (value double-float)
-                         (chroma (double-float 0d0 #.*maximum-chroma*)))
+(define-colorspace mhvc (hue40 value chroma)
+  :arg-types (real real real)
+  :return-types ((double-float 0d0 40d0) double-float (double-float 0d0 #.*maximum-chroma*))
   :documentation "Three-number specification of Munsell color. HUE40 is in the circle group R/40. The nominal range of VALUE is [0, 10].")
-(define-colorspace munsell ((munsellspec string))
-  :documentation "Official string specification of Munsell color.")
+(define-colorspace munsell (munsellspec)
+  :arg-types (string)
+  :return-types (string)
+  :documentation "Standard string specification of Munsell color.")
 
 (declaim (ftype (function * (integer 0 50)) max-chroma-in-mrd))
 (defun max-chroma-in-mrd (hue40 value &key (use-dark t))
@@ -255,9 +257,9 @@ smaller than 1e-5."
 
 (define-primary-converter (mhvc lchab :name mhvc-to-lchab-illum-c)
     (hue40 value chroma &aux (illuminant +illum-c+))
-  "Illuminant C."
   (declare (optimize (speed 3) (safety 1))
            (ignorable illuminant))
+  "Illuminant C."
   (let ((hue40 (mod (float hue40 1d0) 40d0))
 	(value (clamp (float value 1d0) 0d0 10d0))
 	(chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
@@ -311,6 +313,7 @@ The illuminant of RGBSPACE must also be D65."
 		     (cond-spec condition)))))
 
 (define-primary-converter (munsell mhvc) (munsellspec)
+  (declare (optimize (speed 3) (safety 1)))
   "Usage Example:
  (dufy:munsell-to-mhvc \"0.02RP 0.9/3.5\")
 ;; => 36.008d0
@@ -330,8 +333,6 @@ but the capital letters and  '/' are reserved:
  (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #X0FFFFFF\")
 ;; => ERROR,
 "
-  (declare (optimize (speed 3) (safety 1))
-           (string munsellspec))
   (let* ((lst (let ((*read-default-float-format* 'double-float))
                 (mapcar (compose (rcurry #'coerce 'double-float)
                                  #'read-from-string)

@@ -6,9 +6,8 @@
 
 
 (define-functional (lab-deltaeab lab :term deltaeab) (l1 a1 b1 l2 a2 b2)
+  (declare (optimize (speed 3) (safety 1)))
   "CIE 1976. Euclidean distance in L*a*b* space."
-  (declare (optimize (speed 3) (safety 1))
-           (real l1 a1 b1 l2 a2 b2))
   (with-double-float (l1 a1 b1 l2 a2 b2)
     (sqrt (+ (square (- l1 l2))
              (square (- a1 a2))
@@ -19,9 +18,9 @@
 
 
 (define-functional (lab-deltae94 lab :term deltae94) (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
+  (declare (optimize (speed 3) (safety 1)))
   "CIE 1994. 
 APPLICATION::= :graphic-arts | :textiles"
-  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (l1 a1 b1 l2 a2 b2)
     (let ((c1 (sqrt (+ (square a1) (square b1))))
 	  (c2 (sqrt (+ (square a2) (square b2)))))
@@ -48,8 +47,8 @@ APPLICATION::= :graphic-arts | :textiles"
 
 
 (define-functional (lab-deltae00 lab :term deltae00) (l1 a1 b1 l2 a2 b2)
-  "CIEDE2000."
   (declare (optimize (speed 3) (safety 1)))
+  "CIEDE2000."
   (with-double-float (l1 a1 b1 l2 a2 b2)
     (let* ((c1 (sqrt (+ (square a1) (square b1))))
            (c2 (sqrt (+ (square a2) (square b2))))
@@ -122,8 +121,8 @@ APPLICATION::= :graphic-arts | :textiles"
 
 
 (define-functional (lab-deltaecmc lab :term deltaecmc) (l1 a1 b1 l2 a2 b2 &key (l-factor 2d0) (c-factor 1d0))
-  "CMC l:c"
   (declare (optimize (speed 3) (safety 1)))
+  "CMC l:c"
   (with-double-float (l1 a1 b1 l2 a2 b2 l-factor c-factor)
     (let* ((deltaa (- a1 a2))
            (deltab (- b1 b2))

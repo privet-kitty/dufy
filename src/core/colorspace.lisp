@@ -8,6 +8,8 @@
   (name nil :type symbol)
   ;; arguments of COLORSPACE-to- functions
   (args nil :type list)
+  ;; accepted types of arguments of COLORSPACE-to- functions
+  (arg-types nil :type list)
   ;; return type of -to-COLORSPACE functions (used for type declaration)
   (return-types nil :type list) 
   (documentation nil :type (or null string))
@@ -20,12 +22,13 @@
   (eql (colorspace-name space1)
        (colorspace-name space2)))
 
-(defmacro define-colorspace (name args &key documentation)
+(defmacro define-colorspace (name args &key arg-types return-types documentation)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      (setf (gethash ',name *colorspace-table*)
            (make-colorspace :name ',name
-                            :args ',(mapcar (compose #'first #'ensure-list) args)
-                            :return-types ',(mapcar (compose #'second #'ensure-list) args)
+                            :args ',args
+                            :arg-types ',arg-types
+                            :return-types ',return-types
                             :documentation ,documentation
                             :neighbors nil))))
 
@@ -47,6 +50,8 @@
   (mapcar #'(lambda (x) (intern (format nil "~A~A" x suffix)
                                 (or package (symbol-package x))))
           (colorspace-args (ensure-colorspace name))))
+(defun get-arg-types (name)
+  (colorspace-arg-types (ensure-colorspace name)))
 (defun get-return-types (name)
   (colorspace-return-types (ensure-colorspace name)))
 
@@ -191,6 +196,9 @@ allowed. "
      (declaim (inline ,name)
               (ftype (function * (values ,@(get-return-types to-colorspace) &optional)) ,name))
      (defun ,name ,lambda-list
+       (declare ,@(mapcar #'(lambda (typ arg) (list typ arg))
+                          (get-arg-types from-colorspace)
+                          lambda-list))
        ,@body)
      (eval-when (:compile-toplevel :load-toplevel :execute)
        (add-primary-converter ',from-colorspace ',to-colorspace
@@ -304,13 +312,17 @@ allowed. "
 (defmacro defconverter (from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace)) (exclude-args nil) (documentation nil))
   "Generates and defines a converter function from FROM-COLORSPACE to
 TO-COLORSPACE automatically with linking primary converters."
-  (let ((chain (find-converter-path from-colorspace to-colorspace)))
+  (let* ((chain (find-converter-path from-colorspace to-colorspace))
+         (global-args (gen-global-args chain :exclude-args exclude-args)))
     `(progn
        (declaim #+dufy/inline (inline ,name)
                 (ftype (function * (values ,@(get-return-types (lastcar chain)) &optional)) ,name))
-       (defun ,name ,(gen-global-args chain :exclude-args exclude-args)
+       (defun ,name ,global-args
          (declare (optimize (speed 3) (safety 1))
-                  (ignorable ,@(collect-aux-arg-names chain)))
+                  (ignorable ,@(collect-aux-arg-names chain))
+                  ,@(mapcar #'(lambda (typ arg) (list typ arg))
+                            (get-arg-types from-colorspace)
+                            global-args))
          ,@(ensure-list documentation)
          ,(expand-conversion-form chain :exclude-args exclude-args)))))
 
@@ -334,12 +346,16 @@ Example:
             for def in definitions
             collect
             (destructuring-bind (name from-colorspace to-colorspace &key (exclude-args nil)) def
-              (let ((chain (find-converter-path from-colorspace to-colorspace)))
+              (let* ((chain (find-converter-path from-colorspace to-colorspace))
+                     (global-args (gen-global-args chain :exclude-args exclude-args)))
                 (push name name-lst)
                 (push (get-return-types (lastcar chain)) return-types-lst)
-                `(,name ,(gen-global-args chain :exclude-args exclude-args)
+                `(,name ,global-args
                         (declare (optimize (speed 3) (safety 1))
-                                 (ignorable ,@(collect-aux-arg-names chain)))
+                                 (ignorable ,@(collect-aux-arg-names chain))
+                                 ,@(mapcar #'(lambda (typ arg) (list typ arg))
+                                           (get-arg-types from-colorspace)
+                                           global-args))
                         ,(expand-conversion-form chain :exclude-args exclude-args)))))
        (declare #+dufy/inline(inline ,@name-lst)
                 ,@(loop for return-types in return-types-lst
@@ -399,10 +415,18 @@ EXTEND-FUNCTIONAL."
   (or (gethash term *functional-table*)
       (error "No functional found: ~A" term)))
 
+(defun circularize (lst)
+  (let ((res (copy-list lst)))
+    (setf (cdr (last res)) res)
+    res))
+
 (defmacro define-functional ((fname colorspace &key (term fname)) lambda-list &body body)
   `(progn
      (declaim (inline ,fname))
      (defun ,fname ,lambda-list
+       (declare ,@(mapcar #'(lambda (typ arg) (list typ arg))
+                          (circularize (get-arg-types colorspace))
+                          (parse-ordinary-lambda-list lambda-list)))
        ,@body)
      (eval-when (:compile-toplevel :load-toplevel :execute)
        (add-functional ',fname ',colorspace ',lambda-list :term ',term))))
@@ -417,7 +441,7 @@ of the function is [COLORSPACE]-[TERM] if FNAME is not given."
          (to-colorspace (functional-colorspace functional))
          (from-colorspace colorspace)
          (chain (find-converter-path from-colorspace to-colorspace))
-         (transform (gensym "TRANSFORM")))
+         (transform (gensym (string (gen-converter-name from-colorspace to-colorspace)))))
     `(defun ,fname ,(gen-global-args chain
                      :exclude-args exclude-args
                      :extra-key-args extra-key-args

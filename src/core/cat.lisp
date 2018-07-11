@@ -59,12 +59,14 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 
 
 
-(define-colorspace lms ((l double-float) (m double-float) (s double-float)))
+(define-colorspace lms (l m s)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float))
 
 (define-primary-converter (xyz lms) (x y z &key (illuminant +illum-d65+) (cat +bradford+))
+  (declare (optimize (speed 3) (safety 1)))
   "If ILLUMINANT is NIL, the transform is virtually equivalent to that
 of illuminant E. "
-  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (x y z)
     (if illuminant
 	(let* ((mat (cat-matrix cat))
@@ -86,9 +88,9 @@ of illuminant E. "
 	    
 
 (define-primary-converter (lms xyz) (l m s &key (illuminant +illum-d65+) (cat +bradford+))
+  (declare (optimize (speed 3) (safety 1)))
   "If ILLUMINANT is NIL, the transform is virtually equivalent to that
 of illuminant E. "
-  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (l m s)
     (if illuminant
 	(let* ((mat (cat-matrix cat))

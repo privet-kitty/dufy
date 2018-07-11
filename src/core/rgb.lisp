@@ -4,20 +4,34 @@
 ;;; RGB Color Space
 ;;;
 
-(define-colorspace lrgb ((lr double-float) (lg double-float) (lb double-float))
+(define-colorspace lrgb (lr lg lb)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float)
   :documentation "Linear RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
-(define-colorspace rgb ((r double-float) (g double-float) (b double-float))
+(define-colorspace rgb (r g b)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float)
   :documentation "Gamma-corrected RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
-(define-colorspace qrgb ((qr fixnum) (qg fixnum) (qb fixnum))
+(define-colorspace qrgb (qr qg qb)
+  :arg-types (fixnum fixnum fixnum)
+  :return-types (fixnum fixnum fixnum)
   :documentation "Quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
-(define-colorspace rgbpack ((int (integer 0)))
+(define-colorspace rgbpack (int)
+  :arg-types ((integer 0))
+  :return-types ((integer 0))
   :documentation "RGB, encoded to an unsigned integer. The size depends on the RGB space but is 24 bit for example.")
 
-(define-colorspace rgba ((r double-float) (g double-float) (b double-float) (alpha double-float))
+(define-colorspace rgba (r g b alpha)
+  :arg-types (real real real real)
+  :return-types (double-float double-float double-float double-float)
   :documentation "Gamma-corrected RGBA. The nominal range of each value depends on the RGB space but is typically [0, 1]")
-(define-colorspace qrgba ((qr fixnum) (qg fixnum) (qb fixnum) (qalpha fixnum))
+(define-colorspace qrgba (qr qg qb qalpha)
+  :arg-types (fixnum fixnum fixnum fixnum)
+  :return-types (fixnum fixnum fixnum fixnum)
   :documentation "Quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
-(define-colorspace rgbapack ((int integer))
+(define-colorspace rgbapack (int)
+  :arg-types ((integer 0))
+  :return-types ((integer 0))
   :documentation "RGB, encoded to an unsigned integer. The order can be ARGB or RGBA.")
 
 (defun gen-linearizer (gamma)
@@ -245,10 +259,10 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
      (* n (rgbspace-length/qmax-float rgbspace))))
 
 (define-primary-converter (rgb qrgb) (r g b &key (rgbspace +srgb+) (clamp t))
+  (declare (optimize (speed 3) (safety 1)))
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1]
 typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255} typically),
 though it accepts all the real values."
-  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
 	  (qmax-float/length (rgbspace-qmax-float/length rgbspace))
@@ -262,10 +276,10 @@ though it accepts all the real values."
                   (round (* (- b min) qmax-float/length)))))))
 
 (define-primary-converter (rgba qrgba) (r g b alpha &key (rgbspace +srgb+) (clamp t))
-  (declare (optimize (speed 3) (safety 1)))
   "Quantizes RGBA values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1],
 typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255},
 typically), though it accepts all the real values."
+  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (r g b alpha)
     (let ((min (rgbspace-min rgbspace))
 	  (qmax-float/length (rgbspace-qmax-float/length rgbspace))
@@ -281,8 +295,7 @@ typically), though it accepts all the real values."
                   (round (* (- alpha min) qmax-float/length)))))))
 
 (define-primary-converter (qrgb rgb) (qr qg qb &key (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1))
-	   (fixnum qr qg qb))
+  (declare (optimize (speed 3) (safety 1)))
   (let ((min (rgbspace-min rgbspace))
 	(length/qmax-float (rgbspace-length/qmax-float rgbspace)))
     (values (+ min (* qr length/qmax-float))
@@ -290,8 +303,7 @@ typically), though it accepts all the real values."
 	    (+ min (* qb length/qmax-float)))))
 
 (define-primary-converter (qrgba rgba) (qr qg qb qalpha &key (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1))
-	   (fixnum qr qg qb qalpha))
+  (declare (optimize (speed 3) (safety 1)))
   (let ((min (rgbspace-min rgbspace))
 	(length/qmax-float (rgbspace-length/qmax-float rgbspace)))
     (values (+ min (* qr length/qmax-float))
@@ -314,8 +326,7 @@ typically), though it accepts all the real values."
 
 
 (define-primary-converter (qrgb rgbpack) (qr qg qb &key (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1))
-	   (fixnum qr qg qb))
+  (declare (optimize (speed 3) (safety 1)))
   (let ((bpc (rgbspace-bit-per-channel rgbspace))
 	(qmax (rgbspace-qmax rgbspace)))
     (+ (ash (clamp qr 0 qmax) (+ bpc bpc))
@@ -323,8 +334,7 @@ typically), though it accepts all the real values."
        (clamp qb 0 qmax))))
 
 (define-primary-converter (rgbpack qrgb) (int &key (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1))
-	   (integer int))
+  (declare (optimize (speed 3) (safety 1)))
   "Decodes a packed RGB value, whose type depends on RGBSPACE but is
 typically unsigned 24-bit integer.
 
@@ -337,8 +347,7 @@ value correctly if its order is ARGB."
 	    (logand int qmax))))
 
 (define-primary-converter (qrgba rgbapack) (qr qg qb qalpha &key (rgbspace +srgb+) (order :argb))
-  (declare (optimize (speed 3) (safety 1))
-	   (fixnum qr qg qb qalpha))
+  (declare (optimize (speed 3) (safety 1)))
   "Decodes a packed RGBA value, whose type depends on RGBSPACE but is
 typically unsigned 32-bit integer.
 
@@ -358,8 +367,7 @@ The order can be :ARGB or :RGBA. Note that it is different from the
 		(ash (clamp qr 0 qmax) (+ 2bpc bpc)))))))
 
 (define-primary-converter (rgbapack qrgba) (int &key (rgbspace +srgb+) (order :argb))
-  (declare (optimize (speed 3) (safety 1))
-	   (integer int))
+  (declare (optimize (speed 3) (safety 1)))
   "The order can be :ARGB or :RGBA. Note that it is different from the
   'physical' byte order in a machine, which depends on the endianess."
   (let* ((-bpc (- (rgbspace-bit-per-channel rgbspace)))
@@ -392,9 +400,13 @@ The order can be :ARGB or :RGBA. Note that it is different from the
 ;;; HSV/HSL
 ;;;
 
-(define-colorspace hsv ((hue double-float) (sat double-float) (val double-float))
+(define-colorspace hsv (hue sat val)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float)
   :documentation "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0, 1].")
-(define-colorspace hsl ((hue double-float) (sat double-float) (lum double-float))
+(define-colorspace hsl (hue sat lum)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float)
   :documentation "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0, 1].")
 
 (defmacro macrolet-applied-only-when (test definitions &body body)
@@ -487,9 +499,9 @@ situation whether the returned values are meaningful."
 (defconverter hsl xyz)
 
 (define-primary-converter (rgb hsl) (r g b)
+  (declare (optimize (speed 3) (safety 1)))
   "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
-  (declare (optimize (speed 3) (safety 1)))
   (with-double-float (r g b)
     (let ((minrgb (min r g b))
           (maxrgb (max r g b)))
