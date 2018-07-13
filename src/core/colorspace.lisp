@@ -8,7 +8,7 @@
   (name nil :type symbol)
   ;; arguments of COLORSPACE-to- functions
   (args nil :type list)
-  ;; accepted types of arguments of COLORSPACE-to- functions
+  ;; argument types of COLORSPACE-to- functions (used for type declaration)
   (arg-types nil :type list)
   ;; return type of -to-COLORSPACE functions (used for type declaration)
   (return-types nil :type list) 

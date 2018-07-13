@@ -4,7 +4,7 @@
 
 (in-package :dufy-core)
 
-(defstruct (cat (:constructor $make-cat))
+(defstruct (cat (:constructor %make-cat))
   "Model of chromatic adaptation transformation. Currently only linear
 models are available."
   (matrix +empty-matrix+ :type matrix33)
@@ -15,7 +15,7 @@ models are available."
   (let ((mat-arr (make-array '(3 3)
 			     :element-type 'double-float
 			     :initial-contents mat)))
-    ($make-cat :matrix mat-arr
+    (%make-cat :matrix mat-arr
 	       :inv-matrix (invert-matrix33 mat-arr))))
 
 (defparameter +bradford+
