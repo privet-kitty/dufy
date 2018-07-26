@@ -213,7 +213,9 @@ THETA2] in a circle group."
 ;;;
 
 (defmacro fast-expt (base power)
-  "POWER must be a literal of type (integer 1)."
+  "Exponentiation by squaring.
+POWER must be a literal of type (integer 1)."
+  (assert (constantp power))
   (check-type power (integer 1))
   (labels ((round-off-to-power-of-2 (num)
              (let* ((approx (log num 2))
