@@ -277,10 +277,6 @@ instead. (roughly 6504K for 6500K, etc.)"
                   300 830)))
 
 
-(defun spectrum-sum (spectrum &optional (begin-wl 300) (end-wl 830) (band 1))
-  (loop for wl from begin-wl to end-wl by band
-        sum (funcall spectrum wl)))
-
 (declaim (inline bb-spectrum))
 (defun bb-spectrum (wavelength-nm &optional (temperature 5000d0))
   "Spectrum function of a blackbody, which is not normalized."
@@ -333,7 +329,7 @@ f(x) = 0d0 otherwise."
   (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
 
 (defun illuminant-xy (illuminant)
-  "Returns the xy chromacity coordinates of the given illuminant."
+  "Returns the xy chromacity coordinates of a given illuminant."
   (declare (optimize (speed 3) (safety 1))
            (type illuminant illuminant))
   (let* ((x (illuminant-x illuminant))
@@ -383,7 +379,7 @@ ILLUMINANT-SPD: SPD of illuminant"
 
 (define-primary-converter (spectrum xyz) (spectrum &key (illuminant +illum-d65+) (begin-wl 360) (end-wl 830) (band 1))
   (declare (optimize (speed 3) (safety 1)))
-  "Computes XYZ values from SPECTRUM in reflective or transmissive
+  "Computes the XYZ values of SPECTRUM in reflective or transmissive
 case. The function SPECTRUM, a spectral reflectance, must be defined
 at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL,
 BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
@@ -459,6 +455,9 @@ given white point and SPD contradicts to each other.
  (make-illuminant :x 1.0 :z 1.0 :spectrum #'flat-spectrum)
  (make-illuminant :spectrum #'flat-spectrum)
 ;; => illuminant with SPD
+
+ (make-illuminant :x 0.9 :z 1.1 :spectrum #'flat-spectrum)
+;; => illuminant with SPD (valid but meaningless)
 
 If X and Y are NIL and COMPILE-TIME is T, the white point is
 calculated at compile time. (Avoid side effects in this case.)"

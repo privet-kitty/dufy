@@ -28,7 +28,6 @@
       :optimal-spectrum1
       :optimal-spectrum2
       :flat-spectrum
-      :spectrum-sum
 
       :observer
       :make-observer
