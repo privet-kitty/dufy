@@ -84,7 +84,7 @@ spectrum-seq '(simple-array double-float (*)))."
 		      (aref spectrum-arr (min (+ idx 1) size)))))))))
 
 
-(defun approximate-spectrum (spectrum &optional (begin-wl 360d0) (end-wl 830d0) (band 1d0))
+(defun approximate-spectrum (spectrum &key (begin-wl 360d0) (end-wl 830d0) (band 1d0))
   "Generates an approximate spectrum of SPECTRUM by pieacewise
 linearization. It is used to lighten a \"heavy\" spectrum function."
   (declare (optimize (speed 3) (safety 1))

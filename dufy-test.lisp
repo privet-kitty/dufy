@@ -91,7 +91,9 @@
 					 (apply (rcurry #'xyz-to-spectrum
                                                         :illuminant *illum-d55-10*)
 						xyz)
-					 340d0 850d0 0.23d0)
+					 :begin-wl 340d0
+                                         :end-wl 850d0
+                                         :band 0.23d0)
 					:illuminant *illum-d55-10*)))))
   (is (equal '(0d0 0d0 0d0)
              (multiple-value-list (funcall (observer-cmf +obs-cie1964+) -1/2))))
