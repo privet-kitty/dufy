@@ -97,12 +97,8 @@
 					:illuminant *illum-d55-10*)))))
   (is (equal '(0d0 0d0 0d0)
              (multiple-value-list (funcall (observer-cmf +obs-cie1964+) -1/2))))
-  (is (eql 'escaped
-           (block no-spd
-             (handler-bind ((no-spd-error (lambda (c)
-                                            (declare (ignore c))
-                                            (return-from no-spd 'escaped))))
-               (spectrum-to-xyz #'flat-spectrum :illuminant *illum-b*))))))
+  (signals no-spd-error
+    (spectrum-to-xyz #'flat-spectrum :illuminant *illum-b*)))
 
 (test test-xyy
   (dolist (xyz *xyz-set*)
