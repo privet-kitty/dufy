@@ -1,7 +1,11 @@
 ;; -*- coding:utf-8 -*-
 
 ;;
-;; This script file compares XYZ values of Munsell renotation data (1943) and Joensuu's spectral data (Munsell Book 1976, matt chip, spectralphotometer).
+;; This script file compares XYZ values of Munsell renotation data
+;; (1943) and Joensuu's spectral data (Munsell Book 1976, matt chip,
+;; spectralphotometer).
+;;
+
 ;; Usage:
 ;; $ sbcl --load read-hiltunen-dat.lisp --quit
 
@@ -20,7 +24,6 @@
 (defparameter *label-path* (merge-pathnames *label-filename* (asdf:component-pathname (asdf:find-component :dufy :dat))))
 
 (defparameter *dat-url* (quri:uri "ftp://ftp.cs.joensuu.fi/pub/color/spectra/mspec/munsell380_800_1.asc.gz"))
-(defvar *dat-archive-path*)
 (defparameter *dat-filename* "munsell.dat")
 (defparameter *dat-path* (merge-pathnames *dat-filename* (asdf:component-pathname (asdf:find-component :dufy :dat))))
 
@@ -73,7 +76,7 @@ Note: ⊿E stands for CIEDE2000.~%")
     (format t "Munsell color: XYZ in Munsell renotation data, XYZ in Hiltunen's data, ⊿E~%")
     (dotimes (i 62) (read-line label-in))
     (loop for line = (read-line label-in nil 'eof)
-          for idx = 0
+          with idx = 0
           with max-delta = 0d0
           with delta-sum = 0d0
           until (eql line 'eof)
