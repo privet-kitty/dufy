@@ -34,7 +34,6 @@
 (defparameter *illum-b*
   (make-illuminant :x 0.9909274174750896d0 :z 0.8531327231885476d0))
 
-
 (defparameter *lchuv-set*
   '((20 30 40) (0.5 0.2 240) (99.9 0.1 359.9)))
 
@@ -54,13 +53,15 @@
 (defparameter *ciede2000-set-path* (merge-pathnames "ciede2000-test-data.csv" (asdf:component-pathname (asdf:find-component :dufy :dat))))
 (defparameter *ciede2000-set*
   (loop for (row1 row2)
-     on (read-csv *ciede2000-set-path*
-		  :map-fn #'(lambda (row) (mapcar (rcurry #'parse-float
-							  :junk-allowed t
-							  :type 'double-float)
-						  row)))
-     by #'cddr
-     collect (nconc (subseq row1 0 3) (subseq row2 0 3) (last row1))))
+          on (read-csv *ciede2000-set-path*
+                       :map-fn #'(lambda (row)
+                                   (mapcar (rcurry #'parse-float
+                                                   :junk-allowed t
+                                                   :type 'double-float)
+                                           row)))
+        by #'cddr
+        collect (nconc (subseq row1 0 3) (subseq row2 0 3) (last row1))))
+
 
 ;;;
 ;;; Test Codes
@@ -276,6 +277,5 @@
                     '(0.31006d0 0.31616d0 0.06827557003978901d0)
                     (multiple-value-list
                      (multiple-value-call #'dufy:xyz-to-xyy
-                       (dufy:munsell-to-xyz-illum-c "N 3.1")))
-)))
+                       (dufy:munsell-to-xyz-illum-c "N 3.1"))))))
 
