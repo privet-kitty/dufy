@@ -3,7 +3,7 @@
 (cl:in-package :asdf)
 
 (defsystem :dufy
-  :version "0.2.6"
+  :version "0.2.7"
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"
