@@ -1,18 +1,18 @@
 ;; -*- coding:utf-8 -*-
 
 ;;
-;; This script file compares XYZ values of Munsell renotation data
+;; This script file compares the XYZ values of Munsell renotation data
 ;; (1943) and Joensuu's spectral data (Munsell Book 1976, matt chip,
 ;; spectralphotometer).
 ;;
 
 ;; Usage:
-;; $ sbcl --load read-hiltunen-dat.lisp --quit
+;; $ sbcl --load read-hiltunen-dat.lisp
+;; (Quicklisp is necessary. Clozure CL also works.)
 
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :cl-ppcre)
-  (ql:quickload :drakma)
   (ql:quickload :cl-ftp)
   (ql:quickload :babel)
   (ql:quickload :dufy)
@@ -24,9 +24,11 @@
 (defparameter *label-path* (merge-pathnames *label-filename* (asdf:component-pathname (asdf:find-component :dufy :dat))))
 
 (defparameter *dat-url* (quri:uri "ftp://ftp.cs.joensuu.fi/pub/color/spectra/mspec/munsell380_800_1.asc.gz"))
-(defparameter *dat-filename* "munsell.dat")
+(defparameter *dat-filename* "munsell-joensuu-matt1.dat")
 (defparameter *dat-path* (merge-pathnames *dat-filename* (asdf:component-pathname (asdf:find-component :dufy :dat))))
 
+
+;; download
 (unless (probe-file *label-path*)
   (ftp:with-ftp-connection (conn :hostname (quri:uri-host *label-url*))
     (format t "downloading ~A to ~A ...~%" (quri:render-uri *label-url*) *label-path*)
@@ -35,19 +37,22 @@
 (unless (probe-file *dat-path*)
   (ftp:with-ftp-connection (conn :hostname (quri:uri-host *dat-url*))
     (let ((dat-archive-path
-            (let ((cl-fad:*default-template* "TEMPORARY-FILES:TEMP-%.gz"))
-              (cl-fad:with-output-to-temporary-file (zipout :direction :output
-                                                            :element-type '(unsigned-byte 8))
-                (format t "downloading ~A to ~A ...~%"
-                        (quri:render-uri *dat-url*)
-                        (pathname zipout))
-                (ftp:retrieve-file conn (quri:uri-path *dat-url*) zipout)))))
+            (fad:with-output-to-temporary-file (zipout
+                                                :direction :output
+                                                :element-type '(unsigned-byte 8)
+                                                :template "TEMPORARY-FILES:TEMP-%.gz")
+              (format t "downloading ~A to ~A ...~%"
+                      (quri:render-uri *dat-url*)
+                      (pathname zipout))
+              (ftp:retrieve-file conn (quri:uri-path *dat-url*) zipout))))
       (with-open-file (datout *dat-path* :direction :output)
         (let ((uncompress-command (format nil "gunzip -c ~A" dat-archive-path)))
           (format t "~A~%" uncompress-command)
           (uiop:run-program uncompress-command :output datout)
           (format t "dat file saved to ~A~%" *dat-path*))))))
 
+
+;; utilities
 (defun contain-digits-p (string)
   (loop for c across string
         when (digit-char-p c)
@@ -55,12 +60,11 @@
         finally (return nil)))
 
 (defun read-spd (in &optional (begin-wl 380) (end-wl 800))
-  "Reads a spectral power distribution"
   (let* ((size (+ 1 (- end-wl begin-wl)))
-	 (arr (make-array size :element-type 'double-float)))
+	 (spd-arr (make-array size :element-type 'double-float)))
     (dotimes (idx size)
-      (setf (aref arr idx) (float (read in) 1d0)))
-    (dufy:gen-spectrum arr begin-wl end-wl)))
+      (setf (aref spd-arr idx) (float (read in) 1d0)))
+    (dufy:gen-spectrum spd-arr begin-wl end-wl)))
 
 (defun scale-xyz (x y z &optional dest-y)
   "Scales XYZ so that y = dest-y."
@@ -68,13 +72,14 @@
     (values (* x factor) (* y factor) (* z factor))))
 
 
+;; main
 (with-open-file (label-in *label-path*)
   (with-open-file (dat-in *dat-path*)
     (format t "Color difference of XYZ values between Munsell renotation data (1943) and Joensuu's spectral data (Munsell Book 1976, matt chip, spectralphotometer).
 Note: ⊿E stands for CIEDE2000.~%")
     (terpri)
     (format t "Munsell color: XYZ in Munsell renotation data, XYZ in Hiltunen's data, ⊿E~%")
-    (dotimes (i 62) (read-line label-in))
+    (loop repeat 62 do (read-line label-in))
     (loop for line = (read-line label-in nil 'eof)
           with idx = 0
           with max-delta = 0d0
@@ -99,6 +104,8 @@ Note: ⊿E stands for CIEDE2000.~%")
                                x-new y-new z-new
                                delta))))
                  (incf idx))
-          finally (format t "max ⊿E = ~,5F, mean ⊿E = ~,5F.~%"
+          finally (format t "max. ⊿E = ~,5F, mean ⊿E = ~,5F.~%"
                           max-delta
                           (/ delta-sum idx)))))
+
+#-swank (quit)
