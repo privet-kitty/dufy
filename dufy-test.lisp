@@ -107,7 +107,11 @@
 		      xyz
 		      (multiple-value-list
 		       (multiple-value-call #'xyy-to-xyz
-			 (apply #'xyz-to-xyy xyz)))))))
+			 (apply #'xyz-to-xyy xyz))))))
+  (is (equal '(0d0 1d0 0d0)
+             (multiple-value-list (xyy-to-xyz 35 0 1))))
+  (is (equal '(0d0 0d0 0.8d0)
+             (multiple-value-list (xyz-to-xyy 0 0.8d0 -0.8d0)))))
 
 (test test-cat
   (dolist (xyz *xyz-set*)
