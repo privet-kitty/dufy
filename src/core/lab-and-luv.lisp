@@ -70,14 +70,14 @@
 
 (define-primary-converter (lab lchab) (lstar astar bstar)
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (lstar astar bstar)
+  (with-ensuring-type double-float (lstar astar bstar)
     (values lstar
 	    (sqrt (+ (* astar astar) (* bstar bstar)))
 	    (mod (* (atan bstar astar) +360/TWO-PI+) 360d0))))
 
 (define-primary-converter (lchab lab) (lstar cstarab hab)
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (lstar cstarab hab)
+  (with-ensuring-type double-float (lstar cstarab hab)
     (let ((hue-two-pi (* hab +TWO-PI/360+)))
       (values lstar
 	      (* cstarab (cos hue-two-pi))
@@ -116,7 +116,7 @@
 
 (define-primary-converter (xyz luv) (x y z &key (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (x y z)
+  (with-ensuring-type double-float (x y z)
     (multiple-value-bind (uprime vprime)
 	(calc-uvprime-from-xyz x y z)
       (multiple-value-bind (urprime vrprime)
@@ -132,7 +132,7 @@
 
 (define-primary-converter (luv xyz) (lstar ustar vstar &key (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (lstar ustar vstar)
+  (with-ensuring-type double-float (lstar ustar vstar)
     (multiple-value-bind (urprime vrprime)
         (calc-uvprime-from-xyz (illuminant-x illuminant)
                                1d0
@@ -149,14 +149,14 @@
 
 (define-primary-converter (luv lchuv) (lstar ustar vstar)
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (lstar ustar vstar)
+  (with-ensuring-type double-float (lstar ustar vstar)
     (values lstar
 	    (sqrt (+ (* ustar ustar) (* vstar vstar)))
 	    (mod (* (atan vstar ustar) +360/TWO-PI+) 360d0))))
 
 (define-primary-converter (lchuv luv) (lstar cstaruv huv)
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (lstar cstaruv huv)
+  (with-ensuring-type double-float (lstar cstaruv huv)
     (let ((hue-two-pi (* huv +TWO-PI/360+)))
       (values lstar
 	      (* cstaruv (cos hue-two-pi))

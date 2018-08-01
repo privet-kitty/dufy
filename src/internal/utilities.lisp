@@ -53,15 +53,15 @@
              collect `(let ((,var ,i)) ,@body))
      ,result))
 
-(defmacro with-double-float (vars &body body)
-  "Ensures that variables are double-float."
+(defmacro with-ensuring-type (type vars &body body)
+  "Ensures that the type of variables are TYPE."
   (labels ((expand (var-lst)
 	     (if (null var-lst)
 		 nil
-		 (cons `(,(car var-lst) (float ,(car var-lst) 1d0))
+		 (cons `(,(car var-lst) (coerce ,(car var-lst) ',type))
 		       (expand (cdr var-lst))))))
     `(let ,(expand vars)
-       (declare (type double-float ,@vars))
+       (declare (type ,type ,@vars))
        ,@body)))
 
 

@@ -6,7 +6,7 @@
   (:export
    :*dat-dir-path*
    :print-make-array
-   :with-double-float
+   :with-ensuring-type
    :time-after-gc
    :internal-real-time-after-gc
    :time-median

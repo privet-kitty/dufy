@@ -67,7 +67,7 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
   (declare (optimize (speed 3) (safety 1)))
   "If ILLUMINANT is NIL, the transform is virtually equivalent to that
 of illuminant E. "
-  (with-double-float (x y z)
+  (with-ensuring-type double-float (x y z)
     (if illuminant
 	(let* ((mat (cat-matrix cat))
 	       (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
@@ -91,7 +91,7 @@ of illuminant E. "
   (declare (optimize (speed 3) (safety 1)))
   "If ILLUMINANT is NIL, the transform is virtually equivalent to that
 of illuminant E. "
-  (with-double-float (l m s)
+  (with-ensuring-type double-float (l m s)
     (if illuminant
 	(let* ((mat (cat-matrix cat))
 	       (factor-l (+ (* (illuminant-x illuminant) (aref mat 0 0))
@@ -165,7 +165,7 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 		      (xyz-to-repr (intern (format nil "XYZ-TO-~A" term) :dufy-core))
 		      (repr-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy-core)))
 		 `#'(lambda ,args
-		      (with-double-float ,args
+		      (with-ensuring-type double-float ,args
 			(multiple-value-call #',xyz-to-repr
 			  (multiple-value-call #'multiply-mat-vec
 			    mat
@@ -175,11 +175,11 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
       (ecase target
 	(:xyz
 	 #'(lambda (x y z)
-	     (with-double-float (x y z)
+	     (with-ensuring-type double-float (x y z)
 	       (multiply-mat-vec mat x y z))))
 	(:xyy
 	 #'(lambda (small-x small-y y)
-	     (with-double-float (small-x small-y y)
+	     (with-ensuring-type double-float (small-x small-y y)
 	       (multiple-value-call #'xyz-to-xyy
 		 (multiple-value-call #'multiply-mat-vec
 		   mat
@@ -210,7 +210,7 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
                                                   ,,'to-illuminant
                                                   ,,'cat)
                                  t)))
-                       (with-double-float ,',args
+                       (with-ensuring-type double-float ,',args
                          (multiple-value-call #',',xyz-to-target
                            (multiple-value-call #'multiply-mat-vec
                              mat
@@ -230,14 +230,14 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 		   (let ((mat (load-time-value
 			       (calc-cat-matrix ,from-illuminant ,to-illuminant ,cat)
 			       t)))
-		     (with-double-float (x y z)
+		     (with-ensuring-type double-float (x y z)
 		       (multiply-mat-vec mat x y z)))))
 	  (:xyy `(defun ,name (small-x small-y y)
 		   (declare (optimize (speed 3) (safety 1)))
 		   (let ((mat (load-time-value
 			       (calc-cat-matrix ,from-illuminant ,to-illuminant ,cat)
 			       t)))
-		     (with-double-float (small-x small-y y)
+		     (with-ensuring-type double-float (small-x small-y y)
 		       (multiple-value-call #'xyz-to-xyy
 			 (multiple-value-call #'multiply-mat-vec
 			   mat

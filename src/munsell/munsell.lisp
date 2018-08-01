@@ -37,7 +37,7 @@
   "Returns the largest chroma in the Munsell renotation data for a
 given hue and value."
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (hue40 value)
+  (with-ensuring-type double-float (hue40 value)
     (let* ((hue (mod hue40 40d0))
 	   (hue1 (floor hue))
 	   (hue2 (mod (ceiling hue) 40)))
@@ -64,7 +64,7 @@ given hue and value."
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
 formula is based on ASTM D1535-08e1:"
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (v)
+  (with-ensuring-type double-float (v)
     (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
 (defun munsell-value-to-lstar (v)
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
@@ -510,7 +510,7 @@ MAX-ITERATION:
 :return40: Three 40d0s are returned.
 :raw: Just returns HVC as it is.
 "
-  (with-double-float (lstar cstarab hab factor threshold)
+  (with-ensuring-type double-float (lstar cstarab hab factor threshold)
     (let ((init-h (* hab #.(float 40/360 1d0)))
 	  (init-c (* cstarab #.(/ 5.5d0))))
       (invert-mhvc-to-lchab lstar cstarab hab

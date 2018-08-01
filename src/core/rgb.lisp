@@ -99,7 +99,7 @@ LINEARIZER and DELINEARIZER must be (FUNCTION * (VALUES DOUBLE-FLOAT
 gamma-corrected value is forcibly set to [0, 1]."
   (declare (optimize (speed 3) (safety 1))
 	   ((function * double-float) linearizer delinearizer))
-  (with-double-float (xr yr xg yg xb yb)
+  (with-ensuring-type double-float (xr yr xg yg xb yb)
     (let ((coordinates
             (make-array '(3 3)
                         :element-type 'double-float
@@ -177,7 +177,7 @@ gamma-corrected value is forcibly set to [0, 1]."
   (declare (optimize (speed 3) (safety 1)))
   "Returns true, if at least one of LR, LG and LB is outside the
 interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
-  (with-double-float (lr lg lb threshold)
+  (with-ensuring-type double-float (lr lg lb threshold)
     (let ((inf (- (rgbspace-lmin rgbspace) threshold))
           (sup (+ (rgbspace-lmax rgbspace) threshold)))
       (not (and  (<= inf lr sup)
@@ -212,7 +212,7 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
   "Returns true, if at least one of R, G and B is outside the interval
 [RGBSPACE-MIN - THRESHOLD, RGBSPACE-MAX + THRESHOLD]"
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (r g b threshold)
+  (with-ensuring-type double-float (r g b threshold)
     (let ((inf (- (rgbspace-min rgbspace) threshold))
 	  (sup (+ (rgbspace-max rgbspace) threshold)))
       (not (and (<= inf r sup)
@@ -263,7 +263,7 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1]
 typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255} typically),
 though it accepts all the real values."
-  (with-double-float (r g b)
+  (with-ensuring-type double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
 	  (qmax-float/length (rgbspace-qmax-float/length rgbspace))
 	  (qmax (rgbspace-qmax rgbspace)))
@@ -280,7 +280,7 @@ though it accepts all the real values."
 typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255},
 typically), though it accepts all the real values."
   (declare (optimize (speed 3) (safety 1)))
-  (with-double-float (r g b alpha)
+  (with-ensuring-type double-float (r g b alpha)
     (let ((min (rgbspace-min rgbspace))
 	  (qmax-float/length (rgbspace-qmax-float/length rgbspace))
 	  (qmax (rgbspace-qmax rgbspace)))
@@ -446,7 +446,7 @@ situation whether the returned values are meaningful."
   (declare (optimize (speed 3) (safety 1)))
   "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
-  (with-double-float (r g b)
+  (with-ensuring-type double-float (r g b)
     (let* ((maxrgb (max r g b))
            (minrgb (min r g b))
            (s (if (= maxrgb 0d0)
@@ -466,7 +466,7 @@ situation whether the returned values are meaningful."
   (declare (optimize (speed 3) (safety 1)))
     "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
-  (with-double-float (hue sat lum)
+  (with-ensuring-type double-float (hue sat lum)
     (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (+ lum lum -1d0)))))
 	   (max (+ lum tmp))
 	   (min (- lum tmp))
@@ -502,7 +502,7 @@ situation whether the returned values are meaningful."
   (declare (optimize (speed 3) (safety 1)))
   "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
-  (with-double-float (r g b)
+  (with-ensuring-type double-float (r g b)
     (let ((minrgb (min r g b))
           (maxrgb (max r g b)))
       (values (cond ((= minrgb maxrgb) 0d0)

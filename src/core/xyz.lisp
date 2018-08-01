@@ -26,7 +26,7 @@ wavelength (nm) as a real number and returns a double-float: (function
   (declare (optimize (speed 3) (safety 1)))
   "xyY to XYZ. The nominal range of Y is [0, 1], though all real
 values are accepted."
-  (with-double-float (small-x small-y y)
+  (with-ensuring-type double-float (small-x small-y y)
     (if (zerop small-y)
 	(values 0d0 y 0d0)
 	(values (/ (* small-x y) small-y) 
@@ -37,7 +37,7 @@ values are accepted."
   (declare (optimize (speed 3) (safety 1)))
   "XYZ to xyY. The nominal range of Y is [0, 1], though all real
 values are accepted."
-  (with-double-float (x y z)
+  (with-ensuring-type double-float (x y z)
     (let ((sum (+ x y z)))
       (if (= sum 0)
 	  (values 0d0 0d0 y)
@@ -89,7 +89,7 @@ spectrum-seq '(simple-array double-float (*)))."
 linearization. It is used to lighten a \"heavy\" spectrum function."
   (declare (optimize (speed 3) (safety 1))
 	   (spectrum-function spectrum))
-  (with-double-float (begin-wl end-wl band)
+  (with-ensuring-type double-float (begin-wl end-wl band)
     (let* ((partitions (max 2 (round (/ (- end-wl begin-wl) band))))
 	   (partitions-f (float partitions 1d0))
            (points (make-array (1+ partitions) :element-type 'double-float)))
