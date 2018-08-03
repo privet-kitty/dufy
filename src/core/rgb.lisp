@@ -314,12 +314,10 @@ typically), though it accepts all the real values."
 (defconverter lrgb qrgb)
 (defconverter qrgb lrgb)
 
-
 (defun bench-qrgb-to-lrgb (&optional (num 8000000))
   (time-median 10
     (dotimes (i num)
       (qrgb-to-lrgb 100 200 50))))
-
 
 (defconverter xyz qrgb)
 (defconverter qrgb xyz)
@@ -408,14 +406,6 @@ The order can be :ARGB or :RGBA. Note that it is different from the
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
   :documentation "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0, 1].")
-
-(defmacro macrolet-applied-only-when (test definitions &body body)
-  `(if ,test
-       (macrolet ,definitions
-         ,@body)
-       (macrolet ,(loop for def in definitions
-                        collect `(,(car def) (arg) arg))
-         ,@body)))
 
 (define-primary-converter (hsv rgb) (hue sat val)
   (declare (optimize (speed 3) (safety 1)))
