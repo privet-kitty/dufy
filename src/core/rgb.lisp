@@ -311,16 +311,13 @@ typically), though it accepts all the real values."
 	    (+ min (* qb length/qmax-float))
             (+ min (* qalpha length/qmax-float)))))
 
-(defconverter lrgb qrgb)
-(defconverter qrgb lrgb)
+(defconverters (xyz lrgb) qrgb)
+(defconverters qrgb (xyz lrgb))
 
 (defun bench-qrgb-to-lrgb (&optional (num 8000000))
   (time-median 10
     (dotimes (i num)
       (qrgb-to-lrgb 100 200 50))))
-
-(defconverter xyz qrgb)
-(defconverter qrgb xyz)
 
 
 (define-primary-converter (qrgb rgbpack) (qr qg qb &key (rgbspace +srgb+))
@@ -381,17 +378,12 @@ The order can be :ARGB or :RGBA. Note that it is different from the
 		     (logand (ash int -bpc) qmax)
 		     (logand int qmax))))))
 
-(defconverter rgbpack rgb)
-(defconverter rgb rgbpack :exclude-args (clamp))
-
-(defconverter rgbpack lrgb)
-(defconverter lrgb rgbpack :exclude-args (clamp))
-
-(defconverter rgbpack xyz)
-(defconverter xyz rgbpack :exclude-args (clamp))
+(defconverters rgbpack (rgb lrgb xyz))
+(defconverters (rgb lrgb xyz) rgbpack :exclude-args (clamp))
 
 (defconverter rgbapack rgba)
 (defconverter rgba rgbapack)
+
 
 
 ;;;
@@ -429,8 +421,8 @@ situation whether the returned values are meaningful."
             (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
                )))))
 
-(defconverter hsv qrgb)
-(defconverter hsv xyz)
+(defconverters hsv (qrgb lrgb xyz))
+(defconverter hsv rgbpack :exclude-args (clamp))
 
 (define-primary-converter (rgb hsv) (r g b)
   (declare (optimize (speed 3) (safety 1)))
@@ -448,8 +440,7 @@ situation whether the returned values are meaningful."
                     ((= minrgb g) (+ (* 60d0 (/ (- r b) (- maxrgb minrgb))) 300d0)))))
       (values h s maxrgb))))
 
-(defconverter qrgb hsv)
-(defconverter xyz hsv)
+(defconverters (qrgb rgbpack lrgb xyz) hsv)
 
 
 (define-primary-converter (hsl rgb) (hue sat lum)
@@ -484,9 +475,9 @@ situation whether the returned values are meaningful."
                                    (+ min (* delta (- 360d0 hue) 1/60))))
             (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
                )))))
- 
-(defconverter hsl qrgb)
-(defconverter hsl xyz)
+
+(defconverters hsl (qrgb lrgb xyz))
+(defconverter hsl rgbpack :exclude-args (clamp))
 
 (define-primary-converter (rgb hsl) (r g b)
   (declare (optimize (speed 3) (safety 1)))
@@ -505,5 +496,4 @@ situation whether the returned values are meaningful."
                     (/ (- maxrgb minrgb) denom)))
               (* 0.5d0 (+ maxrgb minrgb))))))
 
-(defconverter qrgb hsl)
-(defconverter xyz hsl)
+(defconverters (qrgb rgbpack lrgb xyz) hsl)

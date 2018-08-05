@@ -326,6 +326,12 @@ TO-COLORSPACE automatically with linking primary converters."
          ,@(ensure-list documentation)
          ,(expand-conversion-form chain :exclude-args exclude-args)))))
 
+(defmacro defconverters (from-colorspaces to-colorspaces &key (exclude-args nil))
+  `(progn
+     ,@(loop for from-cs in (ensure-list from-colorspaces)
+             append (loop for to-cs in (ensure-list to-colorspaces)
+                          collect `(defconverter ,from-cs ,to-cs :exclude-args ,exclude-args)))))
+
 (defmacro let-converter (definitions &body body)
   "local version of defconverter
 
