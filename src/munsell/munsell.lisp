@@ -294,16 +294,6 @@ The illuminant of RGBSPACE must also be D65."
     :rgbspace rgbspace
     :clamp clamp))
 
-(defun bench-mhvc-to-qrgb (&optional (num 300000))
-  (time-after-gc
-    (dotimes (x num)
-      (mhvc-to-qrgb (random 40d0) (random 10d0) (random 50d0)))))
-
-(defun bench-mhvc-to-lchab (&optional (num 2000000))
-  (time-after-gc
-    (dotimes (x num)
-      (mhvc-to-lchab-illum-c (random 80d0) (random 10d0) (random 50d0)))))
-
 (define-condition munsellspec-parse-error (parse-error)
   ((spec :initarg :spec
 	 :initform nil

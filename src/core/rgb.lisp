@@ -89,7 +89,6 @@ shouldn't call the returned function on your own, as it is not safe."
   (length/qmax-float (float 1/255 1d0) :type double-float)
   (qmax-float/length 255d0 :type double-float))
 
-
 (defun make-rgbspace (xr yr xg yg xb yb &key (illuminant +illum-d65+) (lmin 0d0) (lmax 1d0) (linearizer (rcurry #'float 1d0)) (delinearizer (rcurry #'float 1d0)) (bit-per-channel 8) (force-normal nil))
   "xr, yr, xg, yg, xb, yb := primary coordinates in the xy plane.
 [lmin, lmax] := range of linear values ([0, 1] typically).
@@ -222,13 +221,6 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 (defconverter xyz rgb)
 (defconverter rgb xyz)
 
-(defun bench-xyz-to-rgb (&optional (num 5000000))
-  "For devel."
-  (time-median 10
-    (dotimes (i num)
-      (xyz-to-rgb 0.1 0.2 0.3))))
-
-
 (declaim (inline qrgb-out-of-gamut-p))
 (defun qrgb-out-of-gamut-p (qr qg qb &key (rgbspace +srgb+) (threshold 0))
   (declare (optimize (speed 3) (safety 1))
@@ -313,12 +305,6 @@ typically), though it accepts all the real values."
 
 (defconverters (xyz lrgb) qrgb)
 (defconverters qrgb (xyz lrgb))
-
-(defun bench-qrgb-to-lrgb (&optional (num 8000000))
-  (time-median 10
-    (dotimes (i num)
-      (qrgb-to-lrgb 100 200 50))))
-
 
 (define-primary-converter (qrgb rgbpack) (qr qg qb &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))

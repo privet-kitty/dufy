@@ -392,18 +392,6 @@ BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
                                  end-wl
                                  band)))
 
-
-
-(defun bench-spectrum (&optional (num 50000) (illuminant +illum-c+))
-  "For devel."
-  (declare (optimize (speed 3) (safety 1))
-	   (fixnum num))
-  (time-after-gc
-    (let ((spctrm (gen-illum-d-spectrum 4000)))
-      (dotimes (idx num)
-        (spectrum-to-xyz spctrm :illuminant illuminant)))))
-
-
 (defun calc-to-spectrum-matrix (illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
   "Used for XYZ-to-spectrum conversion."
   (declare (optimize (speed 3) (safety 1)))

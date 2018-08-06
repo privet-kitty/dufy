@@ -20,7 +20,7 @@
 (define-functional (lab-deltae94 lab :term deltae94) (l1 a1 b1 l2 a2 b2 &key (application :graphic-arts))
   (declare (optimize (speed 3) (safety 1)))
   "CIE 1994. 
-APPLICATION::= :graphic-arts | :textiles"
+APPLICATION ::= :graphic-arts | :textiles"
   (with-ensuring-type double-float (l1 a1 b1 l2 a2 b2)
     (let ((c1 (sqrt (+ (square a1) (square b1))))
 	  (c2 (sqrt (+ (square a2) (square b2)))))
@@ -110,14 +110,6 @@ APPLICATION::= :graphic-arts | :textiles"
 
 (extend-functional deltae00 xyz)
 (extend-functional deltae00 qrgb)
-
-(defun bench-deltae00 (&optional (num 1000000))
-  (declare (optimize (speed 3) (safety 1)))
-  (time-median 10
-    (dotimes (x num)
-      (qrgb-deltae00 (random 65536) (random 65536) (random 65536)
-                     (random 65536) (random 65536) (random 65536)
-                     :rgbspace +bg-srgb-16+))))
 
 
 (define-functional (lab-deltaecmc lab :term deltaecmc) (l1 a1 b1 l2 a2 b2 &key (l-factor 2d0) (c-factor 1d0))

@@ -50,14 +50,6 @@
 				  (* (aref mat 0 1) (aref mat 1 0))) /det))
     invmat))
 
-(defun bench-invmat (&optional (num 3000000))
-  "For devel."
-  (time (let ((mat (make-array '(3 3)
-			       :element-type 'double-float
-			       :initial-contents '((1d0 2d0 3d0) (4d0 5d0 6d0) (7d0 8d0 10d0)))))
-	  (dotimes (i num)
-	    (invert-matrix33 mat)))))
-
 (declaim (ftype (function * (values double-float double-float double-float &optional)) multiply-mat-vec)
 	 (inline multiply-mat-vec))
 (defun multiply-mat-vec (matrix x y z)
@@ -94,15 +86,4 @@
       (multiply-mat-mat mat1
 			(apply #'multiply-matrices (car mats) (cdr mats)))))
 
-(defun bench-mult-mat (&optional (num 20000000))
-  "For devel."
-  (time-after-gc
-   (let ((mat1 (make-array '(3 3)
-                           :element-type 'double-float
-                           :initial-contents '((1d0 2d0 3d0) (1d0 2d0 3d0) (4d0 5d0 6d0))))
-         (mat2 (make-array '(3 3)
-                           :element-type 'double-float
-                           :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 -1d0)))))
-     (dotimes (x num)
-       (multiply-matrices mat1 mat2)))))
 
