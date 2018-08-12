@@ -25,7 +25,7 @@
       (traverse dimensions indices))))
 
 (defun print-make-array (var-name array &optional (stream t) (declaration t) (load-time-value nil))
-  "Prints a code like (defparameter VAR-NAME (make-array ...))"
+  "Prints a code like (defparameter VAR-NAME (make-array ...))."
   (labels ((wrap-with-load-time-value (form)
              `(load-time-value ,form t)))
     (let ((typ (array-element-type array))
@@ -42,6 +42,7 @@
                        `(make-array ',dims
                                     :element-type ',typ
                                     :initial-contents ',(array-to-list array)))))))
+
 
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 (define-constant +TWO-PI/360+ (/ TWO-PI 360))
@@ -71,7 +72,7 @@
 ;;;
 
 (defmacro internal-real-time (&body body)
-  "For development. Returns (internal real) time"
+  "For development. Returns elapsed (internal real) time."
   (let ((start (gensym)))
     `(let ((,start (get-internal-real-time)))
        ,@body
@@ -79,12 +80,14 @@
 	  internal-time-units-per-second))))
 
 (defmacro time-after-gc (&body body)
+  "TIME macro after GC"
   `(progn
      #+sbcl(sb-ext:gc :full t)
      #+ccl(ccl:gc)
      (time ,@body)))
 
 (defmacro internal-real-time-after-gc (&body body)
+  "INTERNAL-REAL-TIME macro after GC"
   `(progn
      #+sbcl(sb-ext:gc :full t)
      #+ccl(ccl:gc)
@@ -92,7 +95,7 @@
 
 (defmacro time-median (num &body body)
   "Repeats BODY NUM times and returns the median of elapsed (internal
-real) times"
+real) times."
   (let ((i (gensym)))
     `(alexandria:median
       (loop for ,i below ,num
@@ -100,7 +103,6 @@ real) times"
 
 #+sbcl
 (defmacro with-profiling (&body body)
-  "For devel."
   `(unwind-protect
         (progn (sb-profile:profile "DUFY")
                ,@body
@@ -178,9 +180,9 @@ returns MIN or MAX, whichever is nearer to NUMBER."
 
 (defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
-circle group. The return value doesn't exceed the given interval from
-THETA1 to THETA2 if COEF is in [0, 1]. It is, however, slower than
-CIRCULAR-LERP-LOOSE."
+circle group. It is guaranteed that the return value doesn't exceed
+the given interval from THETA1 to THETA2 if COEF is in [0, 1]. It is,
+however, slower than CIRCULAR-LERP-LOOSE."
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (circular-clamp (+ theta1 (* dtheta coef))
 		    theta1

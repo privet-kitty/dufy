@@ -148,7 +148,7 @@ and TO-ILLUMINANT in XYZ space."
 > (funcall (gen-cat-function +illum-a+ +illum-e+ :target :xyy) 0.44757 0.40745 1)
 => 0.3333333257806802d0
 0.33333331733957294d0
-1.0000000029690765d0 ; transforms white point
+1.0000000029690765d0 ; transformed white point
 
 TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV. If you want to
 choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
@@ -188,9 +188,9 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
   "DEFINE-macro of GEN-CAT-FUNCTION.
  (define-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
  (d65-to-e 0.9504d0 1.0d0 1.0889d0)
-=> 0.9999700272441295d0
-0.999998887365445d0
-0.9999997282885571d0
+;; => 0.9999700272441295d0
+;; 0.999998887365445d0
+;; 0.9999997282885571d0
 
 TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
   (macrolet ((def-converter (args target)
