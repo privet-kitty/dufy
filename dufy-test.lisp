@@ -44,11 +44,9 @@
   :target :lchuv
   :cat +cmccat97+)
 (define-cat-function xyy-c-to-e +illum-c+ +illum-e+
-  :target :xyy
-  :cat +von-kries+)
+  :target :xyy)
 (define-cat-function xyy-e-to-c +illum-e+ +illum-c+
-  :target :xyy
-  :cat +von-kries+)
+  :target :xyy)
 
 (defparameter *ciede2000-set-path* (merge-pathnames "ciede2000-test-data.csv" (asdf:component-pathname (asdf:find-component :dufy :dat))))
 (defparameter *ciede2000-set*

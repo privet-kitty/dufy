@@ -190,7 +190,7 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 	(:lchuv (gen-lambda (lstar cstaruv huv) :lchuv))))))
 
 
-(defmacro define-cat-function (name from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
+(defmacro define-cat-function (name from-illuminant to-illuminant &key (cat '+bradford+) (target :xyz))
   "DEFINE-macro of GEN-CAT-FUNCTION.
  (define-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
  (d65-to-e 0.9504d0 1.0d0 1.0889d0)
