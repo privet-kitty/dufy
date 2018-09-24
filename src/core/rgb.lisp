@@ -306,8 +306,9 @@ typically), though it accepts all the real values."
 (defconverters (xyz lrgb) qrgb)
 (defconverters qrgb (xyz lrgb))
 
-(define-primary-converter (qrgb rgbpack) (qr qg qb &key (rgbspace +srgb+))
-  (declare (optimize (speed 3) (safety 1)))
+(define-primary-converter (qrgb rgbpack) (qr qg qb &key (rgbspace +srgb+) &aux (clamp nil))
+  (declare (optimize (speed 3) (safety 1))
+           (ignorable clamp))
   (let ((bpc (rgbspace-bit-per-channel rgbspace))
 	(qmax (rgbspace-qmax rgbspace)))
     (+ (ash (clamp qr 0 qmax) (+ bpc bpc))
@@ -327,8 +328,9 @@ value correctly if its order is ARGB."
 	    (logand (ash int minus-bpc) qmax)
 	    (logand int qmax))))
 
-(define-primary-converter (qrgba rgbapack) (qr qg qb qalpha &key (rgbspace +srgb+) (order :argb))
-  (declare (optimize (speed 3) (safety 1)))
+(define-primary-converter (qrgba rgbapack) (qr qg qb qalpha &key (rgbspace +srgb+) (order :argb) &aux (clamp nil))
+  (declare (optimize (speed 3) (safety 1))
+           (ignorable clamp))
   "Decodes a packed RGBA value, whose type depends on RGBSPACE but is
 typically unsigned 32-bit integer.
 
@@ -365,11 +367,10 @@ The order can be :ARGB or :RGBA. Note that it is different from the
 		     (logand int qmax))))))
 
 (defconverters rgbpack (rgb lrgb xyz))
-(defconverters (rgb lrgb xyz) rgbpack :exclude-args (clamp))
+(defconverters (rgb lrgb xyz) rgbpack)
 
 (defconverter rgbapack rgba)
 (defconverter rgba rgbapack)
-
 
 
 ;;;
@@ -407,8 +408,7 @@ situation whether the returned values are meaningful."
             (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
                )))))
 
-(defconverters hsv (qrgb lrgb xyz))
-(defconverter hsv rgbpack :exclude-args (clamp))
+(defconverters hsv (rgbpack qrgb lrgb xyz))
 
 (define-primary-converter (rgb hsv) (r g b)
   (declare (optimize (speed 3) (safety 1)))
@@ -427,7 +427,6 @@ situation whether the returned values are meaningful."
       (values h s maxrgb))))
 
 (defconverters (qrgb rgbpack lrgb xyz) hsv)
-
 
 (define-primary-converter (hsl rgb) (hue sat lum)
   (declare (optimize (speed 3) (safety 1)))
@@ -462,8 +461,7 @@ situation whether the returned values are meaningful."
             (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
                )))))
 
-(defconverters hsl (qrgb lrgb xyz))
-(defconverter hsl rgbpack :exclude-args (clamp))
+(defconverters hsl (rgbpack qrgb lrgb xyz))
 
 (define-primary-converter (rgb hsl) (r g b)
   (declare (optimize (speed 3) (safety 1)))
