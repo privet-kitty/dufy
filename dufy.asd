@@ -1,7 +1,7 @@
 ;;;; dufy.asd -*- Mode: Lisp;-*-
 
 (defsystem "dufy"
-  :version "0.2.7"
+  :version "0.2.8"
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"
