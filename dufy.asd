@@ -1,14 +1,12 @@
 ;;;; dufy.asd -*- Mode: Lisp;-*-
 
-(cl:in-package :asdf)
-
-(defsystem :dufy
+(defsystem "dufy"
   :version "0.2.7"
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"
   :serial t
-  :depends-on (:dufy-core :dufy-munsell)
+  :depends-on ("dufy-core" "dufy-munsell")
   :components ((:module "dat")
                (:module "src"
                 :components ((:file "package"))))

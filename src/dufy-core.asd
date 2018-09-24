@@ -1,10 +1,8 @@
 ;;;; dufy-core.asd -*- Mode: Lisp;-*-
 
-(cl:in-package :asdf)
-
-(defsystem :dufy-core
+(defsystem "dufy-core"
   :serial t
-  :depends-on (:alexandria :dufy-internal)
+  :depends-on ("alexandria" "dufy-internal")
   :components ((:module "core"
 		:components
 		((:file "package")

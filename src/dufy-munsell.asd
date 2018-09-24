@@ -1,10 +1,8 @@
 ;;;; dufy-munsell.asd -*- Mode: Lisp;-*-
 
-(cl:in-package :asdf)
-
-(defsystem :dufy-munsell
+(defsystem "dufy-munsell"
   :serial t
-  :depends-on (:dufy-core :cl-ppcre)
+  :depends-on ("dufy-core" "cl-ppcre")
   :components ((:module "munsell"
 		:components
 		((:file "package")
