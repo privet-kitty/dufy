@@ -207,7 +207,7 @@ allowed. "
 
 
 ;;;
-;;; Codes for linking primary converters
+;;; Code for linking primary converters
 ;;;
 
 (defun global-allow-other-keys-p (chain)

@@ -62,7 +62,7 @@
 
 
 ;;;
-;;; Test Codes
+;;; Test Code
 ;;;
 
 (test test-spectrum
