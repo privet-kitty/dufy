@@ -48,6 +48,12 @@
 (define-cat-function xyy-e-to-c +illum-e+ +illum-c+
   :target :xyy)
 
+;; Workaround for ABCL. (alexanrdia:rcurry causes an error on ABCL.)
+#+abcl
+(defun rcurry (function &rest initial-args)
+  (lambda (&rest args)
+    (apply function (append args initial-args))))
+
 (defparameter *ciede2000-set-path* (asdf:component-pathname (asdf:find-component "dufy" '("dat" "ciede2000-test-data.csv"))))
 (defparameter *ciede2000-set*
   (loop for (row1 row2)

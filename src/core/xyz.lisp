@@ -5,7 +5,9 @@
 (in-package :dufy-core)
 
 
-(deftype spectrum-function () '(function * (values double-float &optional)))
+(deftype spectrum-function ()
+  #-abcl '(function * (values double-float &optional))
+  #+abcl t)
 
 (define-colorspace xyz (x y z)
   :arg-types (real real real)
