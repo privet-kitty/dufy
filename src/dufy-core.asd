@@ -1,4 +1,4 @@
-;;;; dufy-core.asd -*- Mode: Lisp;-*-
+;;;; -*- Mode: Lisp;-*-
 
 (defsystem "dufy-core"
   :serial t

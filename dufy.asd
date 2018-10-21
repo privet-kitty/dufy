@@ -1,4 +1,4 @@
-;;;; dufy.asd -*- Mode: Lisp;-*-
+;;;; -*- Mode: Lisp;-*-
 
 (defsystem "dufy"
   :version "0.2.8"
@@ -7,8 +7,8 @@
   :license "MIT"
   :serial t
   :depends-on ("dufy-core" "dufy-munsell")
-  :components ((:module "dat")
+  :components ((:module "dat"
+                :components ((:static-file "ciede2000-test-data.csv")))
                (:module "src"
                 :components ((:file "package"))))
   :in-order-to ((test-op (test-op dufy-test))))
-

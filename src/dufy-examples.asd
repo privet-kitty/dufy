@@ -1,4 +1,4 @@
-;;;; dufy-examples.asd -*- Mode: Lisp;-*-
+;;;; -*- Mode: Lisp;-*-
 
 (defsystem "dufy-examples"
   :description "Examples of dufy"
@@ -9,4 +9,3 @@
   :components ((:module "examples"
                 :components ((:file "packages")
                              (:file "show-munsell-space")))))
-

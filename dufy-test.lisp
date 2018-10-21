@@ -48,7 +48,7 @@
 (define-cat-function xyy-e-to-c +illum-e+ +illum-c+
   :target :xyy)
 
-(defparameter *ciede2000-set-path* (merge-pathnames "ciede2000-test-data.csv" (asdf:component-pathname (asdf:find-component :dufy :dat))))
+(defparameter *ciede2000-set-path* (asdf:component-pathname (asdf:find-component "dufy" '("dat" "ciede2000-test-data.csv"))))
 (defparameter *ciede2000-set*
   (loop for (row1 row2)
           on (read-csv *ciede2000-set-path*

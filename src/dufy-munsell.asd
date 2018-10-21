@@ -1,4 +1,4 @@
-;;;; dufy-munsell.asd -*- Mode: Lisp;-*-
+;;;; -*- Mode: Lisp;-*-
 
 (defsystem "dufy-munsell"
   :serial t

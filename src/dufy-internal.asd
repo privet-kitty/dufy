@@ -1,7 +1,7 @@
-;;;; dufy-develop.asd -*- Mode: Lisp;-*-
+;;;; -*- Mode: Lisp;-*-
 
 (defsystem "dufy-internal"
-  :description "Common definitions which are not external in the main package"
+  :description "Common definitions that are not exported in the main package"
   :serial t
   :depends-on ("alexandria")
   :components ((:module "internal"
@@ -9,4 +9,3 @@
                 ((:file "package")
                  (:file "utilities")
                  (:file "matrix")))))
-
