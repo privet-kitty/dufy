@@ -1,11 +1,12 @@
 (in-package :cl-user)
 
-(defpackage dufy-test
-  (:use :cl :fiveam :dufy :dufy-internal :alexandria :cl-csv :parse-float))
-(in-package :dufy-test)
+(defpackage :dufy/test
+  (:use :cl :fiveam :dufy :dufy-internal :alexandria :cl-csv :parse-float)
+  (:export #:dufy-suite))
+(in-package :dufy/test)
 
-(def-suite :dufy-suite)
-(in-suite :dufy-suite)
+(def-suite dufy-suite)
+(in-suite dufy-suite)
 
 ;;;
 ;;; Test Data

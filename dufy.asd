@@ -13,9 +13,7 @@
   :in-order-to ((test-op (test-op "dufy/test"))))
 
 (defsystem "dufy/test"
-  :description "Test system for Dufy"
-  :author "Hugo I."
-  :license "MIT"
+  :description "Test system for dufy"
   :depends-on ("dufy"
                "fiveam"
                "cl-csv"
@@ -26,4 +24,4 @@
                (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy-examples"))
   :components ((:file "dufy-test"))
   :perform (test-op (o s)
-		    (uiop:eval-thunk "(fiveam:run! :dufy-suite)")))
+		    (uiop:eval-thunk "(fiveam:run! 'dufy/test:dufy-suite)")))
