@@ -15,14 +15,11 @@ env:
     - LISP=allegro
     - LISP=abcl
     - LISP=clisp
-    - LISP=ecl/ECL-16.1.3
 
 matrix:
   allow_failures:
     - env: LISP=abcl
     - env: LISP=clisp
-    - env: LISP=ecl/ECL-16.1.3
-
 
 install:
   - curl -L https://raw.githubusercontent.com/snmsts/roswell/release/scripts/install-for-ci.sh | sh
@@ -30,7 +27,7 @@ install:
   - git clone --depth=1 https://gitlab.common-lisp.net/alexandria/alexandria.git ~/lisp/alexandria
 
 script:
-  - ros -s fiveam -e '(ql:quickload :dufy-test)
+  - ros -s fiveam -e '(ql:quickload :dufy/test)
                       (or (fiveam:run! :dufy-suite)
                           (uiop:quit 1))'
 

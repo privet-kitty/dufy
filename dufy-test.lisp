@@ -7,7 +7,6 @@
 (def-suite :dufy-suite)
 (in-suite :dufy-suite)
 
-
 ;;;
 ;;; Test Data
 ;;;
