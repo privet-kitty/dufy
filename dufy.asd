@@ -5,7 +5,6 @@
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"
-  :serial t
   :depends-on ("dufy-core" "dufy-munsell")
   :components ((:module "dat"
                 :components ((:static-file "ciede2000-test-data.csv")))

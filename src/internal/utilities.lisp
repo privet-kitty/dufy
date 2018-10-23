@@ -25,7 +25,7 @@
       (traverse dimensions indices))))
 
 (defun print-make-array (var-name array &optional (stream t) (declaration t) (load-time-value nil))
-  "Prints a code like (defparameter VAR-NAME (make-array ...))."
+  "Prints a code like (defparameter VAR-NAME #.(make-array ...))."
   (labels ((wrap-with-load-time-value (form)
              `(load-time-value ,form t)))
     (let ((typ (array-element-type array))
@@ -35,7 +35,7 @@
                 `(declaim (type (simple-array ,typ ,dims)
                                 ,(intern (string-upcase var-name))))))
       (format stream "(DEFPARAMETER ~A~% ~S)~%"
-              var-name
+              (string-upcase var-name)
               (funcall (if load-time-value
                            #'wrap-with-load-time-value
                            #'identity)

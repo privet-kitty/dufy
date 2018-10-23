@@ -8,7 +8,7 @@
 
 (defparameter this-dir-path (uiop:pathname-directory-pathname *load-pathname*))
 (defparameter obj-name "y-to-value-data.lisp")
-(defparameter obj-path (merge-pathnames (pathname obj-name) this-dir-path))
+(defparameter obj-path (merge-pathnames obj-name this-dir-path))
 
 
 ;; convert munsell value to Y in [0, 1]

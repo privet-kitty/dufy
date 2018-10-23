@@ -1,15 +1,14 @@
 ;;; This is a script file which generates fundamental data and saves them as a .lisp file.
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (asdf:load-system :alexandria)
-  (asdf:load-system :dufy-internal))
+  (ql:quickload '(:alexandria :dufy)))
 
 (use-package :dufy-internal)
 
 (defparameter this-dir-path (uiop:pathname-directory-pathname *load-pathname*))
-(defparameter dat-path (merge-pathnames #P"FL3.x.tsv" dufy-internal:*dat-dir-path*))
+(defparameter dat-path (merge-pathnames "FL3.x.tsv" *dat-dir-path*))
 (defparameter obj-name "illuminants-f3-series.lisp")
-(defparameter obj-path (merge-pathnames (pathname obj-name) this-dir-path))
+(defparameter obj-path (merge-pathnames obj-name this-dir-path))
 
 (eval
  `(progn
@@ -50,3 +49,5 @@
             out)))
 
 (format t "The file is saved at ~A~%" obj-path)
+
+#-swank (uiop:quit 1)
