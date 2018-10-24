@@ -12,9 +12,9 @@ Dufy is a library for exact color manipulation and conversion in various color s
 * CIELUV and LCh<sub>uv</sub>
 * HSV
 * HSL
-* Munsell color system
+* Munsell Color System
 * LMS
-* Spectrum (as spectral power distribution function)
+* spectrum (as spectral power distribution function)
 
 Dufy can deal with the following concepts:
 
@@ -49,7 +49,7 @@ The latest version in this repository can also be installed with quicklisp:
     * (ql:register-local-projects)
     * (ql:quickload :dufy)
 
-If you want to use ASDF directly without quicklisp, you should put the directory of dufy to an appropriate location and do `(asdf:load-system :dufy)`.
+If you want to use ASDF directly without quicklisp, you should put the directory of dufy to an appropriate location (e.g. `~/common-lisp/dufy/`) and do `(asdf:load-system :dufy)`.
 
 # Basic Usage
 ![Tree of Direct Converters](https://g.gravizo.com/source/converter_tree?https%3A%2F%2Fraw.githubusercontent.com%2Fprivet-kitty%2Fdufy%2Fdevelop%2FREADME.md)
