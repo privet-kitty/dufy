@@ -83,4 +83,4 @@
                (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples"))
   :components ((:file "dufy-test"))
   :perform (test-op (o s)
-		    (uiop:eval-thunk "(fiveam:run! 'dufy/test:dufy-suite)")))
+		    (uiop:eval-input "(fiveam:run! 'dufy/test:dufy-suite)")))
