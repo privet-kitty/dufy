@@ -4,12 +4,11 @@
 
 (in-package :dufy-internal)
 
+;;
+;; For preprocessing of data file
+;;
+
 (defparameter *dat-dir-path* (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
-
-
-;;;
-;;; For preprocessing of data
-;;;
 
 (defun array-to-list (array)
   "array->list coercion"
@@ -25,7 +24,7 @@
       (traverse dimensions indices))))
 
 (defun print-make-array (var-name array &optional (stream t) (declaration t) (load-time-value nil))
-  "Prints a code like (defparameter VAR-NAME #.(make-array ...))."
+  "Prints a form like (defparameter VAR-NAME (make-array ...))."
   (labels ((wrap-with-load-time-value (form)
              `(load-time-value ,form t)))
     (let ((typ (array-element-type array))
@@ -43,6 +42,9 @@
                                     :element-type ',typ
                                     :initial-contents ',(array-to-list array)))))))
 
+;;
+;; General constants and macros
+;;
 
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 (define-constant +TWO-PI/360+ (/ TWO-PI 360))
@@ -65,11 +67,9 @@
        (declare (type ,type ,@vars))
        ,@body)))
 
-
-
-;;;
-;;; For benchmark
-;;;
+;;
+;; For benchmark
+;;
 
 (defmacro internal-real-time (&body body)
   "For development. Returns elapsed (internal real) time."
@@ -109,12 +109,10 @@ real) times."
                (sb-profile:report :print-no-call-list nil))
      (sb-profile:unprofile "DUFY")))
 
-
-
-;;;
-;;; Comparison operators
-;;; (used mainly for test)
-;;;
+;;
+;; Approximate comparison operators
+;; (used mainly for test)
+;;
 
 (defun nearly= (threshold number &rest more-numbers)
   "THRESHOLD means acceptable absolute error."
@@ -140,33 +138,30 @@ real) times."
       (and (<= (- number (car (the cons more-numbers))) threshold)
 	   (apply #'nearly<= threshold more-numbers))))
 
+;;
+;; Some arithmetic in a circle group
+;;
 
-
-;;;
-;;; Some arithmetic in a circle group
-;;;
-
-(declaim (inline subtract-with-mod
-		 circular-nearer
-		 circular-clamp
-		 circular-lerp
-		 circular-lerp-loose))
+(declaim (inline subtract-with-mod))
 (defun subtract-with-mod (x y &optional (divisor TWO-PI))
-  "(X - Y) mod DIVISOR."
+  "Returns (X - Y) mod DIVISOR."
   (mod (- x y) divisor))
 
+(declaim (inline circular-nearer))
 (defun circular-nearer (theta1 x theta2 &optional (perimeter TWO-PI))
-  "Compares counterclockwise distances between THETA1 and X and
-between X and THETA2, returns THETA1 or THETA2 whichever is nearer."
+  "Compares the counterclockwise distances between THETA1 and X and
+between X and THETA2, and returns THETA1 or THETA2 whichever is
+nearer."
   (if (<= (subtract-with-mod x theta1 perimeter)
 	  (subtract-with-mod theta2 x perimeter))
       theta1
       theta2))
 
+(declaim (inline circular-clamp))
 (defun circular-clamp (number min max &optional (perimeter TWO-PI))
   "A clamp function in a circle group. If NUMBER is not in
 the (counterclockwise) closed interval [MIN, MAX], CIRCULAR-CLAMP
-returns MIN or MAX, whichever is nearer to NUMBER."
+returns MIN or MAX whichever is nearer to NUMBER."
   (let ((number$ (mod number perimeter))
 	(min$ (mod min perimeter))
 	(max$ (mod max perimeter)))
@@ -178,6 +173,7 @@ returns MIN or MAX, whichever is nearer to NUMBER."
 	    number$ ;[number, max, min] or [max, min, number]
 	    (circular-nearer max$ number$ min$))))) ; [max, number, min]
 
+(declaim (inline circular-lerp))
 (defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
 circle group. It is guaranteed that the return value doesn't exceed
@@ -189,16 +185,18 @@ however, slower than CIRCULAR-LERP-LOOSE."
 		    theta2
 		    perimeter)))
 
+(declaim (inline circular-lerp-loose))
 (defun circular-lerp-loose (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
 circle group. There is a possibility that the return value slightly
-exceeds the interval [THETA1, THETA2], due to floating-point error. If
-that is incovenient, use CIRCULAR-LERP instead."
+exceeds the interval [THETA1, THETA2] due to floating-point error. If
+that is incovenient, you should use CIRCULAR-LERP instead."
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (mod (+ theta1 (* dtheta coef)) perimeter)))
 
+(declaim (inline circular-member))
 (defun circular-member (x theta1 theta2 &optional (perimeter TWO-PI))
-  "Returns true, if X is in the counterclockwise closed interval [THETA1,
+  "Returns true if X is within the counterclockwise closed interval [THETA1,
 THETA2] in a circle group."
   (let ((x-m (mod x perimeter))
 	(theta1-m (mod theta1 perimeter))
@@ -210,13 +208,13 @@ THETA2] in a circle group."
 	    (<= x-m theta2)))))
 
 
-;;;
-;;; Miscellaneous arithmetic
-;;;
+;;
+;; Miscellaneous arithmetic
+;;
 
 (defmacro fast-expt (base power)
-  "Exponentiation by squaring.
-POWER must be a literal of type (integer 1)."
+  "Exponentiation by squaring. POWER must be a literal of
+type (integer 1)."
   (assert (constantp power))
   (check-type power (integer 1))
   (labels ((round-off-to-power-of-2 (num)
@@ -247,9 +245,3 @@ POWER must be a literal of type (integer 1)."
 
 (declaim (inline square))
 (defun square (x) (* x x))
-(define-compiler-macro square (x)
-  (let ((var (gensym)))
-    (if (atom x)
-        `(* ,x ,x)
-        `(let ((,var ,x))
-           (* ,var ,var)))))

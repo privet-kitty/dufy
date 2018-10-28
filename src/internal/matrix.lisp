@@ -3,6 +3,9 @@
 ;;;
 ;;; Matrix operations
 ;;;
+;;; Currently only the operations for 3*3 matrix are necessary.
+;;;
+
 
 (deftype matrix33 () '(simple-array double-float (3 3)))
 
