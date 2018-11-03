@@ -101,13 +101,25 @@ real) times."
       (loop for ,i below ,num
             collect (internal-real-time-after-gc ,@body)))))
 
-#+sbcl
-(defmacro with-profiling (&body body)
-  `(unwind-protect
-        (progn (sb-profile:profile "DUFY")
-               ,@body
-               (sb-profile:report :print-no-call-list nil))
-     (sb-profile:unprofile "DUFY")))
+(defun call-with-profiling (names func)
+  (declare (ignorable names))
+  #+sbcl (if (null names)
+             (funcall func)
+             (unwind-protect
+                  (progn (eval `(sb-profile:profile ,@(ensure-list names)))
+                         (funcall func)
+                         (sb-profile:report :print-no-call-list nil))
+               (eval `(sb-profile:unprofile ,@(ensure-list names)))))
+  #-sbcl (funcall func))
+
+(defmacro with-profiling (names &body body)
+  (declare (ignorable names))
+  #+sbcl `(unwind-protect
+               (progn (sb-profile:profile ,@(ensure-list names))
+                      ,@body
+                      (sb-profile:report :print-no-call-list nil))
+            (sb-profile:unprofile ,@(ensure-list names)))
+  #-sbcl (progn ,@body))
 
 ;;
 ;; Approximate comparison operators
@@ -167,11 +179,11 @@ returns MIN or MAX whichever is nearer to NUMBER."
 	(max$ (mod max perimeter)))
     (if (<= min$ max$)
 	(if (<= min$ number$ max$)
-	    number$ ; [min, number, max]
-	    (circular-nearer max$ number$ min$))   ; [min, max, number] or [number, min, max]
+	    number ; [min, number, max]
+	    (circular-nearer max number min)) ; [min, max, number] or [number, min, max]
 	(if (or (<= number$ max$)  (<= min$ number$))
-	    number$ ;[number, max, min] or [max, min, number]
-	    (circular-nearer max$ number$ min$))))) ; [max, number, min]
+	    number ;[number, max, min] or [max, min, number]
+	    (circular-nearer max number min))))) ; [max, number, min]
 
 (declaim (inline circular-lerp))
 (defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))

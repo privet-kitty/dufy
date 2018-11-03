@@ -9,6 +9,7 @@
    #:time-after-gc
    #:internal-real-time-after-gc
    #:time-median
+   #:call-with-profiling
    #:with-profiling
 
    #:TWO-PI

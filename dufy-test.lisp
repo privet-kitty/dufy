@@ -71,6 +71,15 @@
 ;;; Test Code
 ;;;
 
+(test test-circle-arithmetic
+  (is (= 0 (circular-clamp 50 0 0)))
+  (is (= -3 (circular-clamp -3 350 10 360)))
+  (is (= 350 (circular-clamp -11 350 10 360)))
+  (is (= 10 (circular-clamp 30 350 10 360)))
+  ;; (circular-lerp-loose 1 0.2 1)
+  ;; => 1.0000000149011612d0
+  (is (= 1 (circular-lerp 1 0.2 1)))) ;
+
 (test test-spectrum
   (is (nearly-equal 1d-4
 		    '(0.33411d0 0.34877)
