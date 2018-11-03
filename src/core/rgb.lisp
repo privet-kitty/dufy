@@ -380,11 +380,11 @@ The order can be :ARGB or :RGBA. Note that it is different from the
 (define-colorspace hsv (hue sat val)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
-  :documentation "HUE is in the circle group R/360. The nominal range of SAT and VAL is [0, 1].")
+  :documentation "HUE is in the circle group R/360Z. The nominal range of SAT and VAL is [0, 1].")
 (define-colorspace hsl (hue sat lum)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
-  :documentation "HUE is in the circle group R/360. The nominal range of SAT and LUM is [0, 1].")
+  :documentation "HUE is in the circle group R/360Z. The nominal range of SAT and LUM is [0, 1].")
 
 (define-primary-converter (hsv rgb) (hue sat val)
   (declare (optimize (speed 3) (safety 1)))

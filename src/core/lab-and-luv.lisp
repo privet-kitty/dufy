@@ -11,7 +11,7 @@
 (define-colorspace lchab (lstar cstarab hab)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
-  :documentation "LCh(ab) space. h is in the circle group R/360. The nominal range of L* is [0, 100]")
+  :documentation "LCh(ab) space. h is in the circle group R/360Z. The nominal range of L* is [0, 100]")
 (define-colorspace luv (lstar ustar vstar)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
@@ -19,7 +19,7 @@
 (define-colorspace lchuv (lstar cstaruv huv)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
-  :documentation "LCh(uv) space. h is in the circle group R/360. The nominal range of L* is [0, 100]")
+  :documentation "LCh(uv) space. h is in the circle group R/360Z. The nominal range of L* is [0, 100]")
 
 (declaim (inline function-f)
 	 (ftype (function * (values double-float &optional)) function-f))
