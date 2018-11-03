@@ -17,7 +17,7 @@
   (defparameter *maximum-chroma*
     #+(and sbcl 64-bit) #.(float (expt 2 (- *most-positive-fixnum-bit-length* 1)) 1d0)
     #-(and sbcl 64-bit)  most-positive-double-float
-    "The largest chroma which the Munsell converters accepts. It is in
+    "The largest chroma that the Munsell converters accepts. It is in
     some cases less than MOST-POSITIVE-DOUBLE-FLOAT because of
     efficiency: e.g. in SBCL (64-bit) it is desirable that a float F
     fulfills (typep (round F) '(SIGNED-BYTE 64))"))
@@ -67,12 +67,12 @@ formula is based on ASTM D1535-08e1:"
   (with-ensuring-type double-float (v)
     (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
 (defun munsell-value-to-lstar (v)
-  "Converts Munsell value to L*, whose nominal range is [0, 100]."
+  "Converts a Munsell value to L*, whose nominal range is [0, 100]."
   (- (* 116d0 (dufy-core::function-f (munsell-value-to-y v))) 16d0))
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
-  "V -> Y correspondence in the Munsell renotation data, multiplied by
-0.975d0."
+  "Gets the V -> Y correspondence in the Munsell renotation data,
+multiplied by 0.975d0."
   (values 0.31006d0 0.31616d0
 	  (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
 		    0.975d0)
@@ -81,7 +81,7 @@ formula is based on ASTM D1535-08e1:"
 (declaim (inline y-to-munsell-value))
 (defun y-to-munsell-value (y)
   "Interpolates the inversion table of MUNSELL-VALUE-TO-Y linearly,
-whose band width is 1e-3. The
+whose band width is 1e-3. It is guaranteed that the
 error, (abs (- (y (munsell-value-to-y (y-to-munsell-value y))))), is
 smaller than 1e-5."
   (declare (optimize (speed 3) (safety 1)))
@@ -124,8 +124,7 @@ smaller than 1e-5."
 		mhvc-to-lchab-value-integer-case
 		mhvc-to-lchab-general-case))
 
-
-;; This converter processes a dark color (value < 1) separately
+;; These converters process a dark color (value < 1) separately
 ;; because the values of the Munsell Renotation Data (all.dat) are not
 ;; evenly distributed: [0, 0.2, 0.4, 0.6, 0.8, 1, 2, 3, ..., 10].
 
@@ -283,7 +282,7 @@ smaller than 1e-5."
          (ftype (function * (values double-float double-float double-float &optional)) mhvc-to-xyz))
 (defun mhvc-to-xyz (hue40 value chroma)
   "Illuminant D65.
-This converter includes the Bradford transformation from illuminant C
+This converter involves the Bradford transformation from illuminant C
 to illuminant D65."
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'c-to-d65
@@ -326,7 +325,7 @@ as follows are also available:
 ;; 0.9d0
 ;; 1.6777215d7
 
-but the capital letters and  '/' are reserved:
+However, the capital letters and  '/' are reserved:
 
  (dufy:munsell-to-mhvc \"2D-2RP 9/10 / #X0FFFFFF\")
 ;; => ERROR,
@@ -406,7 +405,8 @@ The illuminant of RGBSPACE must also be D65."
 
 
 (defun max-chroma-lchab (hue40 value &key (use-dark t))
-  "Returns the LCh(ab) value of the color on the max-chroma boundary in MRD."
+  "Returns the LCh(ab) value of the color on the max-chroma boundary
+in the MRD."
   (mhvc-to-lchab-illum-c hue40
                          value
                          (max-chroma-in-mrd hue40 value :use-dark use-dark)))
@@ -423,7 +423,7 @@ The illuminant of RGBSPACE must also be D65."
   (y-to-munsell-value (lstar-to-y (float lstar 1d0))))
 
 (defun rough-lchab-to-mhvc (lstar cstarab hab)
-  "rough conversion from LCHab to munsell HVC"
+  "Does rough conversion from LCHab to munsell HVC"
   (declare (optimize (speed 3) (safety 0))
 	   (double-float lstar cstarab hab))
   (values (* hab #.(float 40/360 1d0))
@@ -440,7 +440,7 @@ The illuminant of RGBSPACE must also be D65."
 
 (define-condition large-approximation-error (arithmetic-error)
   ((message :initarg :message
-            :initform "Couldn't achieve the sufficent accuracy."
+            :initform "Couldn't achieve the required accuracy."
             :accessor cond-message))
   (:report (lambda (condition stream)
 	     (format stream "~A"
@@ -499,7 +499,7 @@ H_(n+1) := H_n + factor * delta(H_n),
 
 where delta(H_n) and delta(C_n) is internally calculated at every
 step. It returns Munsell HVC values if C_0 <= THRESHOLD or V <=
-THRESHOLD or max(delta(H_n), delta(C_n)) falls below THRESHOLD.
+THRESHOLD or when max(delta(H_n), delta(C_n)) falls below THRESHOLD.
 
 IF-REACH-MAX specifies the action to be taken if the loop reaches the
 MAX-ITERATION:
@@ -527,7 +527,7 @@ MAX-ITERATION:
 (declaim (inline xyz-to-mhvc))
 (defun xyz-to-mhvc (x y z &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "Illuminant D65.
-This converter includes the Bradford transformation from illuminant
+This converter involves the Bradford transformation from illuminant
 D65 to illuminant C."
   (multiple-value-call #'lchab-to-mhvc-illum-c
     (multiple-value-call #'xyz-to-lchab
@@ -545,7 +545,7 @@ D65 to illuminant C."
 (declaim (inline xyz-to-munsell))
 (defun xyz-to-munsell (x y z &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6) (digits 2))
   "Illuminant D65.
-This converter includes the Bradford transformation from illuminant
+This converter involves the Bradford transformation from illuminant
 D65 to illuminant C."
   (multiple-value-call #'mhvc-to-munsell
     (xyz-to-mhvc x y z
@@ -600,9 +600,9 @@ D65 to illuminant C."
 	           (incf sum)
 	           (format t "~A ~A ~A, (~a ~a ~a)~%" lstar cstarab hab qr qg qb))))))))))
 
-;; doesn't converge:
+;; Doesn't converge at:
 ;; LCH = 90.25015693115249d0 194.95626408656423d0 115.6958104971207d0
-;; in ProPhoto, 16-bit
+;; in ProPhoto space, 16-bit
 
 (defun test-inverter3 (&optional (rgbspace +srgb+))
   "For development."

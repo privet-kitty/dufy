@@ -119,7 +119,7 @@ real) times."
                       ,@body
                       (sb-profile:report :print-no-call-list nil))
             (sb-profile:unprofile ,@(ensure-list names)))
-  #-sbcl (progn ,@body))
+  #-sbcl `(progn ,@body))
 
 ;;
 ;; Approximate comparison operators
