@@ -28,36 +28,37 @@
   :serial t
   :depends-on ("alexandria" "dufy/internal")
   :components ((:module "core"
-		:components
-		((:file "package")
+                :components
+                ((:file "package")
                  (:file "colorspace")
-		 (:file "cmf-data")
-		 (:file "xyz")
+                 (:file "cmf-data")
+                 (:file "xyz")
                  (:file "illuminants-data")
-		 (:file "rgb")
-		 (:file "lab-and-luv")
-		 (:file "cat")
+                 (:file "rgb")
+                 (:file "lab-and-luv")
+                 (:file "cat")
                  (:file "rgbspaces-data")
-		 (:file "deltae")))))
+                 (:file "deltae")
+                 (:file "experiment")))))
 
 (defsystem "dufy/munsell"
   :pathname "src"
   :serial t
   :depends-on ("dufy/core" "cl-ppcre")
   :components ((:module "munsell"
-		:components
-		((:file "package")
+                :components
+                ((:file "package")
                  (:file "y-to-value-data")
                  (:file "munsell-renotation-data")
-		 (:file "munsell")))))
+                 (:file "munsell")))))
 
 (defsystem "dufy/extra-data"
   :pathname "src"
   :serial t
   :depends-on ("dufy/core")
   :components ((:module "extra-data"
-		:components
-		((:file "package")
+                :components
+                ((:file "package")
                  (:file "illuminants-data")
                  (:file "illuminants-f3-series")
                  (:file "illuminants-gas-discharge-lamps")))))
@@ -83,4 +84,4 @@
                (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples"))
   :components ((:file "dufy-test"))
   :perform (test-op (o s)
-		    (uiop:eval-input "(fiveam:run! 'dufy/test:dufy-suite)")))
+                    (uiop:eval-input "(fiveam:run! 'dufy/test:dufy-suite)")))
