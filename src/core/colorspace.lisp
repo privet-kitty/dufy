@@ -42,6 +42,15 @@
     (symbol thing)
     (colorspace (colorspace-name thing))))
 
+(defmethod documentation ((x colorspace) (doc-type (eql 'colorspace)))
+  (colorspace-documentation x))
+(defmethod documentation ((x symbol) (doc-type (eql 'colorspace)))
+  (documentation (ensure-colorspace x) 'colorspace))
+(defmethod (setf documentation) (new-value (x colorspace) (doc-type (eql 'colorspace)))
+  (setf (colorspace-documentation x) new-value))
+(defmethod (setf documentation) (new-value (x symbol) (doc-type (eql 'colorspace)))
+  (setf (documentation (ensure-colorspace x) 'colorspace) new-value))
+
 (defun get-neighbors (name)
   (colorspace-neighbors (ensure-colorspace name)))
 (defun (setf get-neighbors) (val name)
