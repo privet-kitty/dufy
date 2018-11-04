@@ -4,10 +4,10 @@
 
 (in-package :dufy-core)
 
-
 (deftype spectrum-function ()
   #-abcl '(function * (values double-float &optional))
-  #+abcl t)
+  #+abcl t) ; FIXME: ABCL signas an error and claims that FUNCTION
+            ; types are not a legal argument to TYPEP.
 
 (define-colorspace xyz (x y z)
   :arg-types (real real real)
@@ -30,10 +30,10 @@ wavelength (nm) as a real number and returns a double-float: (function
 values are accepted."
   (with-ensuring-type double-float (small-x small-y y)
     (if (zerop small-y)
-	(values 0d0 y 0d0)
-	(values (/ (* small-x y) small-y) 
-		y
-		(/ (* (- 1d0 small-x small-y) y) small-y)))))
+        (values 0d0 y 0d0)
+        (values (/ (* small-x y) small-y) 
+                y
+                (/ (* (- 1d0 small-x small-y) y) small-y)))))
 
 (define-primary-converter (xyz xyy) (x y z)
   (declare (optimize (speed 3) (safety 1)))
@@ -42,8 +42,8 @@ values are accepted."
   (with-ensuring-type double-float (x y z)
     (let ((sum (+ x y z)))
       (if (= sum 0)
-	  (values 0d0 0d0 y)
-	  (values (/ x sum) (/ y sum) y)))))
+          (values 0d0 0d0 y)
+          (values (/ x sum) (/ y sum) y)))))
 
 (defun gen-spectrum (spectrum-seq &optional (begin-wl 360) (end-wl 830))
   "GEN-SPECTRUM returns a spectral power distribution
@@ -56,44 +56,44 @@ not copied but referenced, otherwise it is copied by (coerce
 spectrum-seq '(simple-array double-float (*)))."
   (check-type spectrum-seq sequence)
   (let* ((spectrum-arr (if (typep spectrum-seq '(simple-array double-float (*)))
-			   spectrum-seq
-			   (coerce spectrum-seq '(simple-array double-float (*)))))
-	 (size (- (length spectrum-arr) 1))
-	 (begin-wl-f (float begin-wl 1d0))
-	 (end-wl-f (float end-wl 1d0)))
+                           spectrum-seq
+                           (coerce spectrum-seq '(simple-array double-float (*)))))
+         (size (- (length spectrum-arr) 1))
+         (begin-wl-f (float begin-wl 1d0))
+         (end-wl-f (float end-wl 1d0)))
     (if (= size (- end-wl begin-wl))
-	;; If SPECTRUM-SEQ is defined just for each integer,
-	;; the spectrum function is simpler and more efficient:
-	#'(lambda (wl-nm)
-	    (declare (optimize (speed 3) (safety 1)))
-	    (multiple-value-bind (quot rem)
-		(floor (- (clamp (float wl-nm 1d0) begin-wl-f end-wl-f)
-			  begin-wl-f))
-	      (lerp rem
-		    (aref spectrum-arr quot)
-		    (aref spectrum-arr (min (1+ quot) size)))))
-	(let* ((band (/ (- end-wl-f begin-wl-f) size))
-	       (/band (/ band)))
-	  #'(lambda (wl-nm)
-	      (declare (optimize (speed 3) (safety 1)))
-	      (let* ((wl$ (- (clamp (float wl-nm 1d0) begin-wl-f end-wl-f)
-			     begin-wl-f))
-		     (frac (mod wl$ band))
-		     (coef (* frac /band))
-		     (idx (round (* (- wl$ frac) /band))))
-		(lerp coef
-		      (aref spectrum-arr idx)
-		      (aref spectrum-arr (min (+ idx 1) size)))))))))
+        ;; If SPECTRUM-SEQ is defined just for each integer,
+        ;; the spectrum function is simpler and more efficient:
+        #'(lambda (wl-nm)
+            (declare (optimize (speed 3) (safety 1)))
+            (multiple-value-bind (quot rem)
+                (floor (- (clamp (float wl-nm 1d0) begin-wl-f end-wl-f)
+                          begin-wl-f))
+              (lerp rem
+                    (aref spectrum-arr quot)
+                    (aref spectrum-arr (min (1+ quot) size)))))
+        (let* ((band (/ (- end-wl-f begin-wl-f) size))
+               (/band (/ band)))
+          #'(lambda (wl-nm)
+              (declare (optimize (speed 3) (safety 1)))
+              (let* ((wl$ (- (clamp (float wl-nm 1d0) begin-wl-f end-wl-f)
+                             begin-wl-f))
+                     (frac (mod wl$ band))
+                     (coef (* frac /band))
+                     (idx (round (* (- wl$ frac) /band))))
+                (lerp coef
+                      (aref spectrum-arr idx)
+                      (aref spectrum-arr (min (+ idx 1) size)))))))))
 
 
 (defun approximate-spectrum (spectrum &key (begin-wl 360d0) (end-wl 830d0) (band 1d0))
   "Generates an approximate spectrum of SPECTRUM by pieacewise
 linearization. It is used to lighten a \"heavy\" spectrum function."
   (declare (optimize (speed 3) (safety 1))
-	   (spectrum-function spectrum))
+           (spectrum-function spectrum))
   (with-ensuring-type double-float (begin-wl end-wl band)
     (let* ((partitions (max 2 (round (/ (- end-wl begin-wl) band))))
-	   (partitions-f (float partitions 1d0))
+           (partitions-f (float partitions 1d0))
            (points (make-array (1+ partitions) :element-type 'double-float)))
       (declare (fixnum partitions))
       (gen-spectrum (loop for i from 0 to partitions
@@ -127,13 +127,12 @@ linearization. It is used to lighten a \"heavy\" spectrum function."
 
 (defun make-observer (cmf-arr &optional (begin-wl 360) (end-wl 830))
   "Generates an observer object based on CMF arrays, which must
-be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3)). The response out of the interval
-[begin-wl, end-wl] is regarded as 0."
+be (SIMPLE-ARRAY DOUBLE-FLOAT (* 3)). The response outside the
+interval [begin-wl, end-wl] is regarded as 0."
   (let ((begin-wl-f (float begin-wl 1d0))
         (end-wl-f (float end-wl 1d0)))
     (labels ((gen-cmf-1 (arr num &optional (begin-wl 360) (end-wl 830))
-               ;; fix me
-               ;; verbose, almost equivalent to GEN-SPECTRUM
+               ;; FIXME: verbose, almost equivalent to GEN-SPECTRUM
                (declare ((simple-array double-float (* 3)) arr))
                (let ((size (- (array-dimension arr 0) 1)))
                  (if (= size (- end-wl begin-wl))
@@ -281,7 +280,7 @@ instead. (roughly 6504K for 6500K, etc.)"
 
 (declaim (inline bb-spectrum))
 (defun bb-spectrum (wavelength-nm &optional (temperature 5000d0))
-  "Spectrum function of a blackbody, which is not normalized."
+  "Spectrum function of a blackbody. Note that it is not normalized."
   (declare (optimize (speed 3) (safety 1)))
   (let ((wlm (* (float wavelength-nm 1d0) 1d-9)))
     (check-type wlm (double-float 0d0))
@@ -347,8 +346,8 @@ f(x) = 0d0 otherwise."
 
 (define-condition no-spd-error (simple-error)
   ((illuminant :initarg :illuminant
-	       :initform nil
-	       :accessor cond-illuminant))
+               :initform nil
+               :accessor cond-illuminant))
   (:report (lambda (condition stream)
              (let ((*print-array* nil))
                (format stream "The illuminant has no spectrum: ~A"
@@ -361,9 +360,9 @@ f(x) = 0d0 otherwise."
   "SPECTRUM: spectral reflectance (or transmittance)
 ILLUMINANT-SPD: SPD of illuminant"
   (declare (optimize (speed 3) (safety 1))
-	   (spectrum-function spectrum illuminant-spd))
+           (spectrum-function spectrum illuminant-spd))
   (let ((x 0d0) (y 0d0) (z 0d0) (max-y 0d0)
-	(cmf (observer-cmf observer)))
+        (cmf (observer-cmf observer)))
     (declare (double-float x y z max-y))
     (loop for wl from begin-wl to end-wl by band
           do (let* ((p (funcall illuminant-spd wl))
@@ -431,26 +430,28 @@ many and may contain a negative spectral density."
                  (* fac-y (funcall (observer-cmf-y observer) wl))
                  (* fac-z (funcall (observer-cmf-z observer) wl))))))))
     
-	    
+    
 (defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil) (begin-wl 360) (end-wl 830) (band 1))
-  "Generates an illuminant. If the SPECTRUM is nil, the returned
-illuminant contains only a white point. Although the white point (X,
-1d0, Z) is automatically calculated if X and Z are nil, you can
-designate X and Z explicitly. Note that no error occurs, even if the
-given white point and SPD contradicts to each other.
+  "Generates an illuminant from a spectral distribution or a white
+point. If the SPECTRUM is nil, the returned illuminant contains only a
+white point. Although the white point (X, 1d0, Z) is automatically
+calculated if X and Z are nil, you can designate X and Z
+explicitly. Note that no error occurs, even if the given white point
+and SPD contradicts to each other.
 
  (make-illuminant :x 1.0 :z 1.0)
 ;; => illuminant without SPD
 
  (make-illuminant :x 1.0 :z 1.0 :spectrum #'flat-spectrum)
  (make-illuminant :spectrum #'flat-spectrum)
-;; => illuminant with SPD
+;; => (almost same) illuminants with SPD
 
  (make-illuminant :x 0.9 :z 1.1 :spectrum #'flat-spectrum)
-;; => illuminant with SPD (valid but meaningless)
+;; => (valid but meaningless) illuminant with SPD
 
 If X and Y are NIL and COMPILE-TIME is T, the white point is
-calculated at compile time. (Avoid side effects in this case.)"
+calculated at compile time. (Avoid side effects in this case as the
+parameters are EVALed.)"
   (declare (ignore compile-time))
   (macrolet
       ((make (x z)
