@@ -57,8 +57,6 @@ http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
   "Note that the CAT function returned by (gen-cat-function illum-foo
   illum-bar :cat +cat02+) is different from the one in CIECAM02.")
 
-
-
 (define-colorspace lms (l m s)
   :arg-types (real real real)
   :return-types (double-float double-float double-float))
@@ -85,7 +83,6 @@ of illuminant E. "
                     (/ m factor-m)
                     (/ s factor-s))))
         (multiply-mat-vec (cat-matrix cat) x y z))))
-            
 
 (define-primary-converter (lms xyz) (l m s &key (illuminant +illum-d65+) (cat +bradford+))
   (declare (optimize (speed 3) (safety 1)))
@@ -109,7 +106,6 @@ of illuminant E. "
                             (* s factor-s)))
         (multiply-mat-vec (cat-inv-matrix cat) l m s))))
   
-
 (defun calc-cat-matrix  (from-illuminant to-illuminant &optional (cat +bradford+))
   "Returns a 3*3 chromatic adaptation matrix between FROM-ILLUMINANT
 and TO-ILLUMINANT in XYZ space."
@@ -142,6 +138,10 @@ and TO-ILLUMINANT in XYZ space."
           (multiply-mat-mat (cat-inv-matrix cat)
                             matrix1))))))
 
+;; FIXME: Too complicated. Maybe we should limit the target only to
+;; XYZ space? Otherwise we need a more general auto-generation system
+;; of converters, which seems to me lots of pain and not much gain (at
+;; least for now).
 (declaim (ftype (function * (function * (values double-float double-float double-float &optional))) gen-cat-function))
 (defun gen-cat-function (from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
   "Returns a chromatic adaptation function. An example for xyY spaces:
@@ -150,8 +150,8 @@ and TO-ILLUMINANT in XYZ space."
 0.33333331733957294d0
 1.0000000029690765d0 ; transformed white point
 
-TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV. If you want to
-choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
+TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB, or :LCHUV. If you want
+to choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
 "
   (declare (optimize (speed 3) (safety 1)))
   (macrolet ((gen-lambda (args repr)
@@ -183,7 +183,7 @@ choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
         (:luv (gen-lambda (lstar ustar vstar) :luv))
         (:lchuv (gen-lambda (lstar cstaruv huv) :lchuv))))))
 
-
+;; FIXME: Same as GEN-CAT-FUNCTION.
 (defmacro define-cat-function (name from-illuminant to-illuminant &key (cat '+bradford+) (target :xyz))
   "DEFINE-macro of GEN-CAT-FUNCTION.
  (define-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
@@ -215,8 +215,7 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
       (error "FROM-ILLUMINANT and TO-ILLUMINANT must be symbols"))
     `(progn
        (declaim (inline ,name)
-                (ftype (function (t t t)
-                                 (values double-float double-float double-float &optional))
+                (ftype (function * (values double-float double-float double-float &optional))
                        ,name))
        ,(ecase target
           (:xyz `(defun ,name (x y z)
@@ -240,8 +239,6 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
           (:lchab (def-converter (lstar cstarab hab) :lchab))
           (:luv (def-converter (lstar ustar vstar) :luv))
           (:lchuv (def-converter (lstar cstaruv huv) :lchuv))))))
-
-
 
 (declaim (inline calc-cat-matrix-for-lrgb))
 (defun calc-cat-matrix-for-lrgb (from-rgbspace to-rgbspace &optional (cat +bradford+))
@@ -293,7 +290,7 @@ RGBPACK case: with clamping."
                     (rgbpack-to-lrgb int :rgbspace from-rgbspace))
                   :rgbspace to-rgbspace))))))
 
-
+;; I have moved this function here as it assumed GEN-CAT-FUNCTION.
 (defun copy-rgbspace (rgbspace &key (illuminant nil) (bit-per-channel nil) (cat +bradford+))
   "Returns a new RGBSPACE with different standard illuminant and/or
 bit-per-channel. All the parameters are properly recalculated. If both
