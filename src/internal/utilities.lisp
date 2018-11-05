@@ -59,10 +59,10 @@
 (defmacro with-ensuring-type (type vars &body body)
   "Ensures that the type of variables are TYPE."
   (labels ((expand (var-lst)
-	     (if (null var-lst)
-		 nil
-		 (cons `(,(car var-lst) (coerce ,(car var-lst) ',type))
-		       (expand (cdr var-lst))))))
+             (if (null var-lst)
+                 nil
+                 (cons `(,(car var-lst) (coerce ,(car var-lst) ',type))
+                       (expand (cdr var-lst))))))
     `(let ,(expand vars)
        (declare (type ,type ,@vars))
        ,@body)))
@@ -77,7 +77,7 @@
     `(let ((,start (get-internal-real-time)))
        ,@body
        (/ (float (- (get-internal-real-time) ,start) 1d0)
-	  internal-time-units-per-second))))
+          internal-time-units-per-second))))
 
 (defmacro time-after-gc (&body body)
   "TIME macro after GC"
@@ -131,7 +131,7 @@ real) times."
   (if (null more-numbers)
       t
       (and (<= (abs (- number (car (the cons more-numbers)))) threshold)
-	   (apply #'nearly= threshold more-numbers))))
+           (apply #'nearly= threshold more-numbers))))
 
 (defun nearly-equal (threshold lst1 &rest lsts)
   "THRESHOLD means acceptable absolute error."
@@ -140,7 +140,7 @@ real) times."
       (and (apply #'nearly= threshold
                   (car lst1)
                   (mapcar #'car lsts))
-	   (apply #'nearly-equal threshold
+           (apply #'nearly-equal threshold
                   (cdr lst1)
                   (mapcar #'cdr lsts)))))
 
@@ -148,7 +148,7 @@ real) times."
   (if (null more-numbers)
       t
       (and (<= (- number (car (the cons more-numbers))) threshold)
-	   (apply #'nearly<= threshold more-numbers))))
+           (apply #'nearly<= threshold more-numbers))))
 
 ;;
 ;; Some arithmetic in a circle group
@@ -165,7 +165,7 @@ real) times."
 between X and THETA2, and returns THETA1 or THETA2 whichever is
 nearer."
   (if (<= (subtract-with-mod x theta1 perimeter)
-	  (subtract-with-mod theta2 x perimeter))
+          (subtract-with-mod theta2 x perimeter))
       theta1
       theta2))
 
@@ -175,15 +175,15 @@ nearer."
 the (counterclockwise) closed interval [MIN, MAX], CIRCULAR-CLAMP
 returns MIN or MAX whichever is nearer to NUMBER."
   (let ((number$ (mod number perimeter))
-	(min$ (mod min perimeter))
-	(max$ (mod max perimeter)))
+        (min$ (mod min perimeter))
+        (max$ (mod max perimeter)))
     (if (<= min$ max$)
-	(if (<= min$ number$ max$)
-	    number ; [min, number, max]
-	    (circular-nearer max number min)) ; [min, max, number] or [number, min, max]
-	(if (or (<= number$ max$)  (<= min$ number$))
-	    number ;[number, max, min] or [max, min, number]
-	    (circular-nearer max number min))))) ; [max, number, min]
+        (if (<= min$ number$ max$)
+            number ; [min, number, max]
+            (circular-nearer max number min)) ; [min, max, number] or [number, min, max]
+        (if (or (<= number$ max$)  (<= min$ number$))
+            number ;[number, max, min] or [max, min, number]
+            (circular-nearer max number min))))) ; [max, number, min]
 
 (declaim (inline circular-lerp))
 (defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))
@@ -193,9 +193,9 @@ the given interval from THETA1 to THETA2 if COEF is in [0, 1]. It is,
 however, slower than CIRCULAR-LERP-LOOSE."
   (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
     (circular-clamp (+ theta1 (* dtheta coef))
-		    theta1
-		    theta2
-		    perimeter)))
+                    theta1
+                    theta2
+                    perimeter)))
 
 (declaim (inline circular-lerp-loose))
 (defun circular-lerp-loose (coef theta1 theta2 &optional (perimeter TWO-PI))
@@ -211,13 +211,13 @@ that is incovenient, you should use CIRCULAR-LERP instead."
   "Returns true if X is within the counterclockwise closed interval [THETA1,
 THETA2] in a circle group."
   (let ((x-m (mod x perimeter))
-	(theta1-m (mod theta1 perimeter))
-	(theta2-m (mod theta2 perimeter)))
+        (theta1-m (mod theta1 perimeter))
+        (theta2-m (mod theta2 perimeter)))
     (if (<= theta1-m theta2-m)
-	(and (<= theta1-m x-m)
-	     (<= x-m theta2))
-	(or (<= theta1-m x-m)
-	    (<= x-m theta2)))))
+        (and (<= theta1-m x-m)
+             (<= x-m theta2))
+        (or (<= theta1-m x-m)
+            (<= x-m theta2)))))
 
 
 ;;

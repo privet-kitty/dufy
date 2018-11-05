@@ -39,26 +39,26 @@ given hue and value."
   (declare (optimize (speed 3) (safety 1)))
   (with-ensuring-type double-float (hue40 value)
     (let* ((hue (mod hue40 40d0))
-	   (hue1 (floor hue))
-	   (hue2 (mod (ceiling hue) 40)))
+           (hue1 (floor hue))
+           (hue2 (mod (ceiling hue) 40)))
       (if (or (>= value 1)
-	      (not use-dark))
-	  (let ((val1 (floor value))
-		(val2 (ceiling value)))
-	    (min (aref max-chroma-arr hue1 val1)
-		 (aref max-chroma-arr hue1 val2)
-		 (aref max-chroma-arr hue2 val1)
-		 (aref max-chroma-arr hue2 val2)))
-	  (let* ((dark-value (* value 5d0))
-		 (dark-val1 (floor dark-value))
-		 (dark-val2 (ceiling dark-value)))
-	    (min (aref max-chroma-arr-dark hue1 dark-val1)
-		 (aref max-chroma-arr-dark hue1 dark-val2)
-		 (aref max-chroma-arr-dark hue2 dark-val1)
-		 (aref max-chroma-arr-dark hue2 dark-val2)))))))
+              (not use-dark))
+          (let ((val1 (floor value))
+                (val2 (ceiling value)))
+            (min (aref max-chroma-arr hue1 val1)
+                 (aref max-chroma-arr hue1 val2)
+                 (aref max-chroma-arr hue2 val1)
+                 (aref max-chroma-arr hue2 val2)))
+          (let* ((dark-value (* value 5d0))
+                 (dark-val1 (floor dark-value))
+                 (dark-val2 (ceiling dark-value)))
+            (min (aref max-chroma-arr-dark hue1 dark-val1)
+                 (aref max-chroma-arr-dark hue1 dark-val2)
+                 (aref max-chroma-arr-dark hue2 dark-val1)
+                 (aref max-chroma-arr-dark hue2 dark-val2)))))))
 
 (declaim (inline munsel-value-to-y
-		 munsell-value-to-lstar)
+                 munsell-value-to-lstar)
          (ftype (function * (values double-float &optional)) munsell-value-to-y munsell-value-to-lstar))
 (defun munsell-value-to-y (v)
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
@@ -74,9 +74,9 @@ formula is based on ASTM D1535-08e1:"
   "Gets the V -> Y correspondence in the Munsell renotation data,
 multiplied by 0.975d0."
   (values 0.31006d0 0.31616d0
-	  (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
-		    0.975d0)
-		 0d0 1d0)))
+          (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
+                    0.975d0)
+                 0d0 1d0)))
 
 (declaim (inline y-to-munsell-value))
 (defun y-to-munsell-value (y)
@@ -86,27 +86,27 @@ error, (abs (- (y (munsell-value-to-y (y-to-munsell-value y))))), is
 smaller than 1e-5."
   (declare (optimize (speed 3) (safety 1)))
   (let* ((y1000 (* (clamp (float y 1d0) 0d0 1d0) 1000))
-	 (y1 (floor y1000))
-	 (y2 (ceiling y1000)))
+         (y1 (floor y1000))
+         (y2 (ceiling y1000)))
     (if (= y1 y2)
-	(aref y-to-munsell-value-arr y1)
-	(let ((r (- y1000 y1)))
-	  (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
-	     (* r (aref y-to-munsell-value-arr y2)))))))
+        (aref y-to-munsell-value-arr y1)
+        (let ((r (- y1000 y1)))
+          (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
+             (* r (aref y-to-munsell-value-arr y2)))))))
 
 (defun test-value-to-y (&optional (num 100000000))
   "For devel. Evaluates the error of y-to-munsell-value"
   (declare (optimize (speed 3) (safety 1))
-	   (fixnum num))
+           (fixnum num))
   (let ((max-error 0d0)
-	(worst-y 0d0))
+        (worst-y 0d0))
     (dotimes (n num (values max-error worst-y))
       (let* ((y (random 1d0))
-	     (delta (abs (- (munsell-value-to-y (y-to-munsell-value y)) y))))
-	(when (>= delta max-error)
-	  ;;(format t "y=~A delta=~A~%" y delta)
-	  (setf worst-y y
-		max-error delta))))))
+             (delta (abs (- (munsell-value-to-y (y-to-munsell-value y)) y))))
+        (when (>= delta max-error)
+          ;;(format t "y=~A delta=~A~%" y delta)
+          (setf worst-y y
+                max-error delta))))))
 
 (defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
   (y-to-munsell-value (nth-value 1 (qrgb-to-xyz r g b :rgbspace rgbspace))))
@@ -119,10 +119,10 @@ smaller than 1e-5."
 ;;;
 
 (declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float &optional))
-		mhvc-to-lchab-all-integer-case
-		mhvc-to-lchab-value-chroma-integer-case
-		mhvc-to-lchab-value-integer-case
-		mhvc-to-lchab-general-case))
+                mhvc-to-lchab-all-integer-case
+                mhvc-to-lchab-value-chroma-integer-case
+                mhvc-to-lchab-value-integer-case
+                mhvc-to-lchab-general-case))
 
 ;; These converters process a dark color (value < 1) separately
 ;; because the values of the Munsell Renotation Data (all.dat) are not
@@ -156,7 +156,7 @@ smaller than 1e-5."
 (defun mhvc-to-lchab-value-chroma-integer-case (hue40 scaled-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
            ((double-float 0d0 40d0) hue40)
-	   (fixnum scaled-value half-chroma))
+           (fixnum scaled-value half-chroma))
   (let ((hue1 (floor hue40))
         (hue2 (mod (ceiling hue40) 40)))
     (multiple-value-bind (lstar cstarab1 hab1)
@@ -180,73 +180,73 @@ smaller than 1e-5."
 
 (defun mhvc-to-lchab-value-integer-case (hue40 scaled-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
-	   ((double-float 0d0 40d0) hue40)
-	   ((double-float 0d0 #.*maximum-chroma*) half-chroma)
-	   (fixnum scaled-value))
+           ((double-float 0d0 40d0) hue40)
+           ((double-float 0d0 #.*maximum-chroma*) half-chroma)
+           (fixnum scaled-value))
   (let ((hchroma1 (floor half-chroma))
-	(hchroma2 (ceiling half-chroma)))
+        (hchroma2 (ceiling half-chroma)))
     (if (= hchroma1 hchroma2)
-	(mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma1 dark)
-	(multiple-value-bind (lstar astar1 bstar1)
-	    (multiple-value-call #'lchab-to-lab
-	      (mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma1 dark))
-	  (multiple-value-bind (_ astar2 bstar2)
-	      (multiple-value-call #'lchab-to-lab
-		(mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma2 dark))
-	    (declare (ignore _)
-		     (double-float lstar astar1 bstar1 astar2 bstar2))
-	    (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
-			     (* astar2 (- half-chroma hchroma1))))
-		   (bstar (+ (* bstar1 (- hchroma2 half-chroma))
-			     (* bstar2 (- half-chroma hchroma1)))))
-	      (lab-to-lchab lstar astar bstar)))))))
+        (mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma1 dark)
+        (multiple-value-bind (lstar astar1 bstar1)
+            (multiple-value-call #'lchab-to-lab
+              (mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma1 dark))
+          (multiple-value-bind (_ astar2 bstar2)
+              (multiple-value-call #'lchab-to-lab
+                (mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma2 dark))
+            (declare (ignore _)
+                     (double-float lstar astar1 bstar1 astar2 bstar2))
+            (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
+                             (* astar2 (- half-chroma hchroma1))))
+                   (bstar (+ (* bstar1 (- hchroma2 half-chroma))
+                             (* bstar2 (- half-chroma hchroma1)))))
+              (lab-to-lchab lstar astar bstar)))))))
 
 
 (defun mhvc-to-lchab-general-case (hue40 scaled-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
-  	   ((double-float 0d0 40d0) hue40 scaled-value)
-  	   ((double-float 0d0 #.*maximum-chroma*) half-chroma))
+           ((double-float 0d0 40d0) hue40 scaled-value)
+           ((double-float 0d0 #.*maximum-chroma*) half-chroma))
   (let ((true-value (if dark (* scaled-value 0.2d0) scaled-value)))
     (let  ((scaled-val1 (floor scaled-value))
-	   (scaled-val2 (ceiling scaled-value))
-	   (lstar (munsell-value-to-lstar true-value)))
+           (scaled-val2 (ceiling scaled-value))
+           (lstar (munsell-value-to-lstar true-value)))
       (if (= scaled-val1 scaled-val2)
-	  (mhvc-to-lchab-value-integer-case hue40 scaled-val1 half-chroma dark)
-	  ;; If the given color is so dark that it is out of MRD, we
-	  ;; use the fact that the chroma and hue of LCh(ab)
-	  ;; corresponds roughly to that of Munsell.
-	  (if (zerop scaled-val1)
-	      (multiple-value-bind (_ cstarab hab)
-		  (mhvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
-		(declare (ignore _))
-		(values lstar cstarab hab))
-	      (multiple-value-bind (lstar1 astar1 bstar1)
-		  (multiple-value-call #'lchab-to-lab
-		    (mhvc-to-lchab-value-integer-case hue40 scaled-val1 half-chroma dark))
-		(multiple-value-bind (lstar2 astar2 bstar2)
-		    (multiple-value-call #'lchab-to-lab
-		      (mhvc-to-lchab-value-integer-case hue40 scaled-val2 half-chroma dark))
-		  (declare (double-float lstar1 astar1 bstar1
+          (mhvc-to-lchab-value-integer-case hue40 scaled-val1 half-chroma dark)
+          ;; If the given color is so dark that it is out of MRD, we
+          ;; use the fact that the chroma and hue of LCh(ab)
+          ;; corresponds roughly to that of Munsell.
+          (if (zerop scaled-val1)
+              (multiple-value-bind (_ cstarab hab)
+                  (mhvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
+                (declare (ignore _))
+                (values lstar cstarab hab))
+              (multiple-value-bind (lstar1 astar1 bstar1)
+                  (multiple-value-call #'lchab-to-lab
+                    (mhvc-to-lchab-value-integer-case hue40 scaled-val1 half-chroma dark))
+                (multiple-value-bind (lstar2 astar2 bstar2)
+                    (multiple-value-call #'lchab-to-lab
+                      (mhvc-to-lchab-value-integer-case hue40 scaled-val2 half-chroma dark))
+                  (declare (double-float lstar1 astar1 bstar1
                                          lstar2 astar2 bstar2))
-		  (let ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
-				  (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
-			(bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
-				  (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
-		    (lab-to-lchab lstar astar bstar)))))))))
+                  (let ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
+                                  (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
+                        (bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
+                                  (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
+                    (lab-to-lchab lstar astar bstar)))))))))
 
 
 (define-condition invalid-mhvc-error (simple-error)
   ((value :initarg :value
-	  :initform 0d0
-	  :accessor cond-value)
+          :initform 0d0
+          :accessor cond-value)
    (chroma :initarg :chroma
-	   :initform 0d0
-	   :accessor cond-chroma))
+           :initform 0d0
+           :accessor cond-chroma))
   (:report (lambda (condition stream)
-	     (format stream "Value and chroma must be within [0, 10] and [0, ~A), respectively: (V C) = (~A ~A)"
-		     *maximum-chroma*
-		     (cond-value condition)
-		     (cond-chroma condition)))))
+             (format stream "Value and chroma must be within [0, 10] and [0, ~A), respectively: (V C) = (~A ~A)"
+                     *maximum-chroma*
+                     (cond-value condition)
+                     (cond-chroma condition)))))
 
       
 (defun mhvc-out-of-mrd-p (hue40 value chroma)
@@ -268,11 +268,11 @@ smaller than 1e-5."
            (ignorable illuminant))
   "Illuminant C."
   (let ((hue40 (mod (float hue40 1d0) 40d0))
-	(value (clamp (float value 1d0) 0d0 10d0))
-	(chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
+        (value (clamp (float value 1d0) 0d0 10d0))
+        (chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
     (if (>= value 1d0)
-	(mhvc-to-lchab-general-case hue40 value (* chroma 0.5d0) nil)
-	(mhvc-to-lchab-general-case hue40 (* value 5d0) (* chroma 0.5d0) t))))
+        (mhvc-to-lchab-general-case hue40 value (* chroma 0.5d0) nil)
+        (mhvc-to-lchab-general-case hue40 (* value 5d0) (* chroma 0.5d0) t))))
 
 (defconverter mhvc xyz
   :name mhvc-to-xyz-illum-c
@@ -287,8 +287,8 @@ to illuminant D65."
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'c-to-d65
     (mhvc-to-xyz-illum-c (float hue40 1d0)
-			 (float value 1d0)
-			 (float chroma 1d0))))
+                         (float value 1d0)
+                         (float chroma 1d0))))
 
 (declaim (inline mhvc-to-qrgb)
          (ftype (function * (values fixnum fixnum fixnum &optional)) mhvc-to-qrgb))
@@ -303,11 +303,11 @@ The illuminant of RGBSPACE must also be D65."
 
 (define-condition munsellspec-parse-error (parse-error)
   ((spec :initarg :spec
-	 :initform nil
-	 :accessor cond-spec))
+         :initform nil
+         :accessor cond-spec))
   (:report (lambda (condition stream)
-	     (format stream "Invalid Munsell specification: ~A"
-		     (cond-spec condition)))))
+             (format stream "Invalid Munsell specification: ~A"
+                     (cond-spec condition)))))
 
 (define-primary-converter (munsell mhvc) (munsellspec)
   (declare (optimize (speed 3) (safety 1)))
@@ -356,15 +356,15 @@ However, the capital letters and  '/' are reserved:
 (define-primary-converter (mhvc munsell) (hue40 value chroma &key (digits 2))
   (let ((directive (concatenate 'string "~," (write-to-string digits) "F")))
     (if (< chroma (* 0.5d0 (expt 0.1d0 digits))) ; if achromatic
-	(format nil (concatenate 'string "N " directive) value)
-	(let* ((hue40$ (mod hue40 40d0))
-	       (hue-number (floor (/ hue40$ 4)))
-	       (hue-prefix (* (mod hue40$ 4) 2.5d0))
-	       (hue-name (aref #("R" "YR" "Y" "GY" "G"
-				 "BG" "B" "PB" "P" "RP")
-			       hue-number)))
-	  (format nil (concatenate 'string directive "~A " directive "/" directive)
-		  hue-prefix hue-name value chroma)))))
+        (format nil (concatenate 'string "N " directive) value)
+        (let* ((hue40$ (mod hue40 40d0))
+               (hue-number (floor (/ hue40$ 4)))
+               (hue-prefix (* (mod hue40$ 4) 2.5d0))
+               (hue-name (aref #("R" "YR" "Y" "GY" "G"
+                                 "BG" "B" "PB" "P" "RP")
+                               hue-number)))
+          (format nil (concatenate 'string directive "~A " directive "/" directive)
+                  hue-prefix hue-name value chroma)))))
 
 
 (defun munsell-out-of-mrd-p (munsellspec)
@@ -425,25 +425,25 @@ in the MRD."
 (defun rough-lchab-to-mhvc (lstar cstarab hab)
   "Does rough conversion from LCHab to munsell HVC"
   (declare (optimize (speed 3) (safety 0))
-	   (double-float lstar cstarab hab))
+           (double-float lstar cstarab hab))
   (values (* hab #.(float 40/360 1d0))
-	  (lstar-to-munsell-value lstar)
-	  (* cstarab #.(/ 5.5d0))))
+          (lstar-to-munsell-value lstar)
+          (* cstarab #.(/ 5.5d0))))
 
 (declaim (inline circular-delta))
 (defun circular-delta (theta1 theta2)
   "used in INVERT-LCHAB-TO-MHVC"
   (let ((z (mod (- theta1 theta2) 360d0)))
     (if (<= z 180d0)
-	z
-	(- z 360d0))))
+        z
+        (- z 360d0))))
 
 (define-condition large-approximation-error (arithmetic-error)
   ((message :initarg :message
             :initform "Couldn't achieve the required accuracy."
             :accessor cond-message))
   (:report (lambda (condition stream)
-	     (format stream "~A"
+             (format stream "~A"
                      (cond-message condition)))))
 
 ;; called by LCHAB-TO-MHVC-ILLUM-C
@@ -451,10 +451,10 @@ in the MRD."
 (defun invert-mhvc-to-lchab (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
   "Illuminant C."
   (declare (double-float lstar cstarab hab factor threshold)
-	   (fixnum max-iteration))
+           (fixnum max-iteration))
   (let ((tmp-hue40 init-hue40)
-	(v (lstar-to-munsell-value lstar))
-	(tmp-c init-chroma))
+        (v (lstar-to-munsell-value lstar))
+        (tmp-c init-chroma))
     (declare (double-float tmp-hue40 tmp-c v))
     (if (or (<= v threshold) (<= init-chroma threshold))
         (values init-hue40 v init-chroma)
@@ -509,7 +509,7 @@ MAX-ITERATION:
 "
   (with-ensuring-type double-float (lstar cstarab hab factor threshold)
     (let ((init-h (* hab #.(float 40/360 1d0)))
-	  (init-c (* cstarab #.(/ 5.5d0))))
+          (init-c (* cstarab #.(/ 5.5d0))))
       (invert-mhvc-to-lchab lstar cstarab hab
                             init-h init-c
                             :max-iteration max-iteration
@@ -561,17 +561,17 @@ D65 to illuminant C."
   "For development."
   (let ((max-iteration 300))
     (do ((lstar 0 (+ lstar 10)))
-	((> lstar 100) 'done)
+        ((> lstar 100) 'done)
       (do ((hab 0 (+ hab 9)))
-	  ((= hab 360))
-	(do ((cstarab 0 (+ cstarab 10)))
-	    ((= cstarab 200) nil)
-	  (let ((result (lchab-to-mhvc-illum-c lstar cstarab hab
+          ((= hab 360))
+        (do ((cstarab 0 (+ cstarab 10)))
+            ((= cstarab 200) nil)
+          (let ((result (lchab-to-mhvc-illum-c lstar cstarab hab
                                                :threshold 1d-6
                                                :if-reach-max :return40
                                                :max-iteration max-iteration)))
             (when (= result 40d0)
-	      (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
+              (format t "failed at L*=~A C*ab=~A Hab=~A.~%" lstar cstarab hab))))))))
 
 (defun test-inverter2 (&optional (num-loop 10000) (profile nil) (rgbspace +srgb+))
   "For development."
@@ -581,24 +581,24 @@ D65 to illuminant C."
      '("DUFY-MUNSELL" "DUFY-CORE" "DUFY-INTERNAL"))
    #'(lambda ()
        (let ((qmax+1 (1+ (rgbspace-qmax rgbspace)))
-	     (cat-func (gen-cat-function (rgbspace-illuminant rgbspace) +illum-c+))
-	     (sum 0))
+             (cat-func (gen-cat-function (rgbspace-illuminant rgbspace) +illum-c+))
+             (sum 0))
          (dotimes (x num-loop (float (/ sum num-loop) 1d0))
            (let ((qr (random qmax+1))
                  (qg (random qmax+1))
                  (qb (random qmax+1)))
-	     (multiple-value-bind (lstar cstarab hab)
-	         (multiple-value-call #'xyz-to-lchab
-	           (multiple-value-call cat-func
-		     (qrgb-to-xyz qr qg qb :rgbspace rgbspace))
-	           :illuminant +illum-c+)
-	       (let ((result (lchab-to-mhvc-illum-c lstar cstarab hab
+             (multiple-value-bind (lstar cstarab hab)
+                 (multiple-value-call #'xyz-to-lchab
+                   (multiple-value-call cat-func
+                     (qrgb-to-xyz qr qg qb :rgbspace rgbspace))
+                   :illuminant +illum-c+)
+               (let ((result (lchab-to-mhvc-illum-c lstar cstarab hab
                                                     :max-iteration 300
                                                     :if-reach-max :return40
                                                     :factor 0.5d0)))
                  (when (= result 40d0)
-	           (incf sum)
-	           (format t "~A ~A ~A, (~a ~a ~a)~%" lstar cstarab hab qr qg qb))))))))))
+                   (incf sum)
+                   (format t "~A ~A ~A, (~a ~a ~a)~%" lstar cstarab hab qr qg qb))))))))))
 
 ;; Doesn't converge at:
 ;; LCH = 90.25015693115249d0 194.95626408656423d0 115.6958104971207d0
@@ -611,13 +611,13 @@ D65 to illuminant C."
     (dotimes (qr 256)
       (print qr)
       (dotimes (qg 256)
-	(dotimes (qb 256)
-	  (let ((result (multiple-value-call #'xyz-to-mhvc 
+        (dotimes (qb 256)
+          (let ((result (multiple-value-call #'xyz-to-mhvc 
                           (qrgb-to-xyz qr qg qb :rgbspace rgbspace)
                           :if-reach-max :return40
                           :max-iteration 200
                           :threshold 1.0d-3)))
-	    (when (= result 40d0)
-	      (incf sum)
-	      (format t "(~a ~a ~a)~%" qr qg qb))))))
+            (when (= result 40d0)
+              (incf sum)
+              (format t "(~a ~a ~a)~%" qr qg qb))))))
     (float (/ sum (* 256 256 256)) 1d0)))
