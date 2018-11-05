@@ -181,8 +181,8 @@ popped against its type declaration."
                                        (declare (double-float x y z))
                                        (+ x y z))
                                    (lchab-to-lrgb (random 100d0 state)
-                                                  (- (random 128d0 state) 256d0)
-                                                  (- (random 128d0 state) 256d0)))))))))
+                                                  (- (random 256d0 state) 128d0)
+                                                  (- (random 256d0 state) 128d0)))))))))
 
 (defun bench-list-version (num &optional (sample 10))
   (let ((state (sb-ext:seed-random-state 1)))
@@ -191,7 +191,7 @@ popped against its type declaration."
               (print (loop repeat num
                            sum (destructuring-bind (x y z)
                                    (list-lchab-to-lrgb (random 100d0 state)
-                                                       (- (random 128d0 state) 256d0)
-                                                       (- (random 128d0 state) 256d0))
+                                                       (- (random 256d0 state) 128d0)
+                                                       (- (random 256d0 state) 128d0))
                                  (declare (double-float x y z))
                                  (+ x y z))))))))
