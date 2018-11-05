@@ -3,6 +3,17 @@
 (uiop:define-package #:dufy-core
     (:use #:cl #:alexandria #:dufy-internal)
   (:export
+   ;; colorspace.lisp (not exported from the main package)
+   #:colorspace
+   #:define-colorspace
+   #:primary-converter
+   #:define-primary-converter
+   #:defconverter
+   #:defconverters
+   #:functional
+   #:define-functional
+   #:extend-functional
+   
    ;; xyz.lisp
    #:xyz #:xyy #:spectrum
    #:xyy-to-xyz
