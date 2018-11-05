@@ -62,8 +62,8 @@ spectrum-seq '(simple-array double-float (*)))."
          (begin-wl-f (float begin-wl 1d0))
          (end-wl-f (float end-wl 1d0)))
     (if (= size (- end-wl begin-wl))
-        ;; If SPECTRUM-SEQ is defined just for each integer,
-        ;; the spectrum function is simpler and more efficient:
+        ;; If SPECTRUM-SEQ is defined just for each integer, the
+        ;; spectrum function can be simpler and more efficient:
         #'(lambda (wl-nm)
             (declare (optimize (speed 3) (safety 1)))
             (multiple-value-bind (quot rem)

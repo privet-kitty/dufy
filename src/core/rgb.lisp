@@ -39,26 +39,28 @@
 shouldn't call the returned function on your own, as it is not safe."
   (let ((gamma (float gamma 1d0)))
     #'(lambda (x)
-	(declare (optimize (speed 3) (safety 0))
-		 (double-float x))
-	(if (plusp x)
-	    (expt x gamma)
-	    (- (expt (- x) gamma))))))
+        (declare (optimize (speed 3) (safety 0))
+                 (double-float x))
+        (if (plusp x)
+            (expt x gamma)
+            (- (expt (- x) gamma))))))
 
 (defun gen-delinearizer (gamma)
   "Returns a gamma-correction function for a given gamma value. You
 shouldn't call the returned function on your own, as it is not safe."
   (let ((/gamma (/ (float gamma 1d0))))
     #'(lambda (x)
-	(declare (optimize (speed 3) (safety 0))
-		 (double-float x))
-	(if (plusp x)
-	    (expt x /gamma)
-	    (- (expt (- x) /gamma))))))
+        (declare (optimize (speed 3) (safety 0))
+                 (double-float x))
+        (if (plusp x)
+            (expt x /gamma)
+            (- (expt (- x) /gamma))))))
 
 (defstruct (rgbspace (:constructor %make-rgbspace)
-		     (:copier nil))
-  "Structure of RGB space, including encoding characteristics"
+                     (:copier nil))
+  "Structure of RGB space including encoding characteristics. You
+shouldn't write to any slots directly; instead MAKE-RGBSPACE or
+COPY-RGBSPACE are available."
   ;; primary coordinates in xyY space.
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
   (xg 0d0 :type double-float) (yg 0d0 :type double-float)
@@ -80,11 +82,11 @@ shouldn't call the returned function on your own, as it is not safe."
   (max 1d0 :type double-float)
   (length 1d0 :type double-float) ; length of the interval [min, max]
   (/length 1d0 :type double-float) ; reciprocal
-  (normal t :type boolean) ; t, if min = 0d0 and max = 1d0
+  (normal t :type boolean) ; T, if min = 0d0 and max = 1d0
 
   ;; quantization characteristics
   (bit-per-channel 8 :type (integer 1 #.(floor (log most-positive-fixnum 2))))
-  (qmax 255 :type (integer 1 #.most-positive-fixnum)) ; maximum of quantized values
+  (qmax 255 :type (integer 1 #.most-positive-fixnum)) ; max. of quantized values
   (qmax-float 255d0 :type double-float)
   (length/qmax-float (float 1/255 1d0) :type double-float)
   (qmax-float/length 255d0 :type double-float))
@@ -94,78 +96,81 @@ shouldn't call the returned function on your own, as it is not safe."
 [lmin, lmax] := range of linear values ([0, 1] typically).
 
 LINEARIZER and DELINEARIZER must be (FUNCTION * (VALUES DOUBLE-FLOAT
-&OPTIONAL)).  If FORCE-NORMAL is T, the nominal range of
-gamma-corrected value is forcibly set to [0, 1]."
+&OPTIONAL)).
+
+If FORCE-NORMAL is T, the nominal range of gamma-corrected values is
+forcibly set to [0d0, 1d0]. It is used to avoid the computed range
+being e.g. [0d0, 0.9999999999999999d0]."
   (declare (optimize (speed 3) (safety 1))
-	   ((function * double-float) linearizer delinearizer))
+           ((function * double-float) linearizer delinearizer))
   (with-ensuring-type double-float (xr yr xg yg xb yb)
     (let ((coordinates
             (make-array '(3 3)
                         :element-type 'double-float
                         :initial-contents
-                        (list (list xr xg xb)
-                              (list yr yg yb)
-                              (list (- 1d0 xr yr) (- 1d0 xg yg) (- 1d0 xb yb))))))
+                        `((,xr ,xg ,xb)
+                          (,yr ,yg ,yb)
+                          (,(- 1d0 xr yr) ,(- 1d0 xg yg) ,(- 1d0 xb yb))))))
       (multiple-value-bind (sr sg sb)
-	  (multiply-mat-vec (invert-matrix33 coordinates)
-			    (illuminant-x illuminant)
-			    1d0
-			    (illuminant-z illuminant))
-	(let* ((mat
+          (multiply-mat-vec (invert-matrix33 coordinates)
+                            (illuminant-x illuminant)
+                            1d0
+                            (illuminant-z illuminant))
+        (let* ((mat
                  (make-array '(3 3)
                              :element-type 'double-float
                              :initial-contents
-                             (list (list (* sr (aref coordinates 0 0))
-                                         (* sg (aref coordinates 0 1))
-                                         (* sb (aref coordinates 0 2)))
-                                   (list (* sr (aref coordinates 1 0))
-                                         (* sg (aref coordinates 1 1))
-                                         (* sb (aref coordinates 1 2)))
-                                   (list (* sr (aref coordinates 2 0))
-                                         (* sg (aref coordinates 2 1))
-                                         (* sb (aref coordinates 2 2))))))
-	       (min (if force-normal 0d0 (funcall delinearizer lmin)))
-	       (max (if force-normal 1d0 (funcall delinearizer lmax)))
-	       (normal (and (= min 0d0) (= max 1d0)))
-	       (qmax (- (expt 2 bit-per-channel) 1))
-	       (qmax-float (float qmax 1d0))
-	       (len (- max min)))
-	  (%make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
-			  :illuminant illuminant
-			  :linearizer linearizer
-			  :delinearizer delinearizer
-			  :to-xyz-matrix mat
-			  :from-xyz-matrix (invert-matrix33 mat)
-			  :lmin lmin
-			  :lmax lmax
-			  :min min
-			  :max max
-			  :length len
+                             `((,(* sr (aref coordinates 0 0))
+                                ,(* sg (aref coordinates 0 1))
+                                ,(* sb (aref coordinates 0 2)))
+                               (,(* sr (aref coordinates 1 0))
+                                ,(* sg (aref coordinates 1 1))
+                                ,(* sb (aref coordinates 1 2)))
+                               (,(* sr (aref coordinates 2 0))
+                                ,(* sg (aref coordinates 2 1))
+                                ,(* sb (aref coordinates 2 2))))))
+               (min (if force-normal 0d0 (funcall delinearizer lmin)))
+               (max (if force-normal 1d0 (funcall delinearizer lmax)))
+               (normal (and (= min 0d0) (= max 1d0)))
+               (qmax (- (expt 2 bit-per-channel) 1))
+               (qmax-float (float qmax 1d0))
+               (len (- max min)))
+          (%make-rgbspace :xr xr :yr yr :xg xg :yg yg :xb xb :yb yb
+                          :illuminant illuminant
+                          :linearizer linearizer
+                          :delinearizer delinearizer
+                          :to-xyz-matrix mat
+                          :from-xyz-matrix (invert-matrix33 mat)
+                          :lmin lmin
+                          :lmax lmax
+                          :min min
+                          :max max
+                          :length len
                           :/length (/ len)
-			  :normal normal
-			  :bit-per-channel bit-per-channel
-			  :qmax qmax
-			  :qmax-float qmax-float
-			  :qmax-float/length (/ qmax-float len)
-			  :length/qmax-float (/ len qmax-float)))))))
+                          :normal normal
+                          :bit-per-channel bit-per-channel
+                          :qmax qmax
+                          :qmax-float qmax-float
+                          :qmax-float/length (/ qmax-float len)
+                          :length/qmax-float (/ len qmax-float)))))))
 
-(defvar +srgb+) ; later defined
+(defvar +srgb+) ; defined in another file
 
 (define-primary-converter (xyz lrgb) (x y z &key (rgbspace +srgb+) &aux (illuminant (rgbspace-illuminant rgbspace)))
   (declare (optimize (speed 3) (safety 1))
            (ignorable illuminant))
   (multiply-mat-vec (rgbspace-from-xyz-matrix rgbspace)
-		    (float x 1d0)
-		    (float y 1d0)
-		    (float z 1d0)))
+                    (float x 1d0)
+                    (float y 1d0)
+                    (float z 1d0)))
 
 (define-primary-converter (lrgb xyz) (lr lg lb &key (rgbspace +srgb+) &aux (illuminant (rgbspace-illuminant rgbspace)))
   (declare (optimize (speed 3) (safety 1))
            (ignorable illuminant))
   (multiply-mat-vec (rgbspace-to-xyz-matrix rgbspace)
-		    (float lr 1d0)
-		    (float lg 1d0)
-		    (float lb 1d0)))
+                    (float lr 1d0)
+                    (float lg 1d0)
+                    (float lb 1d0)))
 
 
 ;;;
@@ -174,8 +179,8 @@ gamma-corrected value is forcibly set to [0, 1]."
 
 (defun lrgb-out-of-gamut-p (lr lg lb &key (rgbspace +srgb+) (threshold 1d-4))
   (declare (optimize (speed 3) (safety 1)))
-  "Returns true, if at least one of LR, LG and LB is outside the
-interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
+  "Returns true if at least one of LR, LG, and LB is outside the
+interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
   (with-ensuring-type double-float (lr lg lb threshold)
     (let ((inf (- (rgbspace-lmin rgbspace) threshold))
           (sup (+ (rgbspace-lmax rgbspace) threshold)))
@@ -197,26 +202,26 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
   (declare (optimize (speed 3) (safety 1)))
   (let ((delin (rgbspace-delinearizer rgbspace)))
     (values (funcall delin (float lr 1d0))
-	    (funcall delin (float lg 1d0))
-	    (funcall delin (float lb 1d0)))))
+            (funcall delin (float lg 1d0))
+            (funcall delin (float lb 1d0)))))
 
 (define-primary-converter (rgb lrgb) (r g b &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((lin (rgbspace-linearizer rgbspace)))
     (values (funcall lin (float r 1d0))
-	    (funcall lin (float g 1d0))
-	    (funcall lin (float b 1d0)))))
+            (funcall lin (float g 1d0))
+            (funcall lin (float b 1d0)))))
 
 (defun rgb-out-of-gamut-p (r g b &key (rgbspace +srgb+) (threshold 1d-4))
-  "Returns true, if at least one of R, G and B is outside the interval
-[RGBSPACE-MIN - THRESHOLD, RGBSPACE-MAX + THRESHOLD]"
   (declare (optimize (speed 3) (safety 1)))
+  "Returns true if at least one of R, G, and B is outside the interval
+[RGBSPACE-MIN - THRESHOLD, RGBSPACE-MAX + THRESHOLD]."
   (with-ensuring-type double-float (r g b threshold)
     (let ((inf (- (rgbspace-min rgbspace) threshold))
-	  (sup (+ (rgbspace-max rgbspace) threshold)))
+          (sup (+ (rgbspace-max rgbspace) threshold)))
       (not (and (<= inf r sup)
-		(<= inf g sup)
-		(<= inf b sup))))))
+                (<= inf g sup)
+                (<= inf b sup))))))
 
 (defconverter xyz rgb)
 (defconverter rgb xyz)
@@ -224,16 +229,16 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 (declaim (inline qrgb-out-of-gamut-p))
 (defun qrgb-out-of-gamut-p (qr qg qb &key (rgbspace +srgb+) (threshold 0))
   (declare (optimize (speed 3) (safety 1))
-	   (fixnum qr qg qb threshold))
+           (fixnum qr qg qb threshold))
   (let ((inf (- threshold))
-	(sup (+ (rgbspace-qmax rgbspace) threshold)))
+        (sup (+ (rgbspace-qmax rgbspace) threshold)))
     (not (and (<= inf qr sup)
-	      (<= inf qg sup)
-	      (<= inf qb sup)))))
+              (<= inf qg sup)
+              (<= inf qb sup)))))
 
 (declaim (inline quantize))
 (defun quantize (x &key (rgbspace +srgb+) (clamp t))
-  "RGB value to QRGB value"
+  "Quantizes an RGB value to a QRGB value"
   (declare (optimize (speed 3) (safety 1)))
   (if clamp
       (clamp (round (* (- (float x 1d0) (rgbspace-min rgbspace))
@@ -244,7 +249,7 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]"
 
 (declaim (inline dequantize))
 (defun dequantize (n &key (rgbspace +srgb+))
-  "QRGB value to RGB value"
+  "Dequantizes a QRGB value to an RGB value"
   (declare (optimize (speed 3) (safety 1))
            (fixnum n))
   (+ (rgbspace-min rgbspace)
@@ -257,8 +262,8 @@ typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255} typically),
 though it accepts all the real values."
   (with-ensuring-type double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
-	  (qmax-float/length (rgbspace-qmax-float/length rgbspace))
-	  (qmax (rgbspace-qmax rgbspace)))
+          (qmax-float/length (rgbspace-qmax-float/length rgbspace))
+          (qmax (rgbspace-qmax rgbspace)))
       (if clamp
           (values (clamp (round (* (- r min) qmax-float/length)) 0 qmax)
                   (clamp (round (* (- g min) qmax-float/length)) 0 qmax)
@@ -274,8 +279,8 @@ typically), though it accepts all the real values."
   (declare (optimize (speed 3) (safety 1)))
   (with-ensuring-type double-float (r g b alpha)
     (let ((min (rgbspace-min rgbspace))
-	  (qmax-float/length (rgbspace-qmax-float/length rgbspace))
-	  (qmax (rgbspace-qmax rgbspace)))
+          (qmax-float/length (rgbspace-qmax-float/length rgbspace))
+          (qmax (rgbspace-qmax rgbspace)))
       (if clamp
           (values (clamp (round (* (- r min) qmax-float/length)) 0 qmax)
                   (clamp (round (* (- g min) qmax-float/length)) 0 qmax)
@@ -289,18 +294,18 @@ typically), though it accepts all the real values."
 (define-primary-converter (qrgb rgb) (qr qg qb &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((min (rgbspace-min rgbspace))
-	(length/qmax-float (rgbspace-length/qmax-float rgbspace)))
+        (length/qmax-float (rgbspace-length/qmax-float rgbspace)))
     (values (+ min (* qr length/qmax-float))
-	    (+ min (* qg length/qmax-float))
-	    (+ min (* qb length/qmax-float)))))
+            (+ min (* qg length/qmax-float))
+            (+ min (* qb length/qmax-float)))))
 
 (define-primary-converter (qrgba rgba) (qr qg qb qalpha &key (rgbspace +srgb+))
   (declare (optimize (speed 3) (safety 1)))
   (let ((min (rgbspace-min rgbspace))
-	(length/qmax-float (rgbspace-length/qmax-float rgbspace)))
+        (length/qmax-float (rgbspace-length/qmax-float rgbspace)))
     (values (+ min (* qr length/qmax-float))
-	    (+ min (* qg length/qmax-float))
-	    (+ min (* qb length/qmax-float))
+            (+ min (* qg length/qmax-float))
+            (+ min (* qb length/qmax-float))
             (+ min (* qalpha length/qmax-float)))))
 
 (defconverters (xyz lrgb) qrgb)
@@ -310,7 +315,7 @@ typically), though it accepts all the real values."
   (declare (optimize (speed 3) (safety 1))
            (ignorable clamp))
   (let ((bpc (rgbspace-bit-per-channel rgbspace))
-	(qmax (rgbspace-qmax rgbspace)))
+        (qmax (rgbspace-qmax rgbspace)))
     (+ (ash (clamp qr 0 qmax) (+ bpc bpc))
        (ash (clamp qg 0 qmax) bpc)
        (clamp qb 0 qmax))))
@@ -323,10 +328,10 @@ typically unsigned 24-bit integer.
 It is guaranteed that this converter can also process a packed RGBA
 value correctly if its order is ARGB."
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
-	(qmax (rgbspace-qmax rgbspace)))
+        (qmax (rgbspace-qmax rgbspace)))
     (values (logand (ash int (+ minus-bpc minus-bpc)) qmax)
-	    (logand (ash int minus-bpc) qmax)
-	    (logand int qmax))))
+            (logand (ash int minus-bpc) qmax)
+            (logand int qmax))))
 
 (define-primary-converter (qrgba rgbapack) (qr qg qb qalpha &key (rgbspace +srgb+) (order :argb) &aux (clamp nil))
   (declare (optimize (speed 3) (safety 1))
@@ -335,36 +340,38 @@ value correctly if its order is ARGB."
 typically unsigned 32-bit integer.
 
 The order can be :ARGB or :RGBA. Note that it is different from the
-'physical' byte order in a machine, which depends on the endianess."
+'physical' byte order in your machine, which depends on the
+endianess."
   (let* ((bpc (rgbspace-bit-per-channel rgbspace))
-	 (2bpc (+ bpc bpc))
-	 (qmax (rgbspace-qmax rgbspace)))
+         (2bpc (+ bpc bpc))
+         (qmax (rgbspace-qmax rgbspace)))
     (ecase order
       (:argb (+ (clamp qb 0 qmax)
-		(ash (clamp qg 0 qmax) bpc)
-		(ash (clamp qr 0 qmax) 2bpc)
-		(ash (clamp qalpha 0 qmax) (+ 2bpc bpc))))
+                (ash (clamp qg 0 qmax) bpc)
+                (ash (clamp qr 0 qmax) 2bpc)
+                (ash (clamp qalpha 0 qmax) (+ 2bpc bpc))))
       (:rgba (+ (clamp qalpha 0 qmax)
-		(ash (clamp qb 0 qmax) bpc)
-		(ash (clamp qg 0 qmax) 2bpc)
-		(ash (clamp qr 0 qmax) (+ 2bpc bpc)))))))
+                (ash (clamp qb 0 qmax) bpc)
+                (ash (clamp qg 0 qmax) 2bpc)
+                (ash (clamp qr 0 qmax) (+ 2bpc bpc)))))))
 
 (define-primary-converter (rgbapack qrgba) (int &key (rgbspace +srgb+) (order :argb))
   (declare (optimize (speed 3) (safety 1)))
   "The order can be :ARGB or :RGBA. Note that it is different from the
-  'physical' byte order in a machine, which depends on the endianess."
+  'physical' byte order in your machine, which depends on the
+  endianess."
   (let* ((-bpc (- (rgbspace-bit-per-channel rgbspace)))
-	 (-2bpc (+ -bpc -bpc))
-	 (qmax (rgbspace-qmax rgbspace)))
+         (-2bpc (+ -bpc -bpc))
+         (qmax (rgbspace-qmax rgbspace)))
     (ecase order
       (:argb (values (logand (ash int -2bpc) qmax)
-		     (logand (ash int -bpc) qmax)
-		     (logand int qmax)
-		     (logand (ash int (+ -2bpc -bpc)) qmax)))
+                     (logand (ash int -bpc) qmax)
+                     (logand int qmax)
+                     (logand (ash int (+ -2bpc -bpc)) qmax)))
       (:rgba (values (logand (ash int (+ -2bpc -bpc)) qmax)
-		     (logand (ash int -2bpc) qmax)
-		     (logand (ash int -bpc) qmax)
-		     (logand int qmax))))))
+                     (logand (ash int -2bpc) qmax)
+                     (logand (ash int -bpc) qmax)
+                     (logand int qmax))))))
 
 (defconverters rgbpack (rgb lrgb xyz))
 (defconverters (rgb lrgb xyz) rgbpack)
@@ -405,7 +412,7 @@ situation whether the returned values are meaningful."
             ((= 3 h-prime-int) (values base (+ base x) val))
             ((= 4 h-prime-int) (values (+ base x) base val))
             ((= 5 h-prime-int) (values val base (+ base x)))
-            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
+            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding compiler warnings
                )))))
 
 (defconverters hsv (rgbpack qrgb lrgb xyz))
@@ -434,11 +441,11 @@ situation whether the returned values are meaningful."
 situation whether the returned values are meaningful."
   (with-ensuring-type double-float (hue sat lum)
     (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (+ lum lum -1d0)))))
-	   (max (+ lum tmp))
-	   (min (- lum tmp))
-	   (delta (- max min))
-	   (h-prime (floor (the (double-float 0d0 6d0)
-				(* (mod hue 360d0) 1/60)))))
+           (max (+ lum tmp))
+           (min (- lum tmp))
+           (delta (- max min))
+           (h-prime (floor (the (double-float 0d0 6d0)
+                                (* (mod hue 360d0) 1/60)))))
       (cond ((= sat 0d0) (values max max max))
             ((= 0 h-prime) (values max
                                    (+ min (* delta hue 1/60))
@@ -458,7 +465,7 @@ situation whether the returned values are meaningful."
             ((= 5 h-prime) (values max
                                    min
                                    (+ min (* delta (- 360d0 hue) 1/60))))
-            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding warnings
+            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding compiler warnings
                )))))
 
 (defconverters hsl (rgbpack qrgb lrgb xyz))

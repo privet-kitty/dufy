@@ -16,8 +16,8 @@
 			    (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
 			       (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0)))))
                    :compile-time t))
-			  
-;; (defparameter +illum-b+ (make-illuminant 0.34842d0 0.35161d0))
+
+;; +ILLUM-B+ is defined in an extra package.
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +illum-c-arr+
