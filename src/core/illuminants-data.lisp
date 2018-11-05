@@ -1,5 +1,5 @@
 ;;;
-;;; Default Standard Illuminants
+;;; Built-in Standard Illuminants
 ;;;
 
 
@@ -7,14 +7,14 @@
 
 (defparameter +illum-a+
   (make-illuminant :spectrum
-		   #'(lambda (wl)
-		       (declare (optimize (speed 3) (safety 1)))
-		       (let ((wl (float wl 1d0)))
-			 (check-type wl (double-float 0d0))
-			 (* 100d0
-			    (expt (/ 560d0 wl) 5)
-			    (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
-			       (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0)))))
+                   #'(lambda (wl)
+                       (declare (optimize (speed 3) (safety 1)))
+                       (let ((wl (float wl 1d0)))
+                         (check-type wl (double-float 0d0))
+                         (* 100d0
+                            (expt (/ 560d0 wl) 5)
+                            (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
+                               (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0)))))
                    :compile-time t))
 
 ;; +ILLUM-B+ is defined in an extra package.
@@ -40,5 +40,5 @@
                    :compile-time t))
 
 (defparameter +illum-e+ (make-illuminant :x 1d0 :z 1d0
-					 :spectrum #'flat-spectrum))
+                                         :spectrum #'flat-spectrum))
 
