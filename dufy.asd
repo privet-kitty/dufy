@@ -39,7 +39,7 @@
                  (:file "cat")
                  (:file "rgbspaces-data")
                  (:file "deltae")
-                 (:file "experiment")))))
+                 (:file "experiment" :if-feature :sbcl)))))
 
 (defsystem "dufy/munsell"
   :pathname "src"
@@ -78,7 +78,7 @@
                "fiveam"
                "cl-csv"
                "parse-float"
-               ;; There's no specific test for dufy-extra-data and dufy-examples;
+               ;; There's no specific test for dufy/extra-data and dufy/examples;
                ;; the following is just for checking if load-op succeeds.
                "dufy/extra-data"
                (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples"))
