@@ -38,8 +38,7 @@
                  (:file "lab-and-luv")
                  (:file "cat")
                  (:file "rgbspaces-data")
-                 (:file "deltae")
-                 (:file "experiment" :if-feature :sbcl)))))
+                 (:file "deltae")))))
 
 (defsystem "dufy/munsell"
   :pathname "src"
