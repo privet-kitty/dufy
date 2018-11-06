@@ -165,9 +165,9 @@ popped against its type declaration."
     (lstar cstarab hab &key (rgbspace +srgb+) &aux (illuminant (rgbspace-illuminant rgbspace)))
   (declare (optimize (speed 3) (safety 1))
            (type real lstar cstarab hab))
-  (typed-destructuring-bind ((lstar double-float) (astar double-float) (bstar double-float))
+  (typed-destructuring-bind2 ((lstar double-float) (astar double-float) (bstar double-float))
       (list-lchab-to-lab lstar cstarab hab)
-    (typed-destructuring-bind ((x double-float) (y double-float) (z double-float))
+    (typed-destructuring-bind2 ((x double-float) (y double-float) (z double-float))
         (list-lab-to-xyz lstar astar bstar :illuminant illuminant)
       (list-xyz-to-lrgb x y z :rgbspace rgbspace))))
 
@@ -175,23 +175,23 @@ popped against its type declaration."
   (let ((state (sb-ext:seed-random-state 1)))
     (format t "~&~F sec."
             (time-median sample
-              (print (loop repeat num
-                           sum (multiple-value-call
-                                   #'(lambda (x y z)
-                                       (declare (double-float x y z))
-                                       (+ x y z))
-                                   (lchab-to-lrgb (random 100d0 state)
-                                                  (- (random 256d0 state) 128d0)
-                                                  (- (random 256d0 state) 128d0)))))))))
+              (time (loop repeat num
+                          sum (multiple-value-call
+                                  #'(lambda (x y z)
+                                      (declare (double-float x y z))
+                                      (+ x y z))
+                                (lchab-to-lrgb (random 100d0 state)
+                                               (- (random 256d0 state) 128d0)
+                                               (- (random 256d0 state) 128d0)))))))))
 
 (defun bench-list-version (num &optional (sample 10))
   (let ((state (sb-ext:seed-random-state 1)))
     (format t "~&~F sec."
             (time-median sample
               (print (loop repeat num
-                           sum (destructuring-bind (x y z)
-                                   (list-lchab-to-lrgb (random 100d0 state)
-                                                       (- (random 256d0 state) 128d0)
-                                                       (- (random 256d0 state) 128d0))
-                                 (declare (double-float x y z))
-                                 (+ x y z))))))))
+                          sum (typed-destructuring-bind ((x double-float) (y double-float) (z double-float))
+                                  (list-lchab-to-lrgb (random 100d0 state)
+                                                      (- (random 256d0 state) 128d0)
+                                                      (- (random 256d0 state) 128d0))
+                                ;; (declare (double-float x y z))
+                                (+ x y z))))))))

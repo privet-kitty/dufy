@@ -7,7 +7,7 @@
 (deftype spectrum-function ()
   #-abcl '(function * (values double-float &optional))
   #+abcl t) ; FIXME: ABCL signas an error and claims that FUNCTION
-            ; types are not a legal argument to TYPEP.
+                                        ; types are not a legal argument to TYPEP.
 
 (define-colorspace xyz (x y z)
   :arg-types (real real real)
@@ -20,14 +20,14 @@
 (define-colorspace spectrum (spectrum)
   :arg-types (spectrum-function)
   :return-types (spectrum-function)
-  :documentation "A spectrum is just a function which receives a
-wavelength (nm) as a real number and returns a double-float: (function
+  :documentation "A spectrum is just a function which receives a real
+number as a wavelength (nm) and returns a double-float: (function
 * (values double-float &optional))")
 
 (define-primary-converter (xyy xyz) (small-x small-y y)
   (declare (optimize (speed 3) (safety 1)))
-  "xyY to XYZ. The nominal range of Y is [0, 1], though all real
-values are accepted."
+  "Converts xyY to XYZ. The nominal range of Y is [0, 1], though all
+real values are accepted."
   (with-ensuring-type double-float (small-x small-y y)
     (if (zerop small-y)
         (values 0d0 y 0d0)
@@ -37,8 +37,8 @@ values are accepted."
 
 (define-primary-converter (xyz xyy) (x y z)
   (declare (optimize (speed 3) (safety 1)))
-  "XYZ to xyY. The nominal range of Y is [0, 1], though all real
-values are accepted."
+  "Converts XYZ to xyY. The nominal range of Y is [0, 1], though all
+real values are accepted."
   (with-ensuring-type double-float (x y z)
     (let ((sum (+ x y z)))
       (if (= sum 0)
@@ -336,9 +336,9 @@ f(x) = 0d0 otherwise."
   (let* ((x (illuminant-x illuminant))
          (z (illuminant-z illuminant))
          (sum (+ x 1d0 z)))
-      (if (= sum 0)
-          (values 0d0 0d0)
-          (values (/ x sum) (/ sum)))))
+    (if (= sum 0)
+        (values 0d0 0d0)
+        (values (/ x sum) (/ sum)))))
 
 (declaim (inline illuminant-no-spd-p))
 (defun illuminant-no-spd-p (illuminant)
@@ -353,10 +353,10 @@ f(x) = 0d0 otherwise."
                (format stream "The illuminant has no spectrum: ~A"
                        (cond-illuminant condition))))))
 
-(defvar +illum-d65+) ; defined later
+(defvar +illum-d65+) ; defined in another file
 (defvar +illum-c+)
 
-(defun spectrum-to-xyz-primitive (spectrum illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
+(defun %spectrum-to-xyz (spectrum illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
   "SPECTRUM: spectral reflectance (or transmittance)
 ILLUMINANT-SPD: SPD of illuminant"
   (declare (optimize (speed 3) (safety 1))
@@ -386,12 +386,12 @@ at least in [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL,
 BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
   (if (illuminant-no-spd-p illuminant)
       (error (make-condition 'no-spd-error :illuminant illuminant))
-      (spectrum-to-xyz-primitive spectrum
-                                 (illuminant-spectrum illuminant)
-                                 (illuminant-observer illuminant)
-                                 begin-wl
-                                 end-wl
-                                 band)))
+      (%spectrum-to-xyz spectrum
+                        (illuminant-spectrum illuminant)
+                        (illuminant-observer illuminant)
+                        begin-wl
+                        end-wl
+                        band)))
 
 (defun calc-to-spectrum-matrix (illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
   "Used for XYZ-to-spectrum conversion."
@@ -400,11 +400,11 @@ BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
               (make-array '(3 3) :element-type 'double-float
                                  :initial-element 0d0))))
     (multiple-value-bind (a00 a10 a20)
-        (spectrum-to-xyz-primitive (observer-cmf-x observer) illuminant-spd observer begin-wl end-wl band)
+        (%spectrum-to-xyz (observer-cmf-x observer) illuminant-spd observer begin-wl end-wl band)
       (multiple-value-bind (a01 a11 a21)
-          (spectrum-to-xyz-primitive (observer-cmf-y observer) illuminant-spd observer begin-wl end-wl band)
+          (%spectrum-to-xyz (observer-cmf-y observer) illuminant-spd observer begin-wl end-wl band)
         (multiple-value-bind (a02 a12 a22)
-            (spectrum-to-xyz-primitive (observer-cmf-z observer) illuminant-spd observer begin-wl end-wl band)
+            (%spectrum-to-xyz (observer-cmf-z observer) illuminant-spd observer begin-wl end-wl band)
           (setf (aref mat 0 0) a00
                 (aref mat 0 1) a01
                 (aref mat 0 2) a02
@@ -429,8 +429,8 @@ many and may contain a negative spectral density."
               (+ (* fac-x (funcall (observer-cmf-x observer) wl))
                  (* fac-y (funcall (observer-cmf-y observer) wl))
                  (* fac-z (funcall (observer-cmf-z observer) wl))))))))
-    
-    
+
+
 (defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil) (begin-wl 360) (end-wl 830) (band 1))
   "Generates an illuminant from a spectral distribution or a white
 point. If the SPECTRUM is nil, the returned illuminant contains only a
@@ -465,7 +465,7 @@ parameters are EVALed.)"
                                    +empty-matrix+))))
     (if (and (null x) (null z))
         (multiple-value-bind (x y z)
-            (spectrum-to-xyz-primitive #'flat-spectrum spectrum observer begin-wl end-wl band)
+            (%spectrum-to-xyz #'flat-spectrum spectrum observer begin-wl end-wl band)
           (declare (ignore y))
           (make x z))
         (make x z))))
@@ -478,7 +478,7 @@ parameters are EVALed.)"
             (ewl (eval end-wl))
             (bnd (eval band)))
         (multiple-value-bind (x y z)
-            (spectrum-to-xyz-primitive #'flat-spectrum spctrm obs bwl ewl bnd)
+            (%spectrum-to-xyz #'flat-spectrum spctrm obs bwl ewl bnd)
           (declare (ignore y))
           `(%make-illuminant
             :x (float ,x 1d0)
