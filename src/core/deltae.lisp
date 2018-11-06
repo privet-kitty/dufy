@@ -48,7 +48,11 @@ APPLICATION ::= :graphic-arts | :textiles"
 
 (define-functional (lab-deltae00 lab :term deltae00) (l1 a1 b1 l2 a2 b2)
   (declare (optimize (speed 3) (safety 1)))
-  "CIEDE2000."
+  "CIEDE2000. 
+
+Tested with the test set by Sharma-Wu-Dalal. See \"The CIEDE2000
+Color-Difference Formula: Implementation Notes, Supplementary Test
+Data, and Mathematical Observations\", 2004."
   (with-ensuring-type double-float (l1 a1 b1 l2 a2 b2)
     (let* ((c1 (sqrt (+ (square a1) (square b1))))
            (c2 (sqrt (+ (square a2) (square b2))))

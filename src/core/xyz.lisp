@@ -6,8 +6,8 @@
 
 (deftype spectrum-function ()
   #-abcl '(function * (values double-float &optional))
-  #+abcl t) ; FIXME: ABCL signas an error and claims that FUNCTION
-                                        ; types are not a legal argument to TYPEP.
+  #+abcl t) ; FIXME: ABCL signals an error and claims that FUNCTION
+            ; types are not a legal argument to TYPEP.
 
 (define-colorspace xyz (x y z)
   :arg-types (real real real)
@@ -132,7 +132,7 @@ interval [begin-wl, end-wl] is regarded as 0."
   (let ((begin-wl-f (float begin-wl 1d0))
         (end-wl-f (float end-wl 1d0)))
     (labels ((gen-cmf-1 (arr num &optional (begin-wl 360) (end-wl 830))
-               ;; FIXME: verbose, almost equivalent to GEN-SPECTRUM
+               ;; FIXME: verbose, almost equivalent code to GEN-SPECTRUM
                (declare ((simple-array double-float (* 3)) arr))
                (let ((size (- (array-dimension arr 0) 1)))
                  (if (= size (- end-wl begin-wl))
@@ -434,10 +434,10 @@ many and may contain a negative spectral density."
 (defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil) (begin-wl 360) (end-wl 830) (band 1))
   "Generates an illuminant from a spectral distribution or a white
 point. If the SPECTRUM is nil, the returned illuminant contains only a
-white point. Although the white point (X, 1d0, Z) is automatically
-calculated if X and Z are nil, you can designate X and Z
-explicitly. Note that no error occurs, even if the given white point
-and SPD contradicts to each other.
+white point. If X and Z are nil, the white point (X, 1d0, Z) is
+automatically calculated from the spectrum. You can also specify the
+both, though you should note that no error occurs even if the given
+white point and SPD contradicts to each other.
 
  (make-illuminant :x 1.0 :z 1.0)
 ;; => illuminant without SPD

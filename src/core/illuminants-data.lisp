@@ -17,7 +17,7 @@
                                (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0)))))
                    :compile-time t))
 
-;; +ILLUM-B+ is defined in an extra package.
+;; +ILLUM-B+ is defined in an extra module.
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +illum-c-arr+
