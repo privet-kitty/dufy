@@ -440,12 +440,12 @@ situation whether the returned values are meaningful."
     "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
   (with-ensuring-type double-float (hue sat lum)
-    (let* ((tmp (* 0.5d0 sat (- 1d0 (abs (+ lum lum -1d0)))))
+    (let* ((hue (mod hue 360d0))
+           (tmp (* 0.5d0 sat (- 1d0 (abs (+ lum lum -1d0)))))
            (max (+ lum tmp))
            (min (- lum tmp))
            (delta (- max min))
-           (h-prime (floor (the (double-float 0d0 6d0)
-                                (* (mod hue 360d0) 1/60)))))
+           (h-prime (floor (the (double-float 0d0 6d0) (* hue 1/60)))))
       (cond ((= sat 0d0) (values max max max))
             ((= 0 h-prime) (values max
                                    (+ min (* delta hue 1/60))
