@@ -297,7 +297,7 @@
                     '(0.0014506484808043598d0 0.0011663458924852145d0 0.0014582198016197035d0)
                     (multiple-value-list (munsell-to-xyz "2.3R 0.1/0.2"))))
   (is (nearly-equal 1d-9
-                    '(0.31009048691043156d0 0.31621898111597335d0 0.06827557003978901d0)
+                    '(0.31006249258289614d0 0.31615894048704557d0 0.06827557003978901d0)
                     (multiple-value-list
                      (multiple-value-call #'dufy:xyz-to-xyy
                        (dufy:munsell-to-xyz-illum-c "N 3.1"))))))

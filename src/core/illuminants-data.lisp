@@ -2,19 +2,27 @@
 ;;; Built-in Standard Illuminants
 ;;;
 
-
 (in-package :dufy-core)
+
+;;
+;; Note: The white points of the (series of) standard illuminants A,
+;; B, C, and D are here calculated with 5 nm intervals over the range
+;; 380 nm to 780 nm as they are in the CIE 15.3:2004. That's because
+;; they are (close to) already frequently used white points for these
+;; illuminants.
+;;
 
 (defparameter +illum-a+
   (make-illuminant :spectrum
                    #'(lambda (wl)
                        (declare (optimize (speed 3) (safety 1)))
                        (let ((wl (float wl 1d0)))
-                         (check-type wl (double-float 0d0))
+                         (assert (>= wl 0d0))
                          (* 100d0
-                            (expt (/ 560d0 wl) 5)
+                            (expt (/ 560d0 (the (double-float 0d0) wl)) 5)
                             (/ #.(- (exp (/ 1.435d7 (* 2848 560))) 1d0)
                                (- (exp (/ 1.435d7 (* 2848d0 wl))) 1d0)))))
+                   :begin-wl 380 :end-wl 780 :band 5
                    :compile-time t))
 
 ;; +ILLUM-B+ is defined in an extra module.
@@ -27,16 +35,19 @@
 
 (defparameter +illum-c+
   (make-illuminant :spectrum (gen-spectrum +illum-c-arr+ 300 830)
+                   :begin-wl 380 :end-wl 780 :band 5
                    :compile-time t))
 
 (defparameter +illum-d50+
   (make-illuminant :spectrum (gen-illum-d-spectrum 5000 :rectify t)
+                   :begin-wl 380 :end-wl 780 :band 5
                    :compile-time t))
 
 (defparameter +illum-d65+
   (make-illuminant :spectrum (gen-illum-d-spectrum 6500 :rectify t)
+                   :begin-wl 380 :end-wl 780 :band 5
                    :compile-time t))
 
-(defparameter +illum-e+ (make-illuminant :x 1d0 :z 1d0
-                                         :spectrum #'flat-spectrum))
+(defparameter +illum-e+
+  (make-illuminant :x 1d0 :z 1d0 :spectrum #'flat-spectrum))
 
