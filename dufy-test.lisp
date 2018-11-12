@@ -268,7 +268,7 @@
   (is (nearly= 1d-4 62.131436d0 (lab-deltaecmc 10 20 30 40 50 60 :l-factor 1d0 :c-factor 1d0)))
   (is (nearly= 1d-4 16.257543d0 (lab-deltaecmc 90 80 70 60 50 40)))
   (dolist (row *ciede2000-set*)
-    (is (nearly= 1d-3
+    (is (nearly= 1d-4
                  (nth 6 row)
                  (apply #'lab-deltae00
                         (append  (subseq row 0 3)
