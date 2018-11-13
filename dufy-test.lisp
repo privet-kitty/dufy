@@ -76,9 +76,12 @@
   (is (= -3 (circular-clamp -3 350 10 360)))
   (is (= 350 (circular-clamp -11 350 10 360)))
   (is (= 10 (circular-clamp 30 350 10 360)))
-  ;; (circular-lerp-loose 1 0.2 1)
-  ;; => 1.0000000149011612d0
-  (is (= 1 (circular-lerp 1 0.2 1)))) ;
+  ;; FIXME: Fails on Clozure CL due to a bug related to an inlined
+  ;; function. See
+  ;; https://github.com/Clozure/ccl/issues/166. Currently it is not a
+  ;; serious problem because CIRCULAR-LERP only takes (implicitly
+  ;; coerced) DOUBLE-FLOATs.
+  #-ccl (is (= 1 (circular-lerp 1 0.2 1))))
 
 (test test-spectrum
   (is (nearly-equal 1d-4
