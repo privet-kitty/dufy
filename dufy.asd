@@ -1,7 +1,7 @@
 ;;;; -*- Mode: Lisp;-*-
 
 (defsystem "dufy"
-  :version "0.2.9"
+  :version "0.3.0"
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"

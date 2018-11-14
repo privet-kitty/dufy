@@ -182,4 +182,4 @@ Dufy consists of several independent modules:
 
 Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy/core` instead of `dufy` in some cases.
 
-As of dufy 0.2.10, both the system names and the package names use the separator `/` instead of `-`, though the old package prefixes like `dufy-core` are left as nicknames.
+As of dufy 0.3.0, both the system names and the package names use the separator `/` instead of `-`, though the old package prefixes like `dufy-core` are left as nicknames.
