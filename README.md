@@ -26,7 +26,7 @@ Dufy can deal with the following concepts:
 
 
 # Documentation
-Besides this README file, most of the documentation is written as docstrings in the source code. Some other information is in [github wiki](https://github.com/privet-kitty/dufy/wiki).
+Besides this README file, most of the documentation is written as docstrings in the source code. [Quickdocs](http://quickdocs.org/dufy/) will be helpful to overview them. Some other information (e.g. changes between versions) is in [github wiki](https://github.com/privet-kitty/dufy/wiki).
 
 
 # Dependencies
@@ -40,7 +40,7 @@ The easiest way to install dufy is to use [quicklisp](https://www.quicklisp.org/
 
     * (ql:quickload :dufy)
 
-The latest version in this repository can also be installed with quicklisp:
+The latest version in this repository can also be used with quicklisp:
 
     $ cd ~/quicklisp/local-projects   # the path is held in ql:*local-project-directories*
     $ git clone git@github.com:privet-kitty/dufy.git
@@ -49,7 +49,9 @@ The latest version in this repository can also be installed with quicklisp:
     * (ql:register-local-projects)
     * (ql:quickload :dufy)
 
-If you want to use ASDF directly without quicklisp, you should put the directory of dufy to an appropriate location (e.g. `~/common-lisp/dufy/`) and do `(asdf:load-system :dufy)`.
+If you want to load the ASDF system directly without quicklisp, you should put the directory of dufy to an appropriate location (e.g. `~/common-lisp/dufy/`) and do `(asdf:load-system :dufy)`.
+
+Note that the `master` branch always coincides with the latest stable release. The `develop` branch is usually where development happens.
 
 # Basic Usage
 ![Tree of Direct Converters](https://g.gravizo.com/source/converter_tree?https%3A%2F%2Fraw.githubusercontent.com%2Fprivet-kitty%2Fdufy%2Fdevelop%2FREADME.md)
@@ -125,8 +127,7 @@ The fundamental color space of dufy is CIE XYZ (Illuminant D65): There are `xyz-
 ;;    255  ; B
 
 (multiple-value-call #'dufy:xyz-to-qrgb
-  (dufy:lab-to-xyz 87.07 -78.15 -20.51)
-  :clamp t)
+  (dufy:lab-to-xyz 87.07 -78.15 -20.51))
 ;; => 0    ; R
 ;;    255  ; G
 ;;    255  ; B
@@ -180,3 +181,5 @@ Dufy consists of several independent modules:
 - dufy/examples
 
 Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy/core` instead of `dufy` in some cases.
+
+As of dufy 0.2.10, both the system names and the package names use the separator `/` instead of `-`, though the old package prefixes like `dufy-core` are left as nicknames.

@@ -2,7 +2,7 @@
 ;;; Spectrum, Illuminant, XYZ, xyY
 ;;;
 
-(in-package :dufy-core)
+(in-package :dufy/core)
 
 (deftype spectrum-function ()
   #-abcl '(function * (values double-float &optional))

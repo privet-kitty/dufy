@@ -2,7 +2,7 @@
 ;;; Meta-definition of color space
 ;;;
 
-(in-package :dufy-core)
+(in-package :dufy/core)
 
 (defstruct colorspace
   (name nil :type symbol)

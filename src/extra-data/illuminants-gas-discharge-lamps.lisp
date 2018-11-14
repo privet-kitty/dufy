@@ -3,7 +3,7 @@
 ;;; (based on "Measuring Color" 4th edition by R. W. G. Hunt and M. R. Pointer)
 ;;;
 
-(in-package :dufy-extra-data)
+(in-package :dufy/extra-data)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +illum-sox-arr+

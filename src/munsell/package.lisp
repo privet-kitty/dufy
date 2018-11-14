@@ -1,7 +1,8 @@
 (cl:in-package :cl-user)
 
-(defpackage dufy-munsell
-  (:use :cl :dufy-core :dufy-internal :alexandria)
+(defpackage #:dufy/munsell
+  (:nicknames #:dufy/munsell)
+  (:use #:cl #:dufy/core #:dufy/internal #:alexandria)
   (:export
    #:mhvc #:munsell
    #:invalid-mhvc-error

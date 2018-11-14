@@ -1,7 +1,8 @@
 (cl:in-package :cl-user)
 
-(defpackage dufy-internal
-  (:use :cl :alexandria)
+(defpackage #:dufy/internal
+  (:nicknames #:dufy-internal)
+  (:use #:cl #:alexandria)
   (:export
    #:*dat-dir-path*
    #:print-make-array
@@ -17,7 +18,6 @@
    #:nearly=
    #:nearly<=
    #:nearly-equal
-   #:subtract-with-mod
    #:circular-nearer
    #:circular-clamp
    #:circular-lerp-loose

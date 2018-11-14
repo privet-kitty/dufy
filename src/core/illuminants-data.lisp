@@ -2,7 +2,7 @@
 ;;; Built-in Standard Illuminants
 ;;;
 
-(in-package :dufy-core)
+(in-package :dufy/core)
 
 ;;
 ;; Note: The white points of the (series of) standard illuminants A,

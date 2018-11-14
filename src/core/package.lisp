@@ -1,6 +1,7 @@
 (in-package :cl-user)
 
-(uiop:define-package #:dufy-core
+(uiop:define-package #:dufy/core
+    (:nicknames #:dufy-core)
     (:use #:cl #:alexandria #:dufy-internal)
   (:export
    ;; colorspace.lisp (not exported from the main package)
@@ -169,7 +170,7 @@
    #:xyz-to-lchuv
    #:lchuv-to-xyz))
 
-(in-package #:dufy-core)
+(in-package #:dufy/core)
 
 ;; Export the function names of delta-E converters automatically
 (dolist (colorspace '(lab qrgb xyz))

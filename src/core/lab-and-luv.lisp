@@ -2,7 +2,7 @@
 ;;; L*a*b*
 ;;;
 
-(in-package :dufy-core)
+(in-package :dufy/core)
 
 (define-colorspace lab (lstar astar bstar)
   :arg-types (real real real)

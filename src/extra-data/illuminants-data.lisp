@@ -5,11 +5,11 @@
 ;;;
 
 
-(in-package :dufy-extra-data)
+(in-package :dufy/extra-data)
 
 ;; The white points of illuminants A, B, C, and D in dufy are
 ;; calculated with 5 nm intervals. (See the comment in the file with
-;; the same name in dufy-core package.)
+;; the same name in dufy/core package.)
 (defparameter +illum-d55+
   (make-illuminant :spectrum (gen-illum-d-spectrum 5500 :rectify t)
                    :begin-wl 380 :end-wl 780 :band 5

@@ -2,7 +2,7 @@
 ;;; Munsell Color System
 ;;;
 
-(in-package :dufy-munsell)
+(in-package :dufy/munsell)
 
 ;; The bradford transformations between D65 and C are frequently used here.
 (define-cat-function c-to-d65 +illum-c+ +illum-d65+ :cat +bradford+)
@@ -68,7 +68,7 @@ formula is based on ASTM D1535-08e1:"
     (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
 (defun munsell-value-to-lstar (v)
   "Converts a Munsell value to L*, whose nominal range is [0, 100]."
-  (- (* 116d0 (dufy-core::function-f (munsell-value-to-y v))) 16d0))
+  (- (* 116d0 (dufy/core::function-f (munsell-value-to-y v))) 16d0))
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
   "Gets the V -> Y correspondence in the Munsell renotation data,
@@ -168,13 +168,13 @@ smaller than 1e-5."
             (declare (ignore _)
                      ((double-float 0d0 360d0) hab1 hab2))
             (if (or (= hab1 hab2)
-                    (>= (subtract-with-mod hab2 hab1 360d0) 180d0)) ; fix me
+                    (>= (mod (- hab2 hab1) 360d0) 180d0)) ; fix me
                 (values lstar cstarab1 hab1)
                 (let* ((hab (circular-lerp (- hue40 hue1) hab1 hab2 360d0))
-                       (cstarab (+ (* cstarab1 (/ (subtract-with-mod hab2 hab 360d0)
-                                                  (subtract-with-mod hab2 hab1 360d0)))
-                                   (* cstarab2 (/ (subtract-with-mod hab hab1 360d0)
-                                                  (subtract-with-mod hab2 hab1 360d0))))))
+                       (cstarab (+ (* cstarab1 (/ (mod (- hab2 hab) 360d0)
+                                                  (mod (- hab2 hab1) 360d0)))
+                                   (* cstarab2 (/ (mod (- hab hab1) 360d0)
+                                                  (mod (- hab2 hab1) 360d0))))))
                   (declare ((double-float 0d0 360d0) hab))
                   (values lstar cstarab hab))))))))
 
@@ -578,7 +578,7 @@ D65 to illuminant C."
   (funcall
    #'call-with-profiling
    (when profile
-     '("DUFY-MUNSELL" "DUFY-CORE" "DUFY-INTERNAL"))
+     '("DUFY/MUNSELL" "DUFY/CORE" "DUFY/INTERNAL"))
    #'(lambda ()
        (let ((qmax+1 (1+ (rgbspace-qmax rgbspace)))
              (cat-func (gen-cat-function (rgbspace-illuminant rgbspace) +illum-c+))

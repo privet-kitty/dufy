@@ -2,7 +2,7 @@
 ;;; Predefined RGB spaces
 ;;;
 
-(in-package :dufy-core)
+(in-package :dufy/core)
 
 (defun linearize-srgb (x)
   "linearizer of sRGB (actually the same as bg-sRGB)"

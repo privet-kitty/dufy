@@ -2,10 +2,10 @@
 ;;; General definitions, functions and macros
 ;;;
 
-(in-package :dufy-internal)
+(in-package :dufy/internal)
 
 ;;
-;; For preprocessing of data file
+;; Utilities for preprocessing of data file
 ;;
 
 (defparameter *dat-dir-path* (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
@@ -127,14 +127,14 @@ real) times."
 ;;
 
 (defun nearly= (threshold number &rest more-numbers)
-  "THRESHOLD means acceptable absolute error."
+  "THRESHOLD is acceptable absolute error."
   (if (null more-numbers)
       t
       (and (<= (abs (- number (car (the cons more-numbers)))) threshold)
            (apply #'nearly= threshold more-numbers))))
 
 (defun nearly-equal (threshold lst1 &rest lsts)
-  "THRESHOLD means acceptable absolute error."
+  "THRESHOLD is acceptable absolute error."
   (if (null lst1)
       t
       (and (apply #'nearly= threshold
@@ -151,21 +151,20 @@ real) times."
            (apply #'nearly<= threshold more-numbers))))
 
 ;;
-;; Some arithmetic in a circle group
+;; Some arithmetic in a circle group.
 ;;
-
-(declaim (inline subtract-with-mod))
-(defun subtract-with-mod (x y &optional (divisor TWO-PI))
-  "Returns (X - Y) mod DIVISOR."
-  (mod (- x y) divisor))
+;; Note that these functions don't take `multiple laps' into
+;; consideration: i.e. the length of the interval [-360, 360] in
+;; R/360Z is zero.
+;;
 
 (declaim (inline circular-nearer))
 (defun circular-nearer (theta1 x theta2 &optional (perimeter TWO-PI))
   "Compares the counterclockwise distances between THETA1 and X and
 between X and THETA2, and returns THETA1 or THETA2 whichever is
 nearer."
-  (if (<= (subtract-with-mod x theta1 perimeter)
-          (subtract-with-mod theta2 x perimeter))
+  (if (<= (mod (- x theta1) perimeter)
+          (mod (- theta2 x) perimeter))
       theta1
       theta2))
 
@@ -191,7 +190,7 @@ returns MIN or MAX whichever is nearer to NUMBER."
 circle group. It is guaranteed that the return value doesn't exceed
 the given interval from THETA1 to THETA2 if COEF is in [0, 1]. It is,
 however, slower than CIRCULAR-LERP-LOOSE."
-  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+  (let ((dtheta (mod (- theta2 theta1) perimeter)))
     (circular-clamp (+ theta1 (* dtheta coef))
                     theta1
                     theta2
@@ -203,7 +202,7 @@ however, slower than CIRCULAR-LERP-LOOSE."
 circle group. There is a possibility that the return value slightly
 exceeds the interval [THETA1, THETA2] due to floating-point error. If
 that is incovenient, you should use CIRCULAR-LERP instead."
-  (let ((dtheta (subtract-with-mod theta2 theta1 perimeter)))
+  (let ((dtheta (mod (- theta2 theta1) perimeter)))
     (mod (+ theta1 (* dtheta coef)) perimeter)))
 
 (declaim (inline circular-member))

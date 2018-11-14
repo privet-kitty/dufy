@@ -2,7 +2,7 @@
 ;;; Several color difference functions
 ;;;
 
-(in-package :dufy-core)
+(in-package :dufy/core)
 
 
 (define-functional (lab-deltaeab lab :term deltaeab) (l1 a1 b1 l2 a2 b2)

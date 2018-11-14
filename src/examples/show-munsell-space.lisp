@@ -1,4 +1,4 @@
-(in-package :dufy-examples)
+(in-package :dufy/examples)
 
 (deftype uint nil '(integer 0 #.(expt 10 9)))
 (deftype sint nil '(integer #.(- (expt 10 9)) #.(expt 10 9)))
@@ -26,7 +26,7 @@ Munsell space."
                          (atan delta-y delta-x))))
              (coord-to-mhvc (i j)
                (multiple-value-bind (r theta) (polar i j)
-                 (values (- 20 (* theta #.(/ 40 dufy-core::two-pi)))
+                 (values (- 20 (* theta #.(/ 40 dufy/core::two-pi)))
                          (* value100 0.1d0)
                          (* max-chroma (/ r radius))))))
       (declare (inline coord-to-mhvc polar)
