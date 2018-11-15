@@ -21,6 +21,7 @@
                 :components
                 ((:file "package")
                  (:file "utilities")
+                 (:file "arithmetic")
                  (:file "matrix")))))
 
 (defsystem "dufy/core"
