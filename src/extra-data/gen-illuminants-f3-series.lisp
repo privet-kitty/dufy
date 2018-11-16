@@ -46,7 +46,8 @@
                                                         380 780)
                                      :begin-wl 380 :end-wl 780
                                      :compile-time t))
-            out)))
+            out)
+        finally (terpri out)))
 
 (format t "The file is saved at ~A~%" obj-path)
 
