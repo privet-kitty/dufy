@@ -3,6 +3,7 @@
 (defpackage :dufy/test
   (:use #:cl #:fiveam #:dufy #:dufy/internal #:alexandria #:cl-csv #:parse-float)
   (:export #:dufy-suite))
+
 (in-package :dufy/test)
 
 (def-suite dufy-suite)
@@ -79,7 +80,7 @@
   ;; FIXME: Fails on Clozure CL due to a bug related to an inlined
   ;; function. See
   ;; https://github.com/Clozure/ccl/issues/166. Currently it is not a
-  ;; serious problem because CIRCULAR-LERP only takes (implicitly
+  ;; serious problem because CIRCULAR-LERP only takes (explicitly
   ;; coerced) DOUBLE-FLOATs.
   #-ccl (is (= 1 (circular-lerp 1 0.2 1))))
 

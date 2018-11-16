@@ -5,8 +5,10 @@
 (in-package :dufy/munsell)
 
 ;; The bradford transformations between D65 and C are frequently used here.
-(define-cat-function c-to-d65 +illum-c+ +illum-d65+ :cat +bradford+)
-(define-cat-function d65-to-c +illum-d65+ +illum-c+ :cat +bradford+)
+(define-cat-function c-to-d65
+  +illum-c+ +illum-d65+ :cat +bradford+)
+(define-cat-function d65-to-c
+  +illum-d65+ +illum-c+ :cat +bradford+)
 
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -34,9 +36,10 @@
 
 (declaim (ftype (function * (integer 0 50)) max-chroma-in-mrd))
 (defun max-chroma-in-mrd (hue40 value &key (use-dark t))
-  "Returns the largest chroma in the Munsell renotation data for a
-given hue and value."
   (declare (optimize (speed 3) (safety 1)))
+  "Returns the largest chroma in the Munsell Renotation Data (all.dat)
+for a given hue and value. If you want to ignore the data for value =
+0.2, 0.4, 0.6, or 0.8, give NIL to USE-DARK."
   (with-ensuring-type double-float (hue40 value)
     (let* ((hue (mod hue40 40d0))
            (hue1 (floor hue))
@@ -61,9 +64,9 @@ given hue and value."
                  munsell-value-to-lstar)
          (ftype (function * (values double-float &optional)) munsell-value-to-y munsell-value-to-lstar))
 (defun munsell-value-to-y (v)
+  (declare (optimize (speed 3) (safety 1)))
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
 formula is based on ASTM D1535-08e1:"
-  (declare (optimize (speed 3) (safety 1)))
   (with-ensuring-type double-float (v)
     (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
 (defun munsell-value-to-lstar (v)
@@ -71,17 +74,19 @@ formula is based on ASTM D1535-08e1:"
   (- (* 116d0 (dufy/core::function-f (munsell-value-to-y v))) 16d0))
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
-  "Gets the V -> Y correspondence in the Munsell renotation data,
-multiplied by 0.975d0."
-  (values 0.31006d0 0.31616d0
-          (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
-                    0.975d0)
-                 0d0 1d0)))
+  "For development. Returns the white point as xyY in the Munsell
+Renotation Data for a given V. (In dufy, the formula in the ASTM is
+used instead of this data. See MUNSELL-VALUE-TO-Y.)"
+  (multiple-value-bind (x y) (illuminant-xy +illum-c+)
+    (values x y
+            (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
+                      0.975d0)
+                   0d0 1d0))))
 
 (declaim (inline y-to-munsell-value))
 (defun y-to-munsell-value (y)
   "Interpolates the inversion table of MUNSELL-VALUE-TO-Y linearly,
-whose band width is 1e-3. It is guaranteed that the
+whose band width is 1e-3. It is guaranteed that the round-trip
 error, (abs (- (y (munsell-value-to-y (y-to-munsell-value y))))), is
 smaller than 1e-5."
   (declare (optimize (speed 3) (safety 1)))
@@ -95,7 +100,7 @@ smaller than 1e-5."
              (* r (aref y-to-munsell-value-arr y2)))))))
 
 (defun test-value-to-y (&optional (num 100000000))
-  "For devel. Evaluates the error of y-to-munsell-value"
+  "For devel. Evaluates the error of Y-TO-MUNSELL-VALUE."
   (declare (optimize (speed 3) (safety 1))
            (fixnum num))
   (let ((max-error 0d0)
@@ -104,13 +109,12 @@ smaller than 1e-5."
       (let* ((y (random 1d0))
              (delta (abs (- (munsell-value-to-y (y-to-munsell-value y)) y))))
         (when (>= delta max-error)
-          ;;(format t "y=~A delta=~A~%" y delta)
           (setf worst-y y
                 max-error delta))))))
 
 (defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
+  "For devel."
   (y-to-munsell-value (nth-value 1 (qrgb-to-xyz r g b :rgbspace rgbspace))))
-
 
 
 ;;;
@@ -126,10 +130,11 @@ smaller than 1e-5."
 
 ;; These converters process a dark color (value < 1) separately
 ;; because the values of the Munsell Renotation Data (all.dat) are not
-;; evenly distributed: [0, 0.2, 0.4, 0.6, 0.8, 1, 2, 3, ..., 10].
+;; evenly distributed: [0, 0.2, 0.4, 0.6, 0.8, 1, 2, 3, ..., 10]. In
+;; the following functions, the actual value equals SCALED-VALUE/5 if
+;; DARK is true.
 
-;; In the following functions, the real value equals SCALED-VALUE/5 if
-;; dark is true; HALF-CHROMA is a half of the real chroma.
+;; HALF-CHROMA is a half of the actual chroma.
 
 (declaim (inline mhvc-to-lchab-all-integer-case))
 (defun mhvc-to-lchab-all-integer-case (hue40 scaled-value half-chroma &optional (dark nil))
@@ -201,7 +206,6 @@ smaller than 1e-5."
                              (* bstar2 (- half-chroma hchroma1)))))
               (lab-to-lchab lstar astar bstar)))))))
 
-
 (defun mhvc-to-lchab-general-case (hue40 scaled-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
            ((double-float 0d0 40d0) hue40 scaled-value)
@@ -234,7 +238,6 @@ smaller than 1e-5."
                                   (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
                     (lab-to-lchab lstar astar bstar)))))))))
 
-
 (define-condition invalid-mhvc-error (simple-error)
   ((value :initarg :value
           :initform 0d0
@@ -248,13 +251,11 @@ smaller than 1e-5."
                      (cond-value condition)
                      (cond-chroma condition)))))
 
-      
 (defun mhvc-out-of-mrd-p (hue40 value chroma)
   "Checks if MHVC is out of the Munsell renotation data."
   (or (< value 0) (> value 10)
       (< chroma 0)
       (> chroma (max-chroma-in-mrd hue40 value))))
-
 
 (defun mhvc-invalid-p (hue40 value chroma)
   "Checks if MHVC values are out of range."
@@ -356,7 +357,7 @@ However, the capital letters and  '/' are reserved:
 (define-primary-converter (mhvc munsell) (hue40 value chroma &key (digits 2))
   (let ((directive (concatenate 'string "~," (write-to-string digits) "F")))
     (if (< chroma (* 0.5d0 (expt 0.1d0 digits))) ; if achromatic
-        (format nil (concatenate 'string "N " directive) value)
+        (format nil (format nil "N ~A" directive) value)
         (let* ((hue40$ (mod hue40 40d0))
                (hue-number (floor (/ hue40$ 4)))
                (hue-prefix (* (mod hue40$ 4) 2.5d0))
@@ -365,7 +366,6 @@ However, the capital letters and  '/' are reserved:
                                hue-number)))
           (format nil (concatenate 'string directive "~A " directive "/" directive)
                   hue-prefix hue-name value chroma)))))
-
 
 (defun munsell-out-of-mrd-p (munsellspec)
   (multiple-value-call #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
@@ -405,8 +405,8 @@ The illuminant of RGBSPACE must also be D65."
 
 
 (defun max-chroma-lchab (hue40 value &key (use-dark t))
-  "Returns the LCh(ab) value of the color on the max-chroma boundary
-in the MRD."
+  "For devel. Returns the LCh(ab) value of the color on the max-chroma
+boundary in the MRD."
   (mhvc-to-lchab-illum-c hue40
                          value
                          (max-chroma-in-mrd hue40 value :use-dark use-dark)))
