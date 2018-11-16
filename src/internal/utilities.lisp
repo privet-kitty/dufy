@@ -8,19 +8,19 @@
 ;; Utilities for preprocessing of data file
 ;;
 
-(defparameter *dat-dir-path* (asdf:component-pathname (asdf:find-component (asdf:find-system :dufy) :dat)))
+(defparameter *dat-dir-path* (asdf:component-pathname (asdf:find-component "dufy" "dat")))
 
 (defun array-to-list (array)
-  "array->list coercion"
+  "array -> list coercion"
   (let* ((dimensions (array-dimensions array))
          (indices (make-list (length dimensions) :initial-element 0)))
     (labels ((traverse (dimensions-rest indices-rest)
                (loop for idx of-type fixnum below (car dimensions-rest)
-                  do (setf (car indices-rest) idx)
-                  collect (if (null (cdr dimensions-rest))
-                              (apply #'aref array indices)
-                              (traverse (cdr dimensions-rest)
-                                       (cdr indices-rest))))))
+                     do (setf (car indices-rest) idx)
+                     collect (if (null (cdr dimensions-rest))
+                                 (apply #'aref array indices)
+                                 (traverse (cdr dimensions-rest)
+                                           (cdr indices-rest))))))
       (traverse dimensions indices))))
 
 (defun print-make-array (var-name array &optional (stream t) (declaration t) (load-time-value nil))
@@ -53,7 +53,7 @@
      ,result))
 
 (defmacro with-ensuring-type (type vars &body body)
-  "Ensures that the type of variables are TYPE."
+  "Ensures and declares that the type of variables are TYPE."
   (labels ((expand (var-lst)
              (if (null var-lst)
                  nil
@@ -98,6 +98,7 @@ real) times."
             collect (internal-real-time-after-gc ,@body)))))
 
 (defun call-with-profiling (names func)
+  "Works only on SBCL."
   (declare (ignorable names))
   #+sbcl (if (null names)
              (funcall func)
@@ -109,6 +110,7 @@ real) times."
   #-sbcl (funcall func))
 
 (defmacro with-profiling (names &body body)
+  "Works only on SBCL."
   (declare (ignorable names))
   #+sbcl `(unwind-protect
                (progn (sb-profile:profile ,@(ensure-list names))

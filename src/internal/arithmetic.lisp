@@ -61,25 +61,25 @@ nearer."
   "A clamp function in a circle group. If NUMBER is not in
 the (counterclockwise) closed interval [MIN, MAX], CIRCULAR-CLAMP
 returns MIN or MAX whichever is nearer to NUMBER."
-  (let ((number$ (mod number perimeter))
-        (min$ (mod min perimeter))
-        (max$ (mod max perimeter)))
-    (if (<= min$ max$)
-        (if (<= min$ number$ max$)
-            number ; [min, number, max]
-            (circular-nearer max number min)) ; [min, max, number] or [number, min, max]
-        (if (or (<= number$ max$)  (<= min$ number$))
-            number ;[number, max, min] or [max, min, number]
-            (circular-nearer max number min))))) ; [max, number, min]
+  (let ((mnumber (mod number perimeter))
+        (mmin (mod min perimeter))
+        (mmax (mod max perimeter)))
+    (if (<= mmin mmax)
+        (if (<= mmin mnumber mmax)
+            number ; min <= number <= max
+            (circular-nearer max number min)) ; min <= max < number or number < min <= max
+        (if (or (<= mnumber mmax)  (<= mmin mnumber))
+            number ; number <= max <= min or max <= min <= number
+            (circular-nearer max number min))))) ; max < number < min
 
 (declaim (inline circular-lerp))
 (defun circular-lerp (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
-circle group. It is guaranteed that the return value doesn't exceed
+circle group. It is guaranteed that the returned value doesn't exceed
 the given interval from THETA1 to THETA2 if COEF is in [0, 1]. It is,
 however, slower than CIRCULAR-LERP-LOOSE."
-  (let ((dtheta (mod (- theta2 theta1) perimeter)))
-    (circular-clamp (+ theta1 (* dtheta coef))
+  (let ((length (mod (- theta2 theta1) perimeter)))
+    (circular-clamp (+ theta1 (* length coef))
                     theta1
                     theta2
                     perimeter)))
@@ -87,24 +87,24 @@ however, slower than CIRCULAR-LERP-LOOSE."
 (declaim (inline circular-lerp-loose))
 (defun circular-lerp-loose (coef theta1 theta2 &optional (perimeter TWO-PI))
   "Counterclockwise linear interpolation from THETA1 to THETA2 in a
-circle group. There is a possibility that the return value slightly
+circle group. There is a possibility that the returned value slightly
 exceeds the interval [THETA1, THETA2] due to floating-point error. If
 that is incovenient, you should use CIRCULAR-LERP instead."
-  (let ((dtheta (mod (- theta2 theta1) perimeter)))
-    (mod (+ theta1 (* dtheta coef)) perimeter)))
+  (let ((length (mod (- theta2 theta1) perimeter)))
+    (mod (+ theta1 (* length coef)) perimeter)))
 
 (declaim (inline circular-member))
-(defun circular-member (x theta1 theta2 &optional (perimeter TWO-PI))
-  "Returns true if X is within the counterclockwise closed interval [THETA1,
+(defun circular-member (number theta1 theta2 &optional (perimeter TWO-PI))
+  "Returns true if NUMBER is within the counterclockwise closed interval [THETA1,
 THETA2] in a circle group."
-  (let ((x-m (mod x perimeter))
-        (theta1-m (mod theta1 perimeter))
-        (theta2-m (mod theta2 perimeter)))
-    (if (<= theta1-m theta2-m)
-        (and (<= theta1-m x-m)
-             (<= x-m theta2))
-        (or (<= theta1-m x-m)
-            (<= x-m theta2)))))
+  (let ((mnumber (mod number perimeter))
+        (mtheta1 (mod theta1 perimeter))
+        (mtheta2 (mod theta2 perimeter)))
+    (if (<= mtheta1 mtheta2)
+        (and (<= mtheta1 mnumber)
+             (<= mnumber theta2))
+        (or (<= mtheta1 mnumber)
+            (<= mnumber theta2)))))
 
 
 ;;
@@ -112,7 +112,7 @@ THETA2] in a circle group."
 ;;
 
 (defmacro fast-expt (base power)
-  "Exponentiation by squaring. POWER must be a literal of
+  "Does fast exponentiation by squaring. POWER must be a literal of
 type (integer 1)."
   (assert (constantp power))
   (check-type power (integer 1))
@@ -121,25 +121,25 @@ type (integer 1)."
                     (flo (expt 2 (floor approx)))
                     (ceil (expt 2 (ceiling approx))))
                (if (<= ceil num) ceil flo)))
-           (decompose-to-sum-of-powers-of-2 (num result)
+           (decompose-to-sum-of-powers-of-2 (num &optional result)
              (if (zerop num)
                  result
                  (let ((k (round-off-to-power-of-2 num)))
                    (decompose-to-sum-of-powers-of-2 (- num k) (cons k result))))))
-    (let* ((parts (decompose-to-sum-of-powers-of-2 power nil))
-           (m (apply #'max (cons 1 parts)))
+    (let* ((components (decompose-to-sum-of-powers-of-2 power))
+           (max (apply #'max (cons 1 components)))
            (vars (apply #'vector
-                        (loop for i from 0 to (round (log m 2))
+                        (loop for i from 0 to (round (log max 2))
                               collect (gensym (format nil "POW~A-" (expt 2 i)))))))
       `(let* ((,(aref vars 0) ,base) 
               ,@(loop for i from 1
                       for num = (expt 2 i)
-                      until (> num m)
+                      until (> num max)
                       collect `(,(aref vars i) (* ,(aref vars (- i 1))
                                                   ,(aref vars (- i 1))))))
-         ,(if (= 1 (length parts))
+         ,(if (= 1 (length components))
               (last-elt vars)
-              `(* ,@(loop for num in parts
+              `(* ,@(loop for num in components
                           collect (aref vars (round (log num 2))))))))))
 
 (declaim (inline square))

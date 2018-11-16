@@ -16,7 +16,7 @@ models are available."
                              :element-type 'double-float
                              :initial-contents mat)))
     (%make-cat :matrix mat-arr
-               :inv-matrix (invert-matrix33 mat-arr))))
+               :inv-matrix (invert-matrix mat-arr))))
 
 (defparameter +bradford+
   (make-cat '((0.8951d0 0.2664d0 -0.1614d0)
@@ -47,15 +47,16 @@ models are available."
   (make-cat '((0.8562d0 0.3372d0 -0.1934d0)
               (-0.8360d0 1.8327d0 0.0033d0)
               (0.0357d0 -0.0469d0 1.0112d0)))
-  "Fairchild, Mark D. (2001).\"A Revision of CIECAM97s for Practical Applications\"
-http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
+  "Fairchild, Mark D. (2001).\"A Revision of CIECAM97s for Practical
+Applications\" http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 
 (defparameter +cat02+
   (make-cat '((0.7328d0 0.4296d0 -0.1624d0)
               (-0.7036d0 1.6975d0 0.0061d0)
               (0.0030d0 0.0136d0 0.9834d0)))
-  "Note that the CAT function returned by (gen-cat-function illum-foo
-  illum-bar :cat +cat02+) is different from the one in CIECAM02.")
+  "Note that the CAT function returned by (gen-cat-function ... :cat
+  +cat02+) is different from the one in CIECAM02 since the latter is
+  non-linear.")
 
 (define-colorspace lms (l m s)
   :arg-types (real real real)

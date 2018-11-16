@@ -29,7 +29,7 @@
    #:matrix33
    #:+identity-matrix+
    #:+empty-matrix+
-   #:invert-matrix33
+   #:invert-matrix
    #:multiply-mat-vec
    #:multiply-mat-mat
    #:multiply-matrices))

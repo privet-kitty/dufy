@@ -112,7 +112,7 @@ being e.g. [0d0, 0.9999999999999999d0]."
                           (,yr ,yg ,yb)
                           (,(- 1d0 xr yr) ,(- 1d0 xg yg) ,(- 1d0 xb yb))))))
       (multiple-value-bind (sr sg sb)
-          (multiply-mat-vec (invert-matrix33 coordinates)
+          (multiply-mat-vec (invert-matrix coordinates)
                             (illuminant-x illuminant)
                             1d0
                             (illuminant-z illuminant))
@@ -140,7 +140,7 @@ being e.g. [0d0, 0.9999999999999999d0]."
                           :linearizer linearizer
                           :delinearizer delinearizer
                           :to-xyz-matrix mat
-                          :from-xyz-matrix (invert-matrix33 mat)
+                          :from-xyz-matrix (invert-matrix mat)
                           :lmin lmin
                           :lmax lmax
                           :min min

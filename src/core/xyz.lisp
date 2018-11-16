@@ -414,7 +414,7 @@ BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
                 (aref mat 2 0) a20
                 (aref mat 2 1) a21
                 (aref mat 2 2) a22))))
-    (invert-matrix33 mat)))
+    (invert-matrix mat)))
 
 (define-primary-converter (xyz spectrum) (x y z &key (illuminant +illum-d65+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among
