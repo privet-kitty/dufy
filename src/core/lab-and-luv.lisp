@@ -1,8 +1,8 @@
+(in-package :dufy/core)
+
 ;;;
 ;;; L*a*b*
 ;;;
-
-(in-package :dufy/core)
 
 (define-colorspace lab (lstar astar bstar)
   :arg-types (real real real)
@@ -93,7 +93,6 @@
 (defconverter lchab xyy)
 
 
-
 ;;;
 ;;; L*u*v*
 ;;;
@@ -102,6 +101,7 @@
 (defun calc-uvprime (x y)
   (declare (optimize (speed 3) (safety 0))
            (double-float x y))
+  "Calculates u' and v' from xy."
   (let ((denom (+ (* -2d0 x) (* 12d0 y) 3d0)))
     (values (/ (* 4d0 x) denom)
             (/ (* 9d0 y) denom))))
@@ -110,6 +110,7 @@
 (defun calc-uvprime-from-xyz (x y z)
   (declare (optimize (speed 3) (safety 0))
            (double-float x y z))
+  "Calculates u' and v' from XYZ."
   (let ((denom (+ x (* 15d0 y) (* 3d0 z))))
     (values (/ (* 4d0 x) denom)
             (/ (* 9d0 y) denom))))

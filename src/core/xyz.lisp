@@ -235,7 +235,6 @@ interval [begin-wl, end-wl] is regarded as 0."
                 :element-type 'double-float
                 :initial-contents '(0d0 2d0 4d0 8.5d0 7.8d0 6.7d0 5.3d0 6.1d0 2d0 1.2d0 -1.1d0 -0.5d0 -0.7d0 -1.2d0 -2.6d0 -2.9d0 -2.8d0 -2.6d0 -2.6d0 -1.8d0 -1.5d0 -1.3d0 -1.2d0 -1d0 -0.5d0 -0.3d0 0d0 0.2d0 0.5d0 2.1d0 3.2d0 4.1d0 4.7d0 5.1d0 6.7d0 7.3d0 8.6d0 9.8d0 10.2d0 8.3d0 9.6d0 8.5d0 7d0 7.6d0 8d0 6.7d0 5.2d0 7.4d0 6.8d0 7d0 6.4d0 5.5d0 6.1d0 6.5d0))))
 
-
 (defun make-illum-d-spectrum-array (temperature &optional (begin-wl 300) (end-wl 830))
   (declare (optimize (speed 3) (safety 1)))
   (check-type begin-wl fixnum)
@@ -256,15 +255,15 @@ interval [begin-wl, end-wl] is regarded as 0."
              (m (+ 0.0241d0 (* xd 0.2562d0) (* yd -0.7341d0)))
              (m1 (/ (+ -1.3515d0 (* xd -1.7703d0) (* yd 5.9114d0)) m))
              (m2 (/ (+ 0.03d0 (* xd -31.4424d0) (* yd 30.0717d0)) m))
-             (arr (make-array (1+ (- end-wl begin-wl))
-                              :element-type 'double-float
-                              :initial-element 0d0)))
+             (spd-arr (make-array (1+ (- end-wl begin-wl))
+                                  :element-type 'double-float
+                                  :initial-element 0d0)))
         (loop for wl from begin-wl to end-wl
-              do (setf (aref arr (- wl begin-wl))
+              do (setf (aref spd-arr (- wl begin-wl))
                        (+ (funcall s0-func wl)
                           (* m1 (funcall s1-func wl))
                           (* m2 (funcall s2-func wl)))))
-        arr))))
+        spd-arr))))
 
 (defun gen-illum-d-spectrum (temperature &key rectify)
   "Generates the spectrum of the illuminant series D for a given
@@ -287,7 +286,7 @@ instead. (roughly 6504K for 6500K, etc.)"
     (/ (* 3.74183d-16 (expt wlm -5d0))
        (- (exp (/ 1.4388d-2 (* wlm (float temperature 1d0)))) 1d0))))
 
-(declaim (inline optimal-spectrum1 optimal-spectrum2))
+(declaim (inline optimal-spectrum1))
 (defun optimal-spectrum1 (wavelength-nm &optional (wl1 300d0) (wl2 830d0))
   "Spectrum function of optimal colors:
 f(x) = 1d0 if wl1 <= x <= wl2,
@@ -295,6 +294,7 @@ f(x) = 0d0 otherwise."
   (declare (optimize (speed 3) (safety 1)))
   (if (<= wl1 wavelength-nm wl2) 1d0 0d0))
 
+(declaim (inline optimal-spectrum2))
 (defun optimal-spectrum2 (wavelength-nm &optional (wl1 300d0) (wl2 830d0))
   "Spectrum function of optimal colors:
 f(x) = 1d0 if x <=wl2 or wl1 <= x,
@@ -304,6 +304,7 @@ f(x) = 0d0 otherwise."
           (<= wl2 wavelength-nm))
       1d0 0d0))
 
+(declaim (inline flat-spectrum))
 (defun flat-spectrum (wavelength-nm)
   "(constantly 1d0)"
   (declare (optimize (speed 3) (safety 0)))
@@ -394,8 +395,8 @@ BEGIN-WL + BAND, BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
                         band)))
 
 (defun calc-to-spectrum-matrix (illuminant-spd observer &optional (begin-wl 360) (end-wl 830) (band 1))
-  "Used for XYZ-to-spectrum conversion."
   (declare (optimize (speed 3) (safety 1)))
+  "Used for XYZ-to-spectrum conversion."
   (let ((mat (load-time-value
               (make-array '(3 3) :element-type 'double-float
                                  :initial-element 0d0))))
@@ -432,6 +433,7 @@ many and may contain a negative spectral density."
 
 
 (defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil) (begin-wl 360) (end-wl 830) (band 1))
+  (declare (ignore compile-time))
   "Generates an illuminant from a spectral distribution or a white
 point. If the SPECTRUM is nil, the returned illuminant contains only a
 white point. If X and Z are nil, the white point (X, 1d0, Z) is
@@ -452,7 +454,6 @@ white point and SPD contradicts to each other.
 If X and Y are NIL and COMPILE-TIME is T, the white point is
 calculated at compile time. (Avoid side effects in this case as the
 parameters are EVALed.)"
-  (declare (ignore compile-time))
   (macrolet
       ((make (x z)
          `(%make-illuminant

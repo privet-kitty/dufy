@@ -139,10 +139,10 @@ and TO-ILLUMINANT in XYZ space."
           (multiply-mat-mat (cat-inv-matrix cat)
                             matrix1))))))
 
-;; FIXME: Too complicated. Maybe we should limit the target only to
-;; XYZ space? Otherwise we need a more general auto-generation system
-;; of converters, which seems to me lots of pain and not much gain (at
-;; least for now).
+;; FIXME: Too complicated and not so general. Maybe we should limit
+;; the target only to XYZ space? Otherwise we need a more general
+;; auto-generation system of converters, which seems to me lots of
+;; pain and not much gain (at least for now).
 (declaim (ftype (function * (function * (values double-float double-float double-float &optional))) gen-cat-function))
 (defun gen-cat-function (from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
   "Returns a chromatic adaptation function. An example for xyY spaces:
@@ -291,7 +291,7 @@ RGBPACK case: with clamping."
                     (rgbpack-to-lrgb int :rgbspace from-rgbspace))
                   :rgbspace to-rgbspace))))))
 
-;; I have moved this function here as it assumed GEN-CAT-FUNCTION.
+;; I have moved this function here as it requires GEN-CAT-FUNCTION.
 (defun copy-rgbspace (rgbspace &key (illuminant nil) (bit-per-channel nil) (cat +bradford+))
   "Returns a new RGBSPACE with different standard illuminant and/or
 bit-per-channel. All the parameters are properly recalculated. If both
