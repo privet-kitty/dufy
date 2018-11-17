@@ -50,6 +50,7 @@
                 ((:file "package")
                  (:file "y-to-value-data")
                  (:file "munsell-renotation-data")
+                 (:file "fundamental")
                  (:file "munsell")))))
 
 (defsystem "dufy/extra-data"
