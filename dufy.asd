@@ -75,6 +75,8 @@
 
 (defsystem "dufy/test"
   :description "Test system for dufy"
+  :pathname "test"
+  :serial t
   :depends-on ("dufy"
                "fiveam"
                "cl-csv"
@@ -83,6 +85,7 @@
                ;; the following is just for checking if load-op succeeds.
                "dufy/extra-data"
                (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples"))
-  :components ((:file "dufy-test"))
+  :components ((:file "package")
+               (:file "munsell"))
   :perform (test-op (o s)
                     (uiop:eval-input "(fiveam:run! 'dufy/test:dufy-suite)")))
