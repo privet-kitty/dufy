@@ -275,7 +275,7 @@ boundary in the MRD."
            (ignorable illuminant)
            (fixnum max-iteration))
   "Is an inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
-algorithm, which is almost same to the one in \"An Open-Source
+algorithm, which is almost same as the one in \"An Open-Source
 Inversion Algorithm for the Munsell Renotation\" by Paul Centore,
 2011:
 
