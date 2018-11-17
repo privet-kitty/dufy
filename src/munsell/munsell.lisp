@@ -11,6 +11,7 @@
   +illum-d65+ +illum-c+ :cat +bradford+)
 
 
+;; FIXME: Below is workaround for optimization.
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *most-positive-fixnum-bit-length* #.(floor (log most-positive-fixnum 2))))
 
@@ -48,29 +49,31 @@ for a given hue and value. If you want to ignore the data for value =
               (not use-dark))
           (let ((val1 (floor value))
                 (val2 (ceiling value)))
-            (min (aref max-chroma-arr hue1 val1)
-                 (aref max-chroma-arr hue1 val2)
-                 (aref max-chroma-arr hue2 val1)
-                 (aref max-chroma-arr hue2 val2)))
+            (min (aref +max-chroma-table+ hue1 val1)
+                 (aref +max-chroma-table+ hue1 val2)
+                 (aref +max-chroma-table+ hue2 val1)
+                 (aref +max-chroma-table+ hue2 val2)))
           (let* ((dark-value (* value 5d0))
                  (dark-val1 (floor dark-value))
                  (dark-val2 (ceiling dark-value)))
-            (min (aref max-chroma-arr-dark hue1 dark-val1)
-                 (aref max-chroma-arr-dark hue1 dark-val2)
-                 (aref max-chroma-arr-dark hue2 dark-val1)
-                 (aref max-chroma-arr-dark hue2 dark-val2)))))))
+            (min (aref +max-chroma-table-dark+ hue1 dark-val1)
+                 (aref +max-chroma-table-dark+ hue1 dark-val2)
+                 (aref +max-chroma-table-dark+ hue2 dark-val1)
+                 (aref +max-chroma-table-dark+ hue2 dark-val2)))))))
 
-(declaim (inline munsel-value-to-y
-                 munsell-value-to-lstar)
-         (ftype (function * (values double-float &optional)) munsell-value-to-y munsell-value-to-lstar))
+(declaim (inline munsell-value-to-y)
+         (ftype (function * (values double-float &optional)) munsell-value-to-y))
 (defun munsell-value-to-y (v)
   (declare (optimize (speed 3) (safety 1)))
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
 formula is based on ASTM D1535-08e1:"
   (with-ensuring-type double-float (v)
     (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
+
+(declaim (inline munsell-value-to-lstar)
+         (ftype (function * (values double-float &optional)) munsell-value-to-lstar))
 (defun munsell-value-to-lstar (v)
-  "Converts a Munsell value to L*, whose nominal range is [0, 100]."
+  "Converts Munsell value to L*, whose nominal range is [0, 100]."
   (- (* 116d0 (dufy/core::function-f (munsell-value-to-y v))) 16d0))
 
 (defun munsell-value-to-achromatic-xyy-from-mrd (v)
@@ -154,8 +157,8 @@ smaller than 1e-5."
                               (* cstarab factor)
                               (aref ,arr-c-h hue40 scaled-value 25 1))))))
     (if dark
-        (gen-body mrd-array-l-dark mrd-array-c-h-dark)
-        (gen-body mrd-array-l mrd-array-c-h))))
+        (gen-body +mrd-table-l-dark+ +mrd-table-ch-dark+)
+        (gen-body +mrd-table-l+ +mrd-table-ch+))))
 
 (declaim (inline mhvc-to-lchab-value-chroma-integer-case))
 (defun mhvc-to-lchab-value-chroma-integer-case (hue40 scaled-value half-chroma &optional (dark nil))
@@ -449,9 +452,9 @@ boundary in the MRD."
 ;; called by LCHAB-TO-MHVC-ILLUM-C
 (declaim (inline invert-mhvc-to-lchab))
 (defun invert-mhvc-to-lchab (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
-  "Illuminant C."
   (declare (double-float lstar cstarab hab factor threshold)
            (fixnum max-iteration))
+  "Illuminant C."
   (let ((tmp-hue40 init-hue40)
         (v (lstar-to-munsell-value lstar))
         (tmp-c init-chroma))
@@ -487,19 +490,21 @@ boundary in the MRD."
   (declare (optimize (speed 3) (safety 1))
            (ignorable illuminant)
            (fixnum max-iteration))
-  "An inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
-algorithm like the one in \"An Open-Source Inversion Algorithm for the
-Munsell Renotation\" by Paul Centore, 2011:
+  "Is an inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
+algorithm, which is almost same to the one in \"An Open-Source
+Inversion Algorithm for the Munsell Renotation\" by Paul Centore,
+2011:
 
 V := LSTAR-TO-MUNSELL-VALUE(L*);
 C_0 := C*ab / 5.5;
 H_0 := Hab / 9;
 C_(n+1) :=  C_n + factor * delta(C_n);
-H_(n+1) := H_n + factor * delta(H_n),
+H_(n+1) := H_n + factor * delta(H_n);
 
-where delta(H_n) and delta(C_n) is internally calculated at every
-step. It returns Munsell HVC values if C_0 <= THRESHOLD or V <=
-THRESHOLD or when max(delta(H_n), delta(C_n)) falls below THRESHOLD.
+delta(H_n) and delta(C_n) are internally calculated at every
+step. This function returns Munsell HVC values if C_0 <= THRESHOLD or
+if V <= THRESHOLD or when max(delta(H_n), delta(C_n)) falls below
+THRESHOLD.
 
 IF-REACH-MAX specifies the action to be taken if the loop reaches the
 MAX-ITERATION:
