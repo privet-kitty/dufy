@@ -55,8 +55,7 @@
               (mhvc-to-lchab-all-integer-case hue2 scaled-value half-chroma dark)
             (declare (ignore _)
                      ((double-float 0d0 360d0) hab1 hab2))
-            (if (or (= hab1 hab2)
-                    (>= (mod (- hab2 hab1) 360d0) 180d0)) ; fix me
+            (if (= hab1 hab2)
                 (values lstar cstarab1 hab1)
                 (let* ((hab (circular-lerp (- hue40 hue1) hab1 hab2 360d0))
                        (cstarab (+ (* cstarab1 (/ (mod (- hab2 hab) 360d0)
