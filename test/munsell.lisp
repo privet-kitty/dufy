@@ -1,22 +1,43 @@
+;;;
+;;; Test for dufy/munsell
+;;;
+
 (in-package :dufy/test)
 
 (def-suite munsell-suite :in dufy-suite)
 (in-suite munsell-suite)
 
-(test test-munsell
+(defun ordered-in-circle-group-p (list &optional (perimeter 360d0))
+  "Checks if for every triplet (X1 X2 X3) in LIST X2 is within
+the (counterclockwise) interval [X1, X3] in a circle group. The last
+element of LIST is regarded as followed by the first element."
+  (loop for (x1 x2 x3) on (append list (subseq list 0 2))
+        until (null x3)
+        always (circular-member x2 x1 x3 perimeter)))
+
+(test no-hue-reversal-exists
+  (is (loop for value in '(0.2 0.4 0.6 0.8 1 2 3 4 5 6 7 8 9 10)
+            always (loop for chroma from 2 to 50 by 2
+                         always (ordered-in-circle-group-p
+                                 (loop for hue40 from 0 below 40
+                                       collect (nth-value 2 (mhvc-to-lchab-illum-c hue40 value chroma))))))))
+
+(test round-trip-to-xyz
+  (dolist (xyz *xyz-set*)
+    (is (nearly-equal 1d-4
+		      xyz
+		      (multiple-value-list
+		       (munsell-to-xyz
+			(apply (rcurry #'xyz-to-munsell :digits 6) xyz)))))))
+
+(test basic-set
   (is (nearly-equal 1d-4
                     '(0 0 0)
                     (multiple-value-list (dufy:munsell-to-lchab-illum-c "3RP 0/200"))))
   (is (nearly-equal 1d-4
                     '(100 0 0)
                     (multiple-value-list (dufy:munsell-to-lchab-illum-c "N 10"))))
-  (dolist (xyz *xyz-set*)
-    (is (nearly-equal 1d-4
-		      xyz
-		      (multiple-value-list
-		       (multiple-value-call #'munsell-to-xyz
-			 (nth-value 0 (apply (rcurry #'xyz-to-munsell :digits 6)
-					     xyz)))))))
+  
   (is (nearly-equal 1d-4
                     '(0.6355467107666922d0 0.06136344507966737d0 0.004921707437403791d0)
                     (multiple-value-list (munsell-to-xyz "2.3R 3.1/50.1"))))
