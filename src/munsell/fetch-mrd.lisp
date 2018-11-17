@@ -117,7 +117,6 @@
             1.051555310936564d0 1.4873480274716935d0 0.002311024478048d0)
       munsell-renotation-data)
 
-
 (dotimes (hue 40)
   (dotimes (dark-value 6)
      ;; use dark-value=1 (i.e. 0.2) when dark-value=0, as the data V=0 are not in mrd. 
@@ -140,6 +139,24 @@
             (push (third row) rows)))
       (apply #'max rows))))
 
+;; We set the xyY values for (h v c) = (34 0.4 22), (34 0.4 24), (34
+;; 0.4 26) as follows:
+;; 
+;; (34 0.4 22): mid-point (in LCHab space) of (33 0.4 22) and (35 0.4 22)
+;; (34 0.4 24): mid-point (in LCHab space) of (33 0.4 24) and (35 0.4 24)
+;; (34 0.4 26): mid-point (in LCHab space) of (33 0.4 26) and (35 0.4 26)
+;; 
+;; It is because the extrapolation of the original data produces
+;; `hue reversal' in (33 0.4 26) and (34 0.4 26).
+(push (list 34 0.4d0 22
+            0.23863304104174685d0 0.021956689226634594d0 0.004549364801536d0)
+      munsell-renotation-data)
+(push (list 34 0.4d0 24
+            0.2359524230440069d0 0.01812880106322657d0 0.004549364801536d0)
+      munsell-renotation-data)
+(push (list 34 0.4d0 26
+            0.23314942818551052d0 0.013166613598197537d0 0.004549364801536d0)
+      munsell-renotation-data)
 
 (defun munsell-value-to-achromatic-xyy (v)
   "Illuminant C."
