@@ -2,7 +2,7 @@
 
 (defpackage #:dufy/internal
   (:nicknames #:dufy-internal)
-  (:use #:cl #:alexandria #:dufy/internal)
+  (:use #:cl #:alexandria)
   (:export
    #:*dat-dir-path*
    #:print-make-array
