@@ -50,6 +50,7 @@
                 ((:file "package")
                  (:file "y-to-value-data")
                  (:file "munsell-renotation-data")
+                 (:file "inversed-munsell-renotation-data")
                  (:file "fundamental")
                  (:file "munsell")))))
 

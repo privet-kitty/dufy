@@ -201,7 +201,14 @@ boundary in the MRD."
 
 ;;;
 ;;; -to-Munsell converters
-;;; The primary converter is LCHAB-TO-MHVC-ILLUM-C
+;;;
+;;; The primary converter is LCHAB-TO-MHVC-ILLUM-C. This function
+;;; calls PREDICT-LCHAB-TO-MHVC (that calls LCHAB-TO-MHVC-GENERAL-CASE
+;;; that calls LCHAB-TO-MHVC-L-INTEGER-CASE that calls
+;;; LCHAB-TO-MHVC-L-C-INTEGER-CASE that calls
+;;; LCHAB-TO-MHVC-ALL-INTEGER-CASE) for the first approximation and
+;;; passes the returned HVC to INVERT-MHVC-TO-LCHAB to compute a more
+;;; accurate HVC.
 ;;;
 
 (declaim (inline lstar-to-munsell-value))
@@ -216,6 +223,24 @@ boundary in the MRD."
   (values (* hab #.(float 40/360 1d0))
           (lstar-to-munsell-value lstar)
           (* cstarab #.(/ 5.5d0))))
+
+;; In the following functions, the actual L* equals 10*LSTAR/10; the
+;; actual C*ab equals 20*CSTARAB/20; the actual hab equals 9*HAB/9.
+(defun lchab-to-mhvc-all-integer-case (lstar/10 cstarab/20 hab/9)
+  (declare (fixnum lstar/10 cstarab/20 hab/9))
+  "All integer case. Does no type checks: e.g. HAB/9 must be in {0, 1,
+...., 39}."
+  (declare (fixnum lstar/10 cstarab/20 hab/9))
+  (if (<= cstarab/20 25)
+      (values (aref +inversed-mrd-table-hc+ lstar/10 cstarab/20 hab/9 0)
+              (aref +inversed-mrd-table-v+ lstar/10)
+              (aref +inversed-mrd-table-hc+ lstar/10 cstarab/20 hab/9 1))
+      ;; If C*ab > 500, the chroma is linearly extrapolated.
+      (let ((chroma-at-boundary (aref +inversed-mrd-table-hc+ lstar/10 25 hab/9 1))
+            (factor (* cstarab/20 #.(float 1/25 1d0))))
+        (values (aref +inversed-mrd-table-hc+ lstar/10 25 hab/9 0)
+                (aref +inversed-mrd-table-v+ lstar/10)
+                (* chroma-at-boundary factor)))))
 
 (declaim (inline circular-delta))
 (defun circular-delta (theta1 theta2)
