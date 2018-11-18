@@ -1,6 +1,9 @@
 ;;;
 ;;; This script file fetches the Munsell renotation data and saves
-;;; several arrays as a .lisp file.
+;;; several arrays to a .lisp file.
+;;;
+;;; Usage:
+;;; $ sbcl --load fetch-mrd.lisp
 ;;;
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -10,6 +13,7 @@
 
 (defparameter *this-pathname* (load-time-value (or #.*compile-file-pathname* *load-pathname* )))
 
+;; Downloads all.dat.
 (defparameter *dat-url* "http://www.rit-mcsl.org/MunsellRenotation/all.dat")
 (defparameter *dat-txt* (babel:octets-to-string (drakma:http-request *dat-url*) :encoding :ascii))
 
@@ -46,11 +50,11 @@
 (defparameter munsell-renotation-data nil)
 
 ;; Reads the Munsell Renotation Data to a list. Y values in the MRD
-;; are substituted by #'munsell-value-to-y (the formula in the ASTM
-;; D1535-08e1)
+;; are substituted by #'munsell-value-to-y (that conforms to the
+;; formula in the ASTM D1535-08e1).
 (with-input-from-string (in *dat-txt*)
   (setf munsell-renotation-data nil)
-  (read-line in) ; the first row is the label of the data
+  (read-line in) ; The first row is the label of the data.
   (let ((*read-default-float-format* 'double-float))
     (loop
       (let* ((hue (read in nil))
@@ -62,7 +66,7 @@
         (declare (ignore large-y))
         (if (null hue)
             (return)
-            (unless (<= small-y 0) ; ignore non-positive y
+            (unless (<= small-y 0) ; Ignores non-positive y.
               (let ((row (list hue value chroma small-x small-y
                                (munsell-value-to-y value))))
                 (push row munsell-renotation-data))))))))
@@ -93,7 +97,7 @@
 
 (dotimes (hue 40)
   (dotimes (value 11)
-     ;; Uses value = 1 when value = 0, as the data V = 0 are not in the MRD. 
+     ;; Uses V = 1 when V = 0, as the data for V = 0 are not in the MRD. 
     (let ((adopted-value (max value 1)))
       (setf (aref max-chroma-table hue value)
             (apply #'max
@@ -130,7 +134,7 @@
 (dotimes (hue 40)
   (dotimes (dark-value 6)
      ;; Use dark-value = 1 (i.e. 0.2) when dark-value = 0, as the data
-     ;; V = 0 are not in the MRD.
+     ;; for V = 0 are not in the MRD.
     (let ((adopted-dark-value (max 1 dark-value)))
       (setf (aref max-chroma-table-dark hue dark-value)
             (apply #'max
@@ -140,7 +144,7 @@
                            collect (third row)))))))
 
 (defun max-chroma-in-mrd (hue value)
-  ;; Use value = 0.2d0 when value = 0, as the data value = 0 are not in the MRD.
+  ;; Use V = 0.2d0 when V = 0, as the data for V = 0 are not in the MRD.
   (let ((adopted-value (max 0.2d0 value)))
     (apply #'max
            (loop for row in munsell-renotation-data
@@ -244,7 +248,7 @@ Note: The data at value = 0 are substituted with the data at value =
 (defparameter mrd-table-ch
   (make-array (list 40 11 +number-of-chromas+ 2)
               :element-type 'double-float))
-;; separate the data whose values are within [0, 1]
+;; Separates the data whose values are within [0, 1].
 (defparameter mrd-table-ch-dark
   (make-array (list 40 6 +number-of-chromas+ 2)
               :element-type 'double-float))
@@ -275,7 +279,6 @@ Note: The data at value = 0 are substituted with the data at value =
           (setf (aref mrd-table-ch-dark hue value-idx half-chroma 1) hab))))))
 
 
-;; Saves to the .lisp file.
 (defun main (dest-filename)
   (let ((dest-path (uiop:merge-pathnames* dest-filename *this-pathname*)))
     (with-open-file (out dest-path
