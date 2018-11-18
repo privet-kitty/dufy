@@ -14,7 +14,7 @@
 (defparameter *dat-txt* (babel:octets-to-string (drakma:http-request *dat-url*) :encoding :ascii))
 
 ;;;
-;;; Some required definitions
+;;; Define some utilities
 ;;;
 
 (defun munsell-value-to-y (v)
@@ -26,9 +26,13 @@
     (dufy/core:lchab-to-xyz lstar cstarab hab :illuminant dufy/core:+illum-c+)))
 
 (defun xyy-to-lchab (small-x small-y y)
-  (multiple-value-call #'dufy/core:xyz-to-lchab
-    (dufy/core:xyy-to-xyz small-x small-y y)
-    :illuminant dufy/core:+illum-c+))
+  (multiple-value-bind (lstar cstarab hab)
+      (multiple-value-call #'dufy/core:xyz-to-lchab
+        (dufy/core:xyy-to-xyz small-x small-y y)
+        :illuminant dufy/core:+illum-c+)
+    (values (alexandria:clamp lstar 0d0 100d0)
+            cstarab
+            hab)))
 
 (defun midpoint-in-lchab (l1 c1 h1 l2 c2 h2)
   (values (/ (+ l1 l2) 2)
@@ -65,10 +69,9 @@
 
 (defun quantize-hue-specifier (hue-name hue-prefix)
   (let ((hue-number
-         (alexandria:switch (hue-name :test #'string=)
+         (alexandria:eswitch (hue-name :test #'string=)
            ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
-           ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9)
-           (t (error "invalid spec")))))
+           ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9))))
     (mod (+ (* 4 hue-number) (round (/ hue-prefix 2.5))) 40)))
 
 ;; Quantizes hue spec. in the list.
@@ -145,25 +148,6 @@
                            (= (second row) adopted-value))
                    collect (third row)))))
 
-;; We set the xyY values for (h v c) = (34 0.4 22), (34 0.4 24), (34
-;; 0.4 26) as follows:
-;; 
-;; (34 0.4 22): mid-point (in LCHab space) of (33 0.4 22) and (35 0.4 22)
-;; (34 0.4 24): mid-point (in LCHab space) of (33 0.4 24) and (35 0.4 24)
-;; (34 0.4 26): mid-point (in LCHab space) of (33 0.4 26) and (35 0.4 26)
-;; 
-;; It is because the extrapolation of the original data produces
-;; `hue reversal' in (33 0.4 26) and (34 0.4 26).
-(push (list 34 0.4d0 22
-            0.23863304104174685d0 0.021956689226634594d0 0.004549364801536d0)
-      munsell-renotation-data)
-(push (list 34 0.4d0 24
-            0.2359524230440069d0 0.01812880106322657d0 0.004549364801536d0)
-      munsell-renotation-data)
-(push (list 34 0.4d0 26
-            0.23314942818551052d0 0.013166613598197537d0 0.004549364801536d0)
-      munsell-renotation-data)
-
 (defun munsell-value-to-achromatic-xyy (v)
   "Illuminant C."
   (multiple-value-bind (x y) (dufy/core:illuminant-xy dufy/core:+illum-c+)
@@ -172,8 +156,8 @@
 (defun get-xyy-from-dat (hue-num value chroma)
   "Illuminant C. Returns a list. 
 
-Note: The data with value=0 are substituted with the data with
-value=0.2."
+Note: The data at value = 0 are substituted with the data at value =
+0.2."
   (cond ((= chroma 0)
          (multiple-value-list (munsell-value-to-achromatic-xyy value)))
         ((= value 0)
@@ -198,38 +182,71 @@ value=0.2."
                            munsell-renotation-data)))))
 
 
-(defmacro aif (test-form then-form &optional else-form)
+(defmacro awhen (test-form &body body)
   `(let ((it ,test-form))
-     (if it ,then-form ,else-form)))
+     (when it ,@body)))
 
 (defun get-lchab-from-dat (hue-num value chroma)
-  (aif (get-xyy-from-dat hue-num value chroma)
-       (multiple-value-list (multiple-value-call #'dufy/core:xyz-to-lchab
-                              (apply #'dufy/core:xyy-to-xyz it)
-                              :illuminant dufy/core:+illum-c+))))
+  (awhen (get-xyy-from-dat hue-num value chroma)
+    (multiple-value-list
+     (apply #'xyy-to-lchab it))))
 
 (defun get-extrapolated-lchab-from-dat (hue-num value chroma)
   "CHROMA must be even."
   (or (get-lchab-from-dat hue-num value chroma)
-      (let* ((mchroma (max-chroma-in-mrd hue-num value)))
+      (let* ((max-chroma (max-chroma-in-mrd hue-num value)))
         (destructuring-bind (lstar cstarab hab)
-            (get-lchab-from-dat hue-num value mchroma)
+            (get-lchab-from-dat hue-num value max-chroma)
           (list lstar
-                (* cstarab (/ chroma mchroma))
+                (* cstarab (/ chroma max-chroma))
                 hab)))))
 
+;; We preset the xyY values for (h v c) = (34 0.4 22), (34 0.4 24),
+;; (34 0.4 26) as follows:
+;; 
+;; (34 0.4 22): mid-point (in LCHab space) of (33 0.4 22) and (35 0.4 22)
+;; (34 0.4 24): mid-point (in LCHab space) of (33 0.4 24) and (35 0.4 24)
+;; (34 0.4 26): mid-point (in LCHab space) of (33 0.4 26) and (35 0.4 26)
+;; 
+;; It is because the extrapolation of the original data produces
+;; `hue reversal' around (33 0.4 26) and (34 0.4 26).
+(defparameter lchab-at-33-0.4-22 (get-extrapolated-lchab-from-dat 33 0.4d0 22))
+(defparameter lchab-at-33-0.4-24 (get-extrapolated-lchab-from-dat 33 0.4d0 24))
+(defparameter lchab-at-33-0.4-26 (get-extrapolated-lchab-from-dat 33 0.4d0 26))
+(defparameter lchab-at-35-0.4-22 (get-extrapolated-lchab-from-dat 35 0.4d0 22))
+(defparameter lchab-at-35-0.4-24 (get-extrapolated-lchab-from-dat 35 0.4d0 24))
+(defparameter lchab-at-35-0.4-26 (get-extrapolated-lchab-from-dat 35 0.4d0 26))
+(push (append '(34 0.4d0 22)
+              (multiple-value-list
+               (multiple-value-call #'lchab-to-xyy
+                 (apply #'midpoint-in-lchab
+                        (append lchab-at-33-0.4-22 lchab-at-35-0.4-22)))))
+      munsell-renotation-data)
+(push (append '(34 0.4d0 24)
+              (multiple-value-list
+               (multiple-value-call #'lchab-to-xyy
+                 (apply #'midpoint-in-lchab
+                        (append lchab-at-33-0.4-24 lchab-at-35-0.4-24)))))
+      munsell-renotation-data)
+(push (append '(34 0.4d0 26)
+              (multiple-value-list
+               (multiple-value-call #'lchab-to-xyy
+                 (apply #'midpoint-in-lchab
+                        (append lchab-at-33-0.4-26 lchab-at-35-0.4-26)))))
+      munsell-renotation-data)
 
+;;;
+;;; Construct Munsell-to-LCHab data
+;;;
 
-;; constructs Munsell-to-LCHab data.
-
-(defconstant number-of-chromas 26)
+(defconstant +number-of-chromas+ 26)
 
 (defparameter mrd-table-ch
-  (make-array (list 40 11 number-of-chromas 2)
+  (make-array (list 40 11 +number-of-chromas+ 2)
               :element-type 'double-float))
 ;; separate the data whose values are within [0, 1]
 (defparameter mrd-table-ch-dark
-  (make-array (list 40 6 number-of-chromas 2)
+  (make-array (list 40 6 +number-of-chromas+ 2)
               :element-type 'double-float))
 
 (defparameter mrd-table-l
@@ -238,18 +255,9 @@ value=0.2."
   (make-array 6 :element-type 'double-float))
 
 
-(defun xyy-to-lchab (x y largey)
-  (multiple-value-bind (lstar cstarab hab)
-      (multiple-value-call #'dufy/core:xyz-to-lchab
-        (dufy/core:xyy-to-xyz x y largey)
-        :illuminant dufy/core:+illum-c+)
-    (list (alexandria:clamp lstar 0d0 100d0)
-          cstarab
-          hab)))
-
 (dotimes (hue 40)
   (dolist (value '(0 1 2 3 4 5 6 7 8 9 10))
-    (dotimes (half-chroma number-of-chromas)
+    (dotimes (half-chroma +number-of-chromas+)
       (destructuring-bind (lstar cstarab hab)
           (get-extrapolated-lchab-from-dat hue value (* half-chroma 2))
         (setf (aref mrd-table-l value) lstar)
@@ -259,7 +267,7 @@ value=0.2."
 (dotimes (hue 40)
   (dotimes (value-idx 6)
     (let ((value (aref #(0d0 0.2d0 0.4d0 0.6d0 0.8d0 1d0) value-idx)))
-      (dotimes (half-chroma number-of-chromas)
+      (dotimes (half-chroma +number-of-chromas+)
         (destructuring-bind (lstar cstarab hab)
             (get-extrapolated-lchab-from-dat hue value (* half-chroma 2))
           (setf (aref mrd-table-l-dark value-idx) lstar)
@@ -268,8 +276,8 @@ value=0.2."
 
 
 ;; Saves to the .lisp file.
-(defun main (dest-filenamy)
-  (let ((dest-path (uiop:merge-pathnames* dest-filenamy *this-pathname*)))
+(defun main (dest-filename)
+  (let ((dest-path (uiop:merge-pathnames* dest-filename *this-pathname*)))
     (with-open-file (out dest-path
                          :direction :output
                          :if-exists :supersede)
