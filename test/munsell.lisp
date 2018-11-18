@@ -15,7 +15,7 @@ element of LIST is regarded as followed by the first element."
         until (null x3)
         always (circular-member x2 x1 x3 perimeter)))
 
-(test no-hue-reversal-exists
+(test no-hue-reversal-exists-in-mrd
   (is (loop for value in '(0.2 0.4 0.6 0.8 1 2 3 4 5 6 7 8 9 10)
             always (loop for chroma from 2 to 50 by 2
                          always (ordered-in-circle-group-p
@@ -30,14 +30,16 @@ element of LIST is regarded as followed by the first element."
 		       (munsell-to-xyz
 			(apply (rcurry #'xyz-to-munsell :digits 6) xyz)))))))
 
-(test basic-set
+(test munsell-to-lchab-illum-c
+  ;; achromatic
   (is (nearly-equal 1d-4
                     '(0 0 0)
                     (multiple-value-list (dufy:munsell-to-lchab-illum-c "3RP 0/200"))))
   (is (nearly-equal 1d-4
                     '(100 0 0)
-                    (multiple-value-list (dufy:munsell-to-lchab-illum-c "N 10"))))
-  
+                    (multiple-value-list (dufy:munsell-to-lchab-illum-c "N 10")))))
+
+(test munsell-to-xyz
   (is (nearly-equal 1d-4
                     '(0.6355467107666922d0 0.06136344507966737d0 0.004921707437403791d0)
                     (multiple-value-list (munsell-to-xyz "2.3R 3.1/50.1"))))
