@@ -70,7 +70,8 @@ for a given hue and value. If you want to ignore the data for value =
 (defun munsell-value-to-y (v)
   (declare (optimize (speed 3) (safety 1)))
   "Converts Munsell value to Y, whose nominal range is [0, 1]. The
-formula is based on ASTM D1535-08e1."
+formula is based on ASTM D1535-08e1. Note that this function does no
+clamping even if V is outside the interval [0, 10]."
   (with-ensuring-type double-float (v)
     (* v (+ 1.1914d0 (* v (+ -0.22533d0 (* v (+ 0.23352d0 (* v (+ -0.020484d0 (* v 0.00081939d0)))))))) 0.01d0)))
 
@@ -80,15 +81,13 @@ formula is based on ASTM D1535-08e1."
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
   (- (* 116d0 (dufy/core::function-f (munsell-value-to-y v))) 16d0))
 
-(defun munsell-value-to-achromatic-xyy-from-mrd (v)
-  "For development. Returns the white point as xyY in the Munsell
+(defun munsell-value-to-y-from-mrd (v)
+  "For development. Returns the Y (multiplied by 0.975) in the Munsell
 Renotation Data for a given V. (In dufy, the formula in the ASTM is
-used instead of this data. See MUNSELL-VALUE-TO-Y.)"
-  (multiple-value-bind (x y) (illuminant-xy +illum-c+)
-    (values x y
-            (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
-                      0.975d0)
-                   0d0 1d0))))
+used instead of this value. See MUNSELL-VALUE-TO-Y.)"
+  (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
+            0.975d0)
+         0d0 1d0))
 
 (declaim (inline y-to-munsell-value))
 (defun y-to-munsell-value (y)

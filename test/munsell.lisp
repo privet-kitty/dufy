@@ -22,13 +22,17 @@ element of LIST is regarded as followed by the first element."
                                  (loop for hue40 from 0 below 40
                                        collect (nth-value 2 (mhvc-to-lchab-illum-c hue40 value chroma))))))))
 
-(test round-trip-to-xyz
-  (dolist (xyz *xyz-set*)
-    (is (nearly-equal 1d-4
-		      xyz
-		      (multiple-value-list
-		       (munsell-to-xyz
-			(apply (rcurry #'xyz-to-munsell :digits 6) xyz)))))))
+(test munsell-value-to-y
+  (is (nearly= 1d-10 1 (munsell-value-to-y 10)))
+  (is (nearly= 1d-10 0 (munsell-value-to-y 0)))
+  (dotimes (v 10)
+    (is (nearly= 5d-3 ; The error at V = 6 is larger than 1d-4.
+                 (munsell-value-to-y v)
+                 (dufy/munsell::munsell-value-to-y-from-mrd v)))))
+
+(test y-to-munsell-value
+  (is (nearly= 1d-10 10 (y-to-munsell-value 1)))
+  (is (nearly= 1d-10 0 (y-to-munsell-value 0))))
 
 (test munsell-to-lchab-illum-c
   ;; achromatic
@@ -55,3 +59,31 @@ element of LIST is regarded as followed by the first element."
                      (multiple-value-call #'dufy:xyz-to-xyy
                        (dufy:munsell-to-xyz-illum-c "N 3.1"))))))
 
+(test lchab-to-mhvc-illum-c
+  (signals large-approximation-error
+    (lchab-to-mhvc-illum-c 1 2 3
+                           :max-iteration 1
+                           :factor 10
+                           :threshold 1d-15))
+  (is (equal '(40d0 40d0 40d0)
+             (multiple-value-list
+              (lchab-to-mhvc-illum-c 1 2 3
+                                     :max-iteration 1
+                                     :factor 10
+                                     :if-reach-max :return40
+                                     :threshold 1d-15))))
+  (is (typep (multiple-value-list
+              (lchab-to-mhvc-illum-c 1 2 3
+                                     :max-iteration 1
+                                     :factor 10
+                                     :if-reach-max :raw
+                                     :threshold 1d-15))
+             '(tuple double-float double-float double-float))))
+
+(test round-trip-between-xyz-and-munsell
+  (dolist (xyz *xyz-set*)
+    (is (nearly-equal 1d-4
+		      xyz
+		      (multiple-value-list
+		       (munsell-to-xyz
+			(apply (rcurry #'xyz-to-munsell :digits 6) xyz)))))))

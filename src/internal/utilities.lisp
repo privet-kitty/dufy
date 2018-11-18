@@ -43,27 +43,6 @@
                                     :initial-contents ',(array-to-list array)))))))
 
 ;;
-;; General macros
-;;
-
-(defmacro dotimes-unroll ((var count &optional result) &body body)
-  `(block nil
-     ,@(loop for i from 0 below count
-             collect `(let ((,var ,i)) ,@body))
-     ,result))
-
-(defmacro with-ensuring-type (type vars &body body)
-  "Ensures and declares that the type of variables are TYPE."
-  (labels ((expand (var-lst)
-             (if (null var-lst)
-                 nil
-                 (cons `(,(car var-lst) (coerce ,(car var-lst) ',type))
-                       (expand (cdr var-lst))))))
-    `(let ,(expand vars)
-       (declare (type ,type ,@vars))
-       ,@body)))
-
-;;
 ;; For benchmark
 ;;
 
@@ -118,3 +97,33 @@ real) times."
                       (sb-profile:report :print-no-call-list nil))
             (sb-profile:unprofile ,@(ensure-list names)))
   #-sbcl `(progn ,@body))
+
+;;
+;; Unclassified
+;;
+
+(defmacro dotimes-unroll ((var count &optional result) &body body)
+  `(block nil
+     ,@(loop for i from 0 below count
+             collect `(let ((,var ,i)) ,@body))
+     ,result))
+
+(defmacro with-ensuring-type (type vars &body body)
+  "Ensures and declares that the type of variables are TYPE."
+  (labels ((expand (var-lst)
+             (if (null var-lst)
+                 nil
+                 (cons `(,(car var-lst) (coerce ,(car var-lst) ',type))
+                       (expand (cdr var-lst))))))
+    `(let ,(expand vars)
+       (declare (type ,type ,@vars))
+       ,@body)))
+
+(deftype tuple (&rest rest)
+  "Analogy of the type specifier `cons' and the function
+`list'. Type (tuple a b c) is equivalent to the type (cons a (cons
+b (cons c)))."
+  (reduce #'(lambda (x y) (if (null y) `(cons ,x) `(cons ,x ,y)))
+          rest
+          :from-end t
+          :initial-value nil))

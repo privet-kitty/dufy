@@ -2,16 +2,18 @@
 
 (defpackage #:dufy/internal
   (:nicknames #:dufy-internal)
-  (:use #:cl #:alexandria)
+  (:use #:cl #:alexandria #:dufy/internal)
   (:export
    #:*dat-dir-path*
    #:print-make-array
-   #:with-ensuring-type
    #:time-after-gc
    #:internal-real-time-after-gc
    #:time-median
    #:call-with-profiling
    #:with-profiling
+   #:with-ensuring-type
+   #:dotimes-unroll
+   #:tuple
 
    #:TWO-PI
    #:+TWO-PI/360+ #:+360/TWO-PI+
