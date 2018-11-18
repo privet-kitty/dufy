@@ -65,7 +65,7 @@
                                                    :type 'double-float)
                                            row)))
         by #'cddr
-        collect (nconc (subseq row1 0 3) (subseq row2 0 3) (last row1))))
+        collect (append (subseq row1 0 3) (subseq row2 0 3) (last row1))))
 
 
 ;;;
