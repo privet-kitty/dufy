@@ -1,3 +1,5 @@
+;; -*- coding: utf-8 -*-
+
 (in-package :dufy/munsell)
 
 ;;;
@@ -68,7 +70,7 @@
 (defun mhvc-to-lchab-value-integer-case (hue40 scaled-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
            ((double-float 0d0 40d0) hue40)
-           ((double-float 0d0 #.*maximum-chroma*) half-chroma)
+           (non-negative-non-large-double-float half-chroma)
            (fixnum scaled-value))
   (let ((hchroma1 (floor half-chroma))
         (hchroma2 (ceiling half-chroma)))
@@ -91,7 +93,7 @@
 (defun mhvc-to-lchab-general-case (hue40 scaled-value half-chroma &optional (dark nil))
   (declare (optimize (speed 3) (safety 0))
            ((double-float 0d0 40d0) hue40 scaled-value)
-           ((double-float 0d0 #.*maximum-chroma*) half-chroma))
+           (non-negative-non-large-double-float half-chroma))
   (let ((true-value (if dark (* scaled-value 0.2d0) scaled-value)))
     (let  ((scaled-val1 (floor scaled-value))
            (scaled-val2 (ceiling scaled-value))
@@ -127,7 +129,7 @@
   "Illuminant C."
   (let ((hue40 (mod (float hue40 1d0) 40d0))
         (value (clamp (float value 1d0) 0d0 10d0))
-        (chroma (clamp (float chroma 1d0) 0d0 *maximum-chroma*)))
+        (chroma (clamp (float chroma 1d0) 0d0 *most-positive-non-large-double-float*)))
     (if (>= value 1d0)
         (mhvc-to-lchab-general-case hue40 value (* chroma 0.5d0) nil)
         (mhvc-to-lchab-general-case hue40 (* value 5d0) (* chroma 0.5d0) t))))
@@ -211,11 +213,6 @@ boundary in the MRD."
 ;;; accurate HVC.
 ;;;
 
-(declaim (inline lstar-to-munsell-value))
-(defun lstar-to-munsell-value (lstar)
-  (declare (optimize (speed 3) (safety 1)))
-  (y-to-munsell-value (lstar-to-y (float lstar 1d0))))
-
 (defun rough-lchab-to-mhvc (lstar cstarab hab)
   "For devel. Does rough conversion from LCHab to munsell HVC"
   (declare (optimize (speed 3) (safety 0))
@@ -224,10 +221,18 @@ boundary in the MRD."
           (lstar-to-munsell-value lstar)
           (* cstarab #.(/ 5.5d0))))
 
+(declaim (ftype (function * (values (double-float 0d0 40d0) double-float double-float &optional))
+                lchab-to-mhvc-all-integer-case
+                lchab-to-mhvc-l-c-integer-case
+                lchab-to-mhvc-l-integer-case
+                lchab-to-mhvc-general-case))
+
 ;; In the following functions, the actual L* equals 10*LSTAR/10; the
 ;; actual C*ab equals 20*CSTARAB/20; the actual hab equals 9*HAB/9.
+(declaim (inline lchab-to-mhvc-all-integer-case))
 (defun lchab-to-mhvc-all-integer-case (lstar/10 cstarab/20 hab/9)
-  (declare (fixnum lstar/10 cstarab/20 hab/9))
+  (declare (optimize (speed 3) (safety 1))
+           (fixnum lstar/10 cstarab/20 hab/9))
   "All integer case. Does no type checks: e.g. HAB/9 must be in {0, 1,
 ...., 39}."
   (declare (fixnum lstar/10 cstarab/20 hab/9))
@@ -241,6 +246,96 @@ boundary in the MRD."
         (values (aref +inversed-mrd-table-hc+ lstar/10 25 hab/9 0)
                 (aref +inversed-mrd-table-v+ lstar/10)
                 (* chroma-at-boundary factor)))))
+
+(declaim (inline lchab-to-mhvc-l-c-integer-case))
+(defun lchab-to-mhvc-l-c-integer-case (lstar/10 cstarab/20 hab/9)
+  (declare (optimize (speed 3) (safety 1))
+           (fixnum lstar/10 cstarab/20)
+           ((double-float 0d0 40d0) hab/9))
+  (let ((hab1 (floor hab/9))
+        (hab2 (mod (ceiling hab/9) 40)))
+    (multiple-value-bind (hue1 value chroma1)
+        (lchab-to-mhvc-all-integer-case lstar/10 cstarab/20 hab1)
+      (if (= hab1 hab2)
+          (values hue1 value chroma1)
+          (multiple-value-bind (hue2 _ chroma2)
+              (lchab-to-mhvc-all-integer-case lstar/10 cstarab/20 hab2)
+            (declare (ignore _)
+                     ((double-float 0d0 40d0) hue1 hue2))
+            (if (= hue1 hue2)
+                (values hue1 value chroma1)
+                (let* ((hue40 (circular-lerp (- hab/9 hab1) hue1 hue2 40d0))
+                       (chroma (+ (* chroma1 (/ (mod (- hue2 hue40) 40d0)
+                                                (mod (- hue2 hue1) 40d0)))
+                                  (* chroma2 (/ (mod (- hue40 hue1) 40d0)
+                                                (mod (- hue2 hue1) 40d0))))))
+                  (declare ((double-float 0d0 40d0) hue40))
+                  (values hue40 value chroma))))))))
+
+(defun lchab-to-mhvc-l-integer-case (lstar/10 cstarab/20 hab/9)
+  (declare (optimize (speed 3) (safety 1))
+           (fixnum lstar/10)
+           (non-negative-non-large-double-float cstarab/20)
+           ((double-float 0d0 40d0) hab/9))
+  (let ((cstarab1 (floor cstarab/20))
+        (cstarab2 (ceiling cstarab/20)))
+    (if (= cstarab1 cstarab2)
+        (lchab-to-mhvc-l-c-integer-case lstar/10 cstarab1 hab/9)
+        (multiple-value-bind (x1 y1 value)
+            (multiple-value-call #'mhvc-to-cartesian
+              (lchab-to-mhvc-l-c-integer-case lstar/10 cstarab1 hab/9))
+          (multiple-value-bind (x2 y2 _)
+              (multiple-value-call #'mhvc-to-cartesian
+                (lchab-to-mhvc-l-c-integer-case lstar/10 cstarab2 hab/9))
+            (declare (ignore _)
+                     (double-float value x1 y1 x2 y2))
+            (let ((x (+ (* x1 (- cstarab2 cstarab/20))
+                        (* x2 (- cstarab/20 cstarab1))))
+                  (y (+ (* y1 (- cstarab2 cstarab/20))
+                        (* y2 (- cstarab/20 cstarab1)))))
+              (cartesian-to-mhvc x y value)))))))
+
+(defun lchab-to-mhvc-general-case (lstar/10 cstarab/20 hab/9)
+  (declare (optimize (speed 3) (safety 1))
+           ((double-float 0d0 10d0) lstar/10)
+           (non-negative-non-large-double-float cstarab/20)
+           ((double-float 0d0 40d0) hab/9))
+  (let  ((lstar1 (floor lstar/10))
+         (lstar2 (ceiling lstar/10))
+         (value (lstar-to-munsell-value (* lstar/10 10))))
+    (if (= lstar1 lstar2)
+        (lchab-to-mhvc-l-integer-case lstar1 cstarab/20 hab/9)
+        ;; If the given color is so dark that it is out of the table,
+        ;; we use the fact that the chroma and hue of LCh(ab)
+        ;; corresponds roughly to that of Munsell.
+        (if (zerop lstar1)
+            (multiple-value-bind (hue40 _ chroma)
+                (lchab-to-mhvc-l-integer-case 1 cstarab/20 hab/9)
+              (declare (ignore _))
+              (values hue40 value chroma))
+            (multiple-value-bind (x1 y1 value1)
+                (multiple-value-call #'mhvc-to-cartesian
+                  (lchab-to-mhvc-l-integer-case lstar1 cstarab/20 hab/9))
+              (multiple-value-bind (x2 y2 value2)
+                  (multiple-value-call #'mhvc-to-cartesian
+                    (lchab-to-mhvc-l-integer-case lstar2 cstarab/20 hab/9))
+                (declare (double-float x1 y1 value1 x2 y2 value2))
+                (let ((x (+ (* x1 (/ (- value2 value) (- value2 value1)))
+                            (* x2 (/ (- value value1) (- value2 value1)))))
+                      (y (+ (* y1 (/ (- value2 value) (- value2 value1)))
+                            (* y2 (/ (- value value1) (- value2 value1))))))
+                  (cartesian-to-mhvc x y value))))))))
+
+(defun predict-lchab-to-mhvc (lstar cstarab hab)
+  (declare (optimize (speed 3) (safety 1)))
+  "Illuminant C."
+  (with-ensuring-type double-float (lstar cstarab hab)
+    (let ((lstar/10 (clamp (* lstar 0.1d0) 0d0 10d0))
+          (cstarab/20 (clamp (* cstarab #.(float 1/20 1d0))
+                             0d0
+                             *most-positive-non-large-double-float*))
+          (hab/9 (mod (* hab #.(float 1/9 1d0)) 40d0)))
+      (lchab-to-mhvc-general-case lstar/10 cstarab/20 hab/9))))
 
 (declaim (inline circular-delta))
 (defun circular-delta (theta1 theta2)
@@ -333,6 +428,7 @@ MAX-ITERATION:
 (defconverter lchab munsell
   :name lchab-to-munsell-illum-c
   :documentation "Illuminant C")
+
 (defconverter xyz mhvc
   :name xyz-to-mhvc-illum-c
   :documentation "Illuminant C.")

@@ -9,7 +9,8 @@
    #:munsellspec-parse-error
    #:large-approximation-error
 
-   #:*maximum-chroma*
+   #:*most-positive-non-large-double-float*
+   #:non-negative-non-large-double-float
    #:max-chroma-in-mrd
    #:mhvc-out-of-mrd-p
    #:munsell-out-of-mrd-p

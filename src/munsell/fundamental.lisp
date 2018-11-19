@@ -1,11 +1,21 @@
 ;;;
-;;; This file contains several definitions for MHVC (Munsell HVC) and
-;;; MUNSELL (Standard string specification of Munsell Color code),
-;;; utilities for users, tools for development etc.
+;;; This file contains several definitions for MHVC (3-number
+;;; specification of Munsell Color) and MUNSELL (Standard string
+;;; specification of Munsell Color), utilities for users, tools for
+;;; development etc.
 ;;; 
 
-
 (in-package :dufy/munsell)
+
+(define-colorspace mhvc (hue40 value chroma)
+  :arg-types (real real real)
+  :return-types ((double-float 0d0 40d0) double-float double-float)
+  :documentation "Three-number specification of Munsell color. HUE40 is in the circle group R/40Z. The nominal range of VALUE is [0, 10].")
+
+(define-colorspace munsell (munsellspec)
+  :arg-types (string)
+  :return-types (string)
+  :documentation "Standard string specification of Munsell color.")
 
 ;; The bradford transformations between D65 and C are frequently used here.
 (define-cat-function c-to-d65
@@ -13,31 +23,20 @@
 (define-cat-function d65-to-c
   +illum-d65+ +illum-c+ :cat +bradford+)
 
-
-;; FIXME: Below is a (not so good) workaround for optimization.
+;; FIXME: Below are (not so good) workaround for optimization.
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *most-positive-fixnum-bit-length* #.(floor (log most-positive-fixnum 2))))
+  (defparameter *bit-length-of-most-positive-fixnum*
+    (floor (log most-positive-fixnum 2)))
+  (defparameter *most-positive-non-large-double-float*
+    #+(and sbcl 64-bit) (float (expt 2 (- *bit-length-of-most-positive-fixnum* 1)) 1d0)
+    #-(and sbcl 64-bit) most-positive-double-float))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (declaim (double-float *maximum-chroma*))
-  (defparameter *maximum-chroma*
-    #+(and sbcl 64-bit) #.(float (expt 2 (- *most-positive-fixnum-bit-length* 1)) 1d0)
-    #-(and sbcl 64-bit)  most-positive-double-float
-    "The largest chroma that the Munsell converters accepts. It is in
-    some cases less than MOST-POSITIVE-DOUBLE-FLOAT because of
-    efficiency: e.g. in SBCL (64-bit) it is desirable that a float F
-    fulfills (typep (round F) '(SIGNED-BYTE 64))"))
-
-
-(define-colorspace mhvc (hue40 value chroma)
-  :arg-types (real real real)
-  :return-types ((double-float 0d0 40d0) double-float (double-float 0d0 #.*maximum-chroma*))
-  :documentation "Three-number specification of Munsell color. HUE40 is in the circle group R/40Z. The nominal range of VALUE is [0, 10].")
-
-(define-colorspace munsell (munsellspec)
-  :arg-types (string)
-  :return-types (string)
-  :documentation "Standard string specification of Munsell color.")
+(deftype non-negative-non-large-double-float ()
+  "The double-float that the Munsell converters accepts. It is in some
+cases less than MOST-POSITIVE-DOUBLE-FLOAT because of efficiency:
+e.g. on SBCL (64-bit) it is desirable that a float F
+fulfills (TYPEP (ROUND F) '(SIGNED-BYTE 64))"
+  `(double-float 0d0 ,*most-positive-non-large-double-float*))
 
 (declaim (ftype (function * (integer 0 50)) max-chroma-in-mrd))
 (defun max-chroma-in-mrd (hue40 value &key (use-dark t))
@@ -81,14 +80,6 @@ clamping even if V is outside the interval [0, 10]."
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
   (- (* 116d0 (dufy/core::function-f (munsell-value-to-y v))) 16d0))
 
-(defun munsell-value-to-y-from-mrd (v)
-  "For development. Returns the Y (multiplied by 0.975) in the Munsell
-Renotation Data for a given V. (In dufy, the formula in the ASTM is
-used instead of this value. See MUNSELL-VALUE-TO-Y.)"
-  (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
-            0.975d0)
-         0d0 1d0))
-
 (declaim (inline y-to-munsell-value))
 (defun y-to-munsell-value (y)
   "Interpolates the inversion table of MUNSELL-VALUE-TO-Y linearly,
@@ -105,18 +96,24 @@ smaller than 1e-5."
           (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
              (* r (aref y-to-munsell-value-arr y2)))))))
 
-(defun test-value-to-y (&optional (num 100000000))
-  "For devel. Evaluates the error of Y-TO-MUNSELL-VALUE."
+(defun evaluate-error-of-y-to-munsell-value (&optional (num 100000000))
+  "For devel. Returns the maximal error and the corresponding Y."
   (declare (optimize (speed 3) (safety 1))
            (fixnum num))
   (let ((max-error 0d0)
         (worst-y 0d0))
-    (dotimes (n num (values max-error worst-y))
+    (dotimes (n num)
       (let* ((y (random 1d0))
              (delta (abs (- (munsell-value-to-y (y-to-munsell-value y)) y))))
         (when (>= delta max-error)
           (setf worst-y y
-                max-error delta))))))
+                max-error delta))))
+    (values max-error worst-y)))
+
+(declaim (inline lstar-to-munsell-value))
+(defun lstar-to-munsell-value (lstar)
+  (declare (optimize (speed 3) (safety 1)))
+  (y-to-munsell-value (lstar-to-y (float lstar 1d0))))
 
 (defun qrgb-to-munsell-value (r g b &optional (rgbspace +srgb+))
   "For devel."
@@ -131,7 +128,7 @@ smaller than 1e-5."
            :accessor cond-chroma))
   (:report (lambda (condition stream)
              (format stream "Value and chroma must be within [0, 10] and [0, ~A), respectively: (V C) = (~A ~A)"
-                     *maximum-chroma*
+                     *most-positive-non-large-double-float*
                      (cond-value condition)
                      (cond-chroma condition)))))
 
@@ -145,7 +142,7 @@ smaller than 1e-5."
   "Checks if MHVC values are out of range."
   (declare (ignore hue40))
   (or (< value 0) (> value 10)
-      (< chroma 0) (> chroma *maximum-chroma*)))
+      (< chroma 0) (> chroma *most-positive-non-large-double-float*)))
 
 (define-condition munsellspec-parse-error (parse-error)
   ((spec :initarg :spec
@@ -214,3 +211,20 @@ However, the capital letters and  '/' are reserved:
 
 (defun munsell-out-of-mrd-p (munsellspec)
   (multiple-value-call #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
+
+;; Below are converters between Munsell HVC and corresponding
+;; cartesian coordinates. (Used only internally.)
+(declaim (inline cartesian-to-mhvc))
+(defun cartesian-to-mhvc (x y value)
+  (values (* (atan y x) #.(/ 40 TWO-PI))
+          value
+          ;; A unit value is equivalent to two units chroma.
+          (* 2 (sqrt (+ (* x x) (* y y))))))
+
+(declaim (inline mhvc-to-cartesian))
+(defun mhvc-to-cartesian (hue40 value chroma)
+  (let ((rad (* hue40 #.(/ TWO-PI 40)))
+        (chroma/2 (/ chroma 2)))
+    (values (* chroma/2 (cos rad))
+            (* chroma/2 (sin rad))
+            value)))

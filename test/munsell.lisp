@@ -22,13 +22,21 @@ element of LIST is regarded as followed by the first element."
                                  (loop for hue40 from 0 below 40
                                        collect (nth-value 2 (mhvc-to-lchab-illum-c hue40 value chroma))))))))
 
+(defun munsell-value-to-y-from-mrd (v)
+  "Returns the Y (multiplied by 0.975) in the Munsell Renotation Data
+for a given V. (In dufy, the formula in the ASTM is used instead of
+this value.)"
+  (clamp (* (aref (vector 0d0 0.0121d0 0.03126d0 0.0655d0 0.120d0 0.1977d0 0.3003d0 0.4306d0 0.591d0 0.7866d0 1.0257d0) v)
+            0.975d0)
+         0d0 1d0))
+
 (test munsell-value-to-y
   (is (nearly= 1d-10 1 (munsell-value-to-y 10)))
   (is (nearly= 1d-10 0 (munsell-value-to-y 0)))
   (dotimes (v 10)
     (is (nearly= 5d-3 ; The error at V = 6 is larger than 1d-4.
                  (munsell-value-to-y v)
-                 (dufy/munsell::munsell-value-to-y-from-mrd v)))))
+                 (munsell-value-to-y-from-mrd v)))))
 
 (test y-to-munsell-value
   (is (nearly= 1d-10 10 (y-to-munsell-value 1)))
