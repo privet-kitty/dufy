@@ -216,7 +216,7 @@ However, the capital letters and  '/' are reserved:
 ;; cartesian coordinates. (Used only internally.)
 (declaim (inline cartesian-to-mhvc))
 (defun cartesian-to-mhvc (x y value)
-  (values (* (atan y x) #.(/ 40 TWO-PI))
+  (values (mod (* (atan y x) #.(/ 40 TWO-PI)) 40d0)
           value
           ;; A unit value is equivalent to two units chroma.
           (* 2 (sqrt (+ (* x x) (* y y))))))

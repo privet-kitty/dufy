@@ -213,14 +213,6 @@ boundary in the MRD."
 ;;; accurate HVC.
 ;;;
 
-(defun rough-lchab-to-mhvc (lstar cstarab hab)
-  "For devel. Does rough conversion from LCHab to munsell HVC"
-  (declare (optimize (speed 3) (safety 0))
-           (double-float lstar cstarab hab))
-  (values (* hab #.(float 40/360 1d0))
-          (lstar-to-munsell-value lstar)
-          (* cstarab #.(/ 5.5d0))))
-
 (declaim (ftype (function * (values (double-float 0d0 40d0) double-float double-float &optional))
                 lchab-to-mhvc-all-integer-case
                 lchab-to-mhvc-l-c-integer-case
@@ -334,7 +326,7 @@ boundary in the MRD."
           (cstarab/20 (clamp (* cstarab #.(float 1/20 1d0))
                              0d0
                              *most-positive-non-large-double-float*))
-          (hab/9 (mod (* hab #.(float 1/9 1d0)) 40d0)))
+          (hab/9 (mod (* hab #.(float 40/360 1d0)) 40d0)))
       (lchab-to-mhvc-general-case lstar/10 cstarab/20 hab/9))))
 
 (declaim (inline circular-delta))
@@ -358,21 +350,21 @@ boundary in the MRD."
   (declare (double-float lstar cstarab hab factor threshold)
            (fixnum max-iteration))
   "Illuminant C."
-  (let ((tmp-hue40 init-hue40)
-        (v (lstar-to-munsell-value lstar))
-        (tmp-chroma init-chroma))
-    (declare (double-float tmp-hue40 tmp-chroma v))
-    (if (or (<= v threshold) (<= init-chroma threshold))
-        (values init-hue40 v init-chroma)
+  (let ((hue40 init-hue40)
+        (value (lstar-to-munsell-value lstar))
+        (chroma init-chroma))
+    (declare (double-float hue40 chroma value))
+    (if (or (<= value threshold) (<= init-chroma threshold))
+        (values init-hue40 value init-chroma)
         (dotimes (i max-iteration
                     (ecase if-reach-max
                       (:error
                        (error (make-condition 'large-approximation-error
                                               :message "INVERT-MHVC-TO-LCHAB reached MAX-ITERATION without achieving sufficient accuracy.")))
                       (:return40 (values 40d0 40d0 40d0))
-                      (:raw (values (mod tmp-hue40 40d0) v tmp-chroma))))
+                      (:raw (values (mod hue40 40d0) value chroma))))
           (multiple-value-bind (_ tmp-cstarab tmp-hab)
-              (mhvc-to-lchab-illum-c tmp-hue40 v tmp-chroma)
+              (mhvc-to-lchab-illum-c hue40 value chroma)
             (declare (ignore _))
             (let* ((delta-cstarab (- cstarab tmp-cstarab))
                    (delta-hab (circular-delta hab tmp-hab))
@@ -381,11 +373,9 @@ boundary in the MRD."
               (if (and (<= (abs delta-hue40) threshold)
                        (<= (abs delta-chroma) threshold))
                   (return-from invert-mhvc-to-lchab
-                    (values (mod tmp-hue40 40d0) v tmp-chroma))
-                  (setf tmp-hue40 (+ tmp-hue40
-                                     (* factor delta-hue40))
-                        tmp-chroma (max 0d0 (+ tmp-chroma
-                                               (* factor delta-chroma)))))))))))
+                    (values (mod hue40 40d0) value chroma))
+                  (setf hue40 (+ hue40 (* factor delta-hue40))
+                        chroma (max 0d0 (+ chroma (* factor delta-chroma)))))))))))
 
 
 (define-primary-converter (lchab mhvc :name lchab-to-mhvc-illum-c)
@@ -465,6 +455,16 @@ D65 to illuminant C."
     :digits digits))
 
 
+;;;
+;;; For development
+;;;
+
+(defun rough-lchab-to-mhvc (lstar cstarab hab)
+  "For devel. Does rough conversion from LCHab to munsell HVC"
+  (with-ensuring-type double-float (lstar cstarab hab)
+    (values (* hab #.(float 40/360 1d0))
+            (lstar-to-munsell-value lstar)
+            (* cstarab #.(/ 5.5d0)))))
 
 (defun test-inverter ()
   "For development."
@@ -513,20 +513,83 @@ D65 to illuminant C."
 ;; LCH = 90.25015693115249d0 194.95626408656423d0 115.6958104971207d0
 ;; in ProPhoto space, 16-bit
 
-(defun test-inverter3 (&optional (rgbspace +srgb+))
-  "For development."
-  (declare (optimize (speed 3) (safety 1)))
-  (let ((sum 0))
-    (dotimes (qr 256)
-      (print qr)
-      (dotimes (qg 256)
-        (dotimes (qb 256)
-          (let ((result (multiple-value-call #'xyz-to-mhvc 
-                          (qrgb-to-xyz qr qg qb :rgbspace rgbspace)
-                          :if-reach-max :return40
-                          :max-iteration 200
-                          :threshold 1.0d-3)))
-            (when (= result 40d0)
-              (incf sum)
-              (format t "(~a ~a ~a)~%" qr qg qb))))))
-    (float (/ sum (* 256 256 256)) 1d0)))
+(extend-functional dufy/core::deltaeab lchab)
+(defun test-inverter3 ()
+  (loop for hue40 from 0 below 40
+        with max-chroma = 0d0
+        with worst-chroma-at = '(0d0 0d0 0d0)
+        do (loop for value in '(0.2 0.4 0.6 0.8 1 2 3 4 5 6 7 8 9 10)
+                 do (loop for chroma from 0 to 50
+                          do (multiple-value-bind (lstar cstarab hab)
+                                 (mhvc-to-lchab-illum-c hue40 value chroma)
+                               (let ((delta-chroma (abs (- chroma (nth-value 2 (predict-lchab-to-mhvc lstar cstarab hab))))))
+                                 (when (> delta-chroma max-chroma)
+                                   (setf max-chroma delta-chroma
+                                         worst-chroma-at (list hue40 value chroma)))))))
+        finally (return (values max-chroma worst-chroma-at))))
+
+(defun invert-mhvc-to-lchab-for-test (lstar cstarab hab init-hue40 init-chroma &key (max-iteration 200) (factor 0.5d0) (threshold 1d-6))
+  (declare (double-float lstar cstarab hab factor threshold)
+           (fixnum max-iteration))
+  "Illuminant C."
+  (let ((hue40 init-hue40)
+        (value (lstar-to-munsell-value lstar))
+        (chroma init-chroma))
+    (declare (double-float hue40 chroma value))
+    (if (or (<= value threshold) (<= init-chroma threshold))
+        (values init-hue40 value init-chroma)
+        (dotimes (i max-iteration
+                    (error (make-condition 'large-approximation-error)))
+          (multiple-value-bind (_ tmp-cstarab tmp-hab)
+              (mhvc-to-lchab-illum-c hue40 value chroma)
+            (declare (ignore _))
+            (let* ((delta-cstarab (- cstarab tmp-cstarab))
+                   (delta-hab (circular-delta hab tmp-hab))
+                   (delta-hue40 (* delta-hab #.(float 40/360 1d0)))
+                   (delta-chroma (* delta-cstarab #.(/ 5.5d0))))
+              (if (and (<= (abs delta-hue40) threshold)
+                       (<= (abs delta-chroma) threshold))
+                  (return (values (list (mod hue40 40d0) value chroma)
+                                  i))
+                  (setf hue40 (+ hue40 (* factor delta-hue40))
+                        chroma (max 0d0 (+ chroma (* factor delta-chroma)))))))))))
+
+(defun evaluate-lchab-to-mhvc ()
+  (let* ((res
+          (loop for hue40 from 0 below 40
+                append
+                (loop for value in '(1 2 3 4 5 6 7 8 9 10)
+                      append
+                      (loop for chroma from 2 to 50 by 2
+                            collect
+                            (multiple-value-bind (lstar cstarab hab)
+                                (mhvc-to-lchab-illum-c hue40 value chroma)
+                              (multiple-value-bind (bad-h bad-v bad-c)
+                                  (rough-lchab-to-mhvc lstar cstarab hab)
+                                (multiple-value-bind (good-h good-v good-c)
+                                    (predict-lchab-to-mhvc lstar cstarab hab)
+                                  (let ((count1 (nth-value 1
+                                                           (invert-mhvc-to-lchab-for-test
+                                                            lstar cstarab hab bad-h bad-c
+                                                            :factor 0.2d0
+                                                            :max-iteration 30000)))
+                                        (count2 (nth-value 1
+                                                           (invert-mhvc-to-lchab-for-test
+                                                            lstar cstarab hab good-h good-c
+                                                            :factor 0.2d0
+                                                            :max-iteration 30000))))
+                                    (list count1 count2)))))))))
+         (res1 (mapcar #'first res))
+         (res2 (mapcar #'second res)))
+    (format t "mean iteration (rough): ~A~%"
+            (float (alexandria:mean res1)))
+    (format t "mean iteration (predict): ~A~%"
+            (float (alexandria:mean res2)))
+    (format t "median iteration (rough): ~A~%"
+            (alexandria:median res1))
+    (format t "median iteration (predict): ~A~%"
+            (alexandria:median res2))
+    (format t "max iteration (rough): ~A~%"
+            (apply #'max res1))
+    (format t "max iteration (predict): ~A~%"
+            (apply #'max res2))))
