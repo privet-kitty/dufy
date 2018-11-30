@@ -1,4 +1,14 @@
-(in-package :dufy/internal)
+(uiop:define-package :dufy/internal/matrix
+    (:use :cl :dufy/internal/utilities)
+  (:export #:matrix33
+           #:+identity-matrix+
+           #:+empty-matrix+
+           #:invert-matrix
+           #:multiply-mat-vec
+           #:multiply-mat-mat
+           #:multiply-matrices))
+
+(in-package :dufy/internal/matrix)
 
 ;;;
 ;;; Matrix operations

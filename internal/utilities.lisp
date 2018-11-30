@@ -2,7 +2,20 @@
 ;;; Miscellaneous definitions, functions and macros
 ;;;
 
-(in-package :dufy/internal)
+(uiop:define-package :dufy/internal/utilities
+    (:use :cl :alexandria)
+  (:export #:*dat-dir-path*
+           #:print-make-array
+           #:time-after-gc
+           #:internal-real-time-after-gc
+           #:time-median
+           #:call-with-profiling
+           #:with-profiling
+           #:with-ensuring-type
+           #:dotimes-unroll
+           #:tuple))
+
+(in-package :dufy/internal/utilities)
 
 ;;
 ;; Utilities for preprocessing of data file

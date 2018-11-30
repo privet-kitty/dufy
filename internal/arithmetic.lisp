@@ -1,4 +1,20 @@
-(in-package :dufy/internal)
+(uiop:define-package :dufy/internal/arithmetic
+    (:use :cl :alexandria)
+  (:export #:TWO-PI
+           #:+TWO-PI/360+
+           #:+360/TWO-PI+
+           #:nearly=
+           #:nearly<=
+           #:nearly-equal
+           #:circular-nearer
+           #:circular-clamp
+           #:circular-lerp-loose
+           #:circular-lerp
+           #:circular-member
+           #:square
+           #:fast-expt))
+
+(in-package :dufy/internal/arithmetic)
 
 ;;
 ;; Constants
