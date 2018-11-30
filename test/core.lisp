@@ -1,13 +1,11 @@
-(in-package :cl-user)
+(uiop:define-package :dufy/test/core
+    (:use :cl :dufy/core/* :dufy/internal/* :fiveam :alexandria :cl-csv :parse-float)
+  (:export #:*xyz-set*))
 
-(defpackage :dufy/test
-  (:use #:cl #:fiveam #:dufy #:dufy/internal #:alexandria #:cl-csv #:parse-float)
-  (:export #:dufy-suite))
+(in-package :dufy/test/core)
 
-(in-package :dufy/test)
-
-(def-suite dufy-suite)
-(in-suite dufy-suite)
+(def-suite :dufy-suite)
+(in-suite :dufy-suite)
 
 ;;;
 ;;; Test Data

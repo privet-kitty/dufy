@@ -2,9 +2,10 @@
 ;;; Test for dufy/munsell
 ;;;
 
-(in-package :dufy/test)
+(uiop:define-package :dufy/core/munsell
+  (:use :cl :dufy/munsell/* :dufy/internal/* :dufy/test/core))
 
-(def-suite munsell-suite :in dufy-suite)
+(def-suite munsell-suite :in :dufy-suite)
 (in-suite munsell-suite)
 
 (defun ordered-in-circle-group-p (list &optional (perimeter 360d0))
