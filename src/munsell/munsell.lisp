@@ -454,6 +454,10 @@ D65 to illuminant C."
                  :threshold threshold)
     :digits digits))
 
+;;;
+;;; For development
+;;;
+
 (defun calc-isochroma-ovoid-integer-case (value chroma/2)
   "Value is integer."
   (let ((ovoid (make-array '(40 2) :element-type 'double-float))) ; (C*ab hab)
