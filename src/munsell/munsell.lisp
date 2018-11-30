@@ -453,3 +453,32 @@ D65 to illuminant C."
                  :factor factor
                  :threshold threshold)
     :digits digits))
+
+(defun calc-isochroma-ovoid-integer-case (value chroma/2)
+  "Value is integer."
+  (let ((ovoid (make-array '(40 2) :element-type 'double-float))) ; (C*ab hab)
+    (dotimes (hue40 40 ovoid)
+      (setf (aref ovoid hue40 0) (aref +mrd-table-ch+ hue40 value chroma/2 0))
+      (setf (aref ovoid hue40 1) (aref +mrd-table-ch+ hue40 value chroma/2 1)))))
+
+(defun calc-isochroma-ovoid (value chroma/2)
+  (declare (optimize (speed 3) (safety 1))
+           ((double-float 0d0 10d0) value)
+           (fixnum chroma/2))
+  (let* ((ovoid (make-array '(40 2) :element-type 'double-float))
+         (value1 (floor value))
+         (value2 (ceiling value))
+         (r (- value value1)))
+    (declare ((double-float 0d0 1d0) r))
+    (if (= value1 value2)
+        (calc-isochroma-ovoid-integer-case value1 chroma/2)
+        (dotimes (hue40 40 ovoid)
+          (setf (aref ovoid hue40 0)
+                (lerp r
+                      (aref +mrd-table-ch+ hue40 value1 chroma/2 0)
+                      (aref +mrd-table-ch+ hue40 value2 chroma/2 0)))
+          (setf (aref ovoid hue40 1)
+                (circular-lerp r
+                               (aref +mrd-table-ch+ hue40 value1 chroma/2 1)
+                               (aref +mrd-table-ch+ hue40 value2 chroma/2 1)
+                               360d0))))))

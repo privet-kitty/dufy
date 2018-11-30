@@ -43,7 +43,8 @@ fulfills (TYPEP (ROUND F) '(SIGNED-BYTE 64))"
   (declare (optimize (speed 3) (safety 1)))
   "Returns the largest chroma in the Munsell Renotation Data (all.dat)
 for a given hue and value. If you want to ignore the data for value =
-0.2, 0.4, 0.6, or 0.8, give NIL to USE-DARK."
+0.2, 0.4, 0.6, or 0.8, give NIL to USE-DARK(, though it is maybe only
+for development). "
   (with-ensuring-type double-float (hue40 value)
     (let* ((hue (mod hue40 40d0))
            (hue1 (floor hue))
