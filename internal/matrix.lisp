@@ -1,5 +1,5 @@
 (uiop:define-package :dufy/internal/matrix
-    (:use :cl :dufy/internal/utilities)
+  (:use :cl :dufy/internal/utilities)
   (:export #:matrix33
            #:+identity-matrix+
            #:+empty-matrix+
@@ -21,7 +21,7 @@
 
 (defparameter +identity-matrix+
   (make-array '(3 3) :element-type 'double-float
-              :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
+                     :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 
 (defparameter +empty-matrix+
   (make-array '(3 3) :element-type 'double-float)

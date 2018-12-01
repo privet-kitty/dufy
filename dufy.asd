@@ -7,6 +7,7 @@
   :license "MIT"
   :defsystem-depends-on ("wild-package-inferred-system")
   :class "wpis:wild-package-inferred-system"
+  :add-non-wild-nickname t
   :depends-on ("dufy/core/*" "dufy/munsell/*")
   :components ((:module "dat"
                 :components ((:static-file "ciede2000-test-data.csv"))))

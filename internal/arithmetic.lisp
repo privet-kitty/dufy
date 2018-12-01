@@ -1,5 +1,5 @@
 (uiop:define-package :dufy/internal/arithmetic
-    (:use :cl :alexandria)
+  (:use :cl :alexandria)
   (:export #:TWO-PI
            #:+TWO-PI/360+
            #:+360/TWO-PI+
@@ -23,7 +23,6 @@
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 (define-constant +TWO-PI/360+ (/ TWO-PI 360))
 (define-constant +360/TWO-PI+ (/ 360 TWO-PI))
-
 
 ;;
 ;; Approximate comparison operators
@@ -121,7 +120,6 @@ THETA2] in a circle group."
              (<= mnumber theta2))
         (or (<= mtheta1 mnumber)
             (<= mnumber theta2)))))
-
 
 ;;
 ;; Miscellaneous arithmetic

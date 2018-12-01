@@ -1,8 +1,8 @@
 (in-package :cl-user)
 
 (uiop:define-package #:dufy/core
-    (:nicknames #:dufy-core)
-    (:use #:cl #:alexandria #:dufy-internal)
+  (:nicknames #:dufy-core)
+  (:use #:cl #:alexandria #:dufy-internal)
   (:export
    ;; colorspace.lisp (not exported from the main package)
    #:colorspace

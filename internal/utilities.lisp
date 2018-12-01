@@ -3,7 +3,7 @@
 ;;;
 
 (uiop:define-package :dufy/internal/utilities
-    (:use :cl :alexandria)
+  (:use :cl :alexandria)
   (:export #:*dat-dir-path*
            #:print-make-array
            #:time-after-gc

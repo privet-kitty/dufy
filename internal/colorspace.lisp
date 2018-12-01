@@ -2,7 +2,19 @@
 ;;; Meta-definition of color space
 ;;;
 
-(in-package :dufy/core)
+(uiop:define-package :dufy/internal/colorspace
+  (:use :cl :alexandria)
+  (:export #:colorspace
+           #:define-colorspace
+           #:primary-converter
+           #:define-primary-converter
+           #:defconverter
+           #:defconverters
+           #:functional
+           #:define-functional
+           #:extend-functional))
+
+(in-package :dufy/internal/colorspace)
 
 (defstruct colorspace
   (name nil :type symbol)
@@ -16,7 +28,7 @@
   ;; adjacent color spaces linked with primary converters
   (neighbors nil :type list))
 
-(defparameter *colorspace-table* (make-hash-table))
+(defvar *colorspace-table* (make-hash-table))
 
 (defun colorspace= (space1 space2)
   (eql (colorspace-name space1)
@@ -68,10 +80,6 @@
   (format t "~%#<HASH-TABLE ~%")
   (maphash-values #'(lambda (val) (format t "~S~%" val)) hash)
   (format t ">"))
-(defun print-colorspace-table ()
-  (print-hash-table *colorspace-table*))
-
-
 
 ;;;
 ;;; Primary converter between two color spaces
@@ -88,7 +96,7 @@ by linking them."
   (allow-other-keys nil :type boolean) ; currently not used
   (aux-args nil :type list))
 
-(defparameter *primary-converter-table* (make-hash-table :test 'equal))
+(defvar *primary-converter-table* (make-hash-table :test 'equal))
 
 (defun gen-converter-name (from-colorspace to-colorspace)
   (intern (format nil "~A-TO-~A"
@@ -190,10 +198,6 @@ by linking them."
 (defun get-allow-other-keys (from-colorspace to-colorspace)
   (primary-converter-allow-other-keys (get-primary-converter from-colorspace to-colorspace)))
 
-(defun print-primary-converter-table ()
-  (print-hash-table *primary-converter-table*))
-
-
 (defmacro define-primary-converter ((from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace))) lambda-list &body body)
   "Defines FOO-TO-BAR function as a primary converter. Only &key
 arguments (without supplied-p-parameter) and &aux arguments are
@@ -213,7 +217,6 @@ allowed. "
        (add-primary-converter ',from-colorspace ',to-colorspace
                               ',lambda-list
                               :name ',name))))
-
 
 ;;;
 ;;; Code for linking primary converters
@@ -342,7 +345,7 @@ TO-COLORSPACE automatically with linking primary converters."
                           collect `(defconverter ,from-cs ,to-cs :exclude-args ,exclude-args)))))
 
 (defmacro let-converter (definitions &body body)
-  "local version of defconverter
+  "Is a local version of defconverter.
 
 definitions ::= (definition*)
 definition ::= (name from-colorspace to-colorspace &key exclude-args)
@@ -360,25 +363,23 @@ Example:
          ,(loop
             for def in definitions
             collect
-            (destructuring-bind (name from-colorspace to-colorspace &key (exclude-args nil)) def
-              (let* ((chain (find-converter-path from-colorspace to-colorspace))
-                     (global-args (gen-global-args chain :exclude-args exclude-args)))
-                (push name name-lst)
-                (push (get-return-types (lastcar chain)) return-types-lst)
-                `(,name ,global-args
-                        (declare (optimize (speed 3) (safety 1))
-                                 (ignorable ,@(collect-aux-arg-names chain))
-                                 ,@(mapcar #'(lambda (typ arg) (list typ arg))
-                                           (get-arg-types from-colorspace)
-                                           global-args))
-                        ,(expand-conversion-form chain :exclude-args exclude-args)))))
+               (destructuring-bind (name from-colorspace to-colorspace &key (exclude-args nil)) def
+                 (let* ((chain (find-converter-path from-colorspace to-colorspace))
+                        (global-args (gen-global-args chain :exclude-args exclude-args)))
+                   (push name name-lst)
+                   (push (get-return-types (lastcar chain)) return-types-lst)
+                   `(,name ,global-args
+                           (declare (optimize (speed 3) (safety 1))
+                                    (ignorable ,@(collect-aux-arg-names chain))
+                                    ,@(mapcar #'(lambda (typ arg) (list typ arg))
+                                              (get-arg-types from-colorspace)
+                                              global-args))
+                           ,(expand-conversion-form chain :exclude-args exclude-args)))))
        (declare #+dufy/inline(inline ,@name-lst)
                 ,@(loop for return-types in return-types-lst
                         for name in name-lst
                         collect `(ftype (function * (values ,@return-types &optional)) ,name)))
        ,@body)))
-
-
 
 ;;;
 ;;; Functional on color spaces
@@ -415,10 +416,7 @@ EXTEND-FUNCTIONAL."
                         :aux-args aux
                         :allow-other-keys allow-other-keys))))
 
-(defparameter *functional-table* (make-hash-table))
-
-(defun print-functional-table ()
-  (print-hash-table *functional-table*))
+(defvar *functional-table* (make-hash-table))
 
 (defun add-functional (fname colorspace lambda-list &key (term fname))
   "Registers a functional to *functional-table*"
