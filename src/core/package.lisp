@@ -48,7 +48,7 @@
    #:illuminant-z
    #:illuminant-spectrum
    #:illuminant-observer
-   #:illuminant-has-spectrum
+   #:illuminant-no-spd-p
    #:illuminant-xy
    #:make-illuminant
    #:+illum-a+ #:+illum-e+
@@ -139,16 +139,24 @@
    #:hsv
    #:hsv-to-rgb
    #:rgb-to-hsv
+   #:hsv-to-lrgb
+   #:lrgb-to-hsv
    #:hsv-to-qrgb
    #:qrgb-to-hsv
+   #:hsv-to-rgbpack
+   #:rgbpack-to-hsv
    #:hsv-to-xyz
    #:xyz-to-hsv
 
    #:hsl
    #:hsl-to-rgb
    #:rgb-to-hsl
+   #:hsl-to-lrgb
+   #:lrgb-to-hsl
    #:hsl-to-qrgb
    #:qrgb-to-hsl
+   #:hsl-to-rgbpack
+   #:rgbpack-to-hsl
    #:hsl-to-xyz
    #:xyz-to-hsl
 

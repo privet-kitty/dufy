@@ -58,12 +58,12 @@
 (defparameter *ciede2000-set-path* (asdf:component-pathname (asdf:find-component "dufy" '("dat" "ciede2000-test-data.csv"))))
 (defparameter *ciede2000-set*
   (loop for (row1 row2)
-          on (read-csv *ciede2000-set-path*
-                       :map-fn #'(lambda (row)
-                                   (mapcar (rcurry #'parse-float
-                                                   :junk-allowed t
-                                                   :type 'double-float)
-                                           row)))
+        on (read-csv *ciede2000-set-path*
+                     :map-fn #'(lambda (row)
+                                 (mapcar (rcurry #'parse-float
+                                                 :junk-allowed t
+                                                 :type 'double-float)
+                                         row)))
         by #'cddr
         collect (append (subseq row1 0 3) (subseq row2 0 3) (last row1))))
 
@@ -245,25 +245,25 @@
                      (hsv-to-rgb -1234 0 1.2545778685270217d0))
                     '(1.2545778685270217d0 1.2545778685270217d0 1.2545778685270217d0)))
   (loop for xyz-to-foo in '(xyz-to-hsv xyz-to-hsl)
-     for foo-to-xyz in '(hsv-to-xyz hsl-to-xyz) do
-       (dolist (xyz *xyz-set*)
-	 (is (nearly-equal 1d-4
-			   xyz
-			   (multiple-value-list
-			    (multiple-value-call foo-to-xyz
-			      (apply (rcurry xyz-to-foo :rgbspace +bg-srgb-16+)
-				     xyz)
-			      :rgbspace +bg-srgb-16+))))))
+        for foo-to-xyz in '(hsv-to-xyz hsl-to-xyz)
+        do (dolist (xyz *xyz-set*)
+	     (is (nearly-equal 1d-4
+			       xyz
+			       (multiple-value-list
+			        (multiple-value-call foo-to-xyz
+			          (apply (rcurry xyz-to-foo :rgbspace +bg-srgb-16+)
+				         xyz)
+			          :rgbspace +bg-srgb-16+))))))
   (loop for qrgb-to-foo in '(qrgb-to-hsv qrgb-to-hsl)
-     for foo-to-qrgb in '(hsv-to-qrgb hsl-to-qrgb) do
-       (dolist (rgbspace (list +bg-srgb-16+ +prophoto-16+))
-	 (dolist (qrgb *qrgb16-set*)
-	   (is (equal qrgb
-		      (multiple-value-list
-		       (multiple-value-call (rcurry foo-to-qrgb :clamp nil)
-			 (apply (rcurry qrgb-to-foo :rgbspace rgbspace)
-				qrgb)
-			 :rgbspace rgbspace))))))))
+        for foo-to-qrgb in '(hsv-to-qrgb hsl-to-qrgb)
+        do (dolist (rgbspace (list +bg-srgb-16+ +prophoto-16+))
+	     (dolist (qrgb *qrgb16-set*)
+	       (is (equal qrgb
+		          (multiple-value-list
+		           (multiple-value-call (rcurry foo-to-qrgb :clamp nil)
+			     (apply (rcurry qrgb-to-foo :rgbspace rgbspace)
+				    qrgb)
+			     :rgbspace rgbspace))))))))
 
 (test test-deltae
   ;; By Bruce Lindbloom's calculator
