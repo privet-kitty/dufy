@@ -1,17 +1,39 @@
 ;;;
-;;; LMS, chromatic adaptation
+;;; LMS and chromatic adaptation transformation
 ;;;
 
-(in-package :dufy/core)
+(uiop:define-package :dufy/core/cat
+  (:use :cl :dufy/internal/* :dufy/core/spectrum :dufy/core/illuminants-data :dufy/core/xyz :dufy/core/rgb)
+  (:export #:lms
+           #:cat
+           #:make-cat
+           #:cat-matrix
+           #:cat-inv-matrix
+           #:xyz-to-lms
+           #:lms-to-xyz
+           #:+bradford+
+           #:+xyz-scaling+
+           #:+von-kries+
+           #:+cmccat97+
+           #:+cmccat2000+
+           #:+cat97s-revised+
+           #:+cat02+
+
+           #:gen-cat-function
+           #:define-cat-function
+           #:gen-rgbspace-changer
+           #:copy-rgbspace))
+
+(in-package :dufy/core/cat)
 
 (defstruct (cat (:constructor %make-cat))
-  "Model of chromatic adaptation transformation. Currently only linear
-models are available."
+  "Expresses a model of chromatic adaptation transformation. Currently
+only linear models are available."
   (matrix +empty-matrix+ :type matrix33)
   (inv-matrix +empty-matrix+ :type matrix33))
 
 (defun make-cat (mat)
-  "Generates a (linear) CAT model by a 3*3 matrix."
+  "Generates a (linear) CAT model with a 3*3 matrix."
   (let ((mat-arr (make-array '(3 3)
                              :element-type 'double-float
                              :initial-contents mat)))
@@ -139,107 +161,40 @@ and TO-ILLUMINANT in XYZ space."
           (multiply-mat-mat (cat-inv-matrix cat)
                             matrix1))))))
 
-;; FIXME: Too complicated and not so general. Maybe we should limit
-;; the target only to XYZ space? Otherwise we need a more general
-;; auto-generation system of converters, which seems to me lots of
-;; pain and not much gain (at least for now).
 (declaim (ftype (function * (function * (values double-float double-float double-float &optional))) gen-cat-function))
-(defun gen-cat-function (from-illuminant to-illuminant &key (cat +bradford+) (target :xyz))
-  "Returns a chromatic adaptation function. An example for xyY spaces:
-> (funcall (gen-cat-function +illum-a+ +illum-e+ :target :xyy) 0.44757 0.40745 1)
-=> 0.3333333257806802d0
-0.33333331733957294d0
-1.0000000029690765d0 ; transformed white point
-
-TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB, or :LCHUV. If you want
-to choose RGB as target, you should use GEN-RGBSPACE-CHANGER instead.
-"
+(defun gen-cat-function (from-illuminant to-illuminant &key (cat +bradford+))
+  "Returns a chromatic adaptation function.
+ (funcall (gen-cat-function +illum-a+ +illum-e+) 0.9504d0 1.0d0 1.0889d0)
+=> 0.9999700272441295d0
+0.999998887365445d0
+0.9999997282885571d0 ; transformed white point"
   (declare (optimize (speed 3) (safety 1)))
-  (macrolet ((gen-lambda (args repr)
-               (let* ((term (symbol-name repr))
-                      (xyz-to-repr (intern (format nil "XYZ-TO-~A" term) :dufy/core))
-                      (repr-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy/core)))
-                 `#'(lambda ,args
-                      (with-ensuring-type double-float ,args
-                        (multiple-value-call #',xyz-to-repr
-                          (multiple-value-call #'multiply-mat-vec
-                            mat
-                            (,repr-to-xyz ,@args :illuminant from-illuminant))
-                          :illuminant to-illuminant))))))
-    (let ((mat (calc-cat-matrix from-illuminant to-illuminant cat)))
-      (ecase target
-        (:xyz
-         #'(lambda (x y z)
-             (with-ensuring-type double-float (x y z)
-               (multiply-mat-vec mat x y z))))
-        (:xyy
-         #'(lambda (small-x small-y y)
-             (with-ensuring-type double-float (small-x small-y y)
-               (multiple-value-call #'xyz-to-xyy
-                 (multiple-value-call #'multiply-mat-vec
-                   mat
-                   (xyy-to-xyz small-x small-y y))))))
-        (:lab (gen-lambda (lstar astar bstar) :lab))
-        (:lchab (gen-lambda (lstar cstarab hab) :lchab))
-        (:luv (gen-lambda (lstar ustar vstar) :luv))
-        (:lchuv (gen-lambda (lstar cstaruv huv) :lchuv))))))
+  (let ((mat (calc-cat-matrix from-illuminant to-illuminant cat)))
+    #'(lambda (x y z)
+        (with-ensuring-type double-float (x y z)
+          (multiply-mat-vec mat x y z)))))
 
-;; FIXME: Same as GEN-CAT-FUNCTION.
-(defmacro define-cat-function (name from-illuminant to-illuminant &key (cat '+bradford+) (target :xyz))
+(defmacro define-cat-function (name from-illuminant to-illuminant &key (cat '+bradford+))
   "DEFINE-macro of GEN-CAT-FUNCTION.
- (define-cat-function d65-to-e +illum-d65+ +illum-e+ :target :xyz)
+ (define-cat-function d65-to-e +illum-d65+ +illum-e+)
  (d65-to-e 0.9504d0 1.0d0 1.0889d0)
 ;; => 0.9999700272441295d0
 ;; 0.999998887365445d0
-;; 0.9999997282885571d0
-
-TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
-  (macrolet ((def-converter (args target)
-               (let* ((term (symbol-name target))
-                      (xyz-to-target (intern (format nil "XYZ-TO-~A" term) :dufy/core))
-                      (target-to-xyz (intern (format nil "~A-TO-XYZ" term) :dufy/core)))
-                 ``(defun ,,'name ,',args
-                     (declare (optimize (speed 3) (safety 1)))
-                     (let ((mat (load-time-value
-                                 (calc-cat-matrix ,,'from-illuminant
-                                                  ,,'to-illuminant
-                                                  ,,'cat)
-                                 t)))
-                       (with-ensuring-type double-float ,',args
-                         (multiple-value-call #',',xyz-to-target
-                           (multiple-value-call #'multiply-mat-vec
-                             mat
-                             (,',target-to-xyz ,@',args :illuminant ,,'from-illuminant))
-                           :illuminant ,,'to-illuminant)))))))
-    (unless (and (symbolp from-illuminant)
-                 (symbolp to-illuminant))
-      (error "FROM-ILLUMINANT and TO-ILLUMINANT must be symbols"))
-    `(progn
-       (declaim (inline ,name)
-                (ftype (function * (values double-float double-float double-float &optional))
-                       ,name))
-       ,(ecase target
-          (:xyz `(defun ,name (x y z)
-                   (declare (optimize (speed 3) (safety 1)))
-                   (let ((mat (load-time-value
-                               (calc-cat-matrix ,from-illuminant ,to-illuminant ,cat)
-                               t)))
-                     (with-ensuring-type double-float (x y z)
-                       (multiply-mat-vec mat x y z)))))
-          (:xyy `(defun ,name (small-x small-y y)
-                   (declare (optimize (speed 3) (safety 1)))
-                   (let ((mat (load-time-value
-                               (calc-cat-matrix ,from-illuminant ,to-illuminant ,cat)
-                               t)))
-                     (with-ensuring-type double-float (small-x small-y y)
-                       (multiple-value-call #'xyz-to-xyy
-                         (multiple-value-call #'multiply-mat-vec
-                           mat
-                           (xyy-to-xyz small-x small-y y)))))))
-          (:lab (def-converter (lstar astar bstar) :lab))
-          (:lchab (def-converter (lstar cstarab hab) :lchab))
-          (:luv (def-converter (lstar ustar vstar) :luv))
-          (:lchuv (def-converter (lstar cstaruv huv) :lchuv))))))
+;; 0.9999997282885571d0"
+  (unless (and (symbolp from-illuminant)
+               (symbolp to-illuminant))
+    (error "FROM-ILLUMINANT and TO-ILLUMINANT must be symbols"))
+  `(progn
+     (declaim (inline ,name)
+              (ftype (function * (values double-float double-float double-float &optional))
+                     ,name))
+     (defun ,name (x y z)
+       (declare (optimize (speed 3) (safety 1)))
+       (let ((mat (load-time-value
+                   (calc-cat-matrix ,from-illuminant ,to-illuminant ,cat)
+                   t)))
+         (with-ensuring-type double-float (x y z)
+           (multiply-mat-vec mat x y z))))))
 
 (declaim (inline calc-cat-matrix-for-lrgb))
 (defun calc-cat-matrix-for-lrgb (from-rgbspace to-rgbspace &optional (cat +bradford+))
@@ -259,7 +214,7 @@ TARGET can be :XYZ, :XYY, :LAB, :LUV, :LCHAB or :LCHUV."
 ;; 0.2344342037422755d0
 ;; change from sRGB to Adobe RGB.
 
-TARGET can be :LRGB, :RGB, :QRGB or :RGBPACK.
+TARGET ::= :LRGB | :RGB | :QRGB | :RGBPACK
 
 Note about clamping:
 LRGB case: no clamping;

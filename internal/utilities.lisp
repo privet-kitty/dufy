@@ -13,7 +13,8 @@
            #:with-profiling
            #:with-ensuring-type
            #:dotimes-unroll
-           #:tuple))
+           #:tuple
+           #:nlet))
 
 (in-package :dufy/internal/utilities)
 
@@ -142,3 +143,7 @@ C))); the type TUPLE (or (TUPLE)) is equivalent to the type NULL."
               rest
               :from-end t
               :initial-value nil)))
+
+(defmacro nlet (name args &body body)
+  `(labels ((,name ,(mapcar #'car args) ,@body))
+     (,name ,@(mapcar #'cadr args))))

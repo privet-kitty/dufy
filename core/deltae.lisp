@@ -2,8 +2,15 @@
 ;;; Several color difference functions
 ;;;
 
-(in-package :dufy/core)
+(uiop:define-package :dufy/core/deltae
+  (:use :cl :dufy/internal/* :dufy/core/xyz :dufy/core/rgb :dufy/core/lab-and-luv))
 
+(in-package :dufy/core/deltae)
+
+;; Export the function names of delta-E converters automatically
+(dolist (colorspace '(lab qrgb xyz))
+  (dolist (name '(#:deltaeab #:deltae94 #:deltae00 #:deltaecmc))
+    (export (intern (format nil "~:@(~A-~A~)" colorspace name)))))
 
 (define-functional (lab-deltaeab lab :term deltaeab) (l1 a1 b1 l2 a2 b2)
   (declare (optimize (speed 3) (safety 1)))

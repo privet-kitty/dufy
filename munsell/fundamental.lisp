@@ -5,7 +5,27 @@
 ;;; development etc.
 ;;; 
 
-(in-package :dufy/munsell)
+(uiop:define-package :dufy/munsell/fundamental
+  (:use :cl :alexandria :cl-ppcre :dufy/internal/* :dufy/core/* :dufy/munsell/y-to-value-data :dufy/munsell/renotation-data)
+  (:export #:mhvc #:munsell
+           #:invalid-mhvc-error
+           #:munsellspec-parse-error
+           
+           #:*most-positive-non-large-double-float*
+           #:non-negative-non-large-double-float
+           #:max-chroma-in-mrd
+           #:mhvc-out-of-mrd-p
+           #:munsell-out-of-mrd-p
+           
+           #:munsell-value-to-y
+           #:y-to-munsell-value
+           #:munsell-value-to-lstar
+           #:lstar-to-munsell-value
+
+           #:munsell-to-mhvc
+           #:mhvc-to-munsell))
+
+(in-package :dufy/munsell/fundamental)
 
 (define-colorspace mhvc (hue40 value chroma)
   :arg-types (real real real)
@@ -79,7 +99,7 @@ clamping even if V is outside the interval [0, 10]."
          (ftype (function * (values double-float &optional)) munsell-value-to-lstar))
 (defun munsell-value-to-lstar (v)
   "Converts Munsell value to L*, whose nominal range is [0, 100]."
-  (- (* 116d0 (dufy/core::function-f (munsell-value-to-y v))) 16d0))
+  (- (* 116d0 (dufy/core/lab-and-luv::function-f (munsell-value-to-y v))) 16d0))
 
 (declaim (inline y-to-munsell-value))
 (defun y-to-munsell-value (y)
@@ -92,10 +112,10 @@ smaller than 1e-5."
          (y1 (floor y1000))
          (y2 (ceiling y1000)))
     (if (= y1 y2)
-        (aref y-to-munsell-value-arr y1)
+        (aref +y-to-munsell-value-table+ y1)
         (let ((r (- y1000 y1)))
-          (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
-             (* r (aref y-to-munsell-value-arr y2)))))))
+          (+ (* (- 1 r) (aref +y-to-munsell-value-table+ y1))
+             (* r (aref +y-to-munsell-value-table+ y2)))))))
 
 (defun evaluate-error-of-y-to-munsell-value (&optional (num 100000000))
   "For devel. Returns the maximal error and the corresponding Y."

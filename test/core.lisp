@@ -70,7 +70,7 @@
 ;;; Test Code
 ;;;
 
-(test test-circle-arithmetic
+(test circle-arithmetic
   (is (= 0 (circular-clamp 50 0 0)))
   (is (= -3 (circular-clamp -3 350 10 360)))
   (is (= 350 (circular-clamp -11 350 10 360)))
@@ -78,7 +78,7 @@
   ;; FIXME: Fails on Clozure CL due to a bug related to an inlined
   ;; function. See
   ;; https://github.com/Clozure/ccl/issues/166. Currently it is not a
-  ;; serious problem because CIRCULAR-LERP only takes (explicitly
+  ;; serious problem because CIRCULAR-LERP only receives (explicitly
   ;; coerced) DOUBLE-FLOATs.
   #-ccl (is (= 1 (circular-lerp 1 0.2 1))))
 

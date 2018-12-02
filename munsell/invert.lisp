@@ -1,217 +1,47 @@
-;; -*- coding: utf-8 -*-
-
-(in-package :dufy/munsell)
-
-;;;
-;;; Munsell-to- converters
-;;; The primary converter is MHVC-TO-LCHAB-ILLUM-C
-;;;
-
-(declaim (ftype (function * (values (double-float 0d0 360d0) double-float double-float &optional))
-                mhvc-to-lchab-all-integer-case
-                mhvc-to-lchab-value-chroma-integer-case
-                mhvc-to-lchab-value-integer-case
-                mhvc-to-lchab-general-case))
-
-;; These converters process a dark color (value < 1) separately
-;; because the values of the Munsell Renotation Data (all.dat) are not
-;; evenly distributed: [0, 0.2, 0.4, 0.6, 0.8, 1, 2, 3, ..., 10]. In
-;; the following functions, the actual value equals SCALED-VALUE/5 if
-;; DARK is true.
-
-;; HALF-CHROMA is a half of the actual chroma.
-
-(declaim (inline mhvc-to-lchab-all-integer-case))
-(defun mhvc-to-lchab-all-integer-case (hue40 scaled-value half-chroma &optional (dark nil))
-  "All integer case. There are no type checks: e.g. HUE40 must be in
-{0, 1, ...., 39}."
-  (declare (optimize (speed 3) (safety 0))
-           (fixnum hue40 scaled-value half-chroma))
-  (macrolet ((gen-body (arr-l arr-c-h)
-               `(if (<= half-chroma 25)
-                    (values (aref ,arr-l scaled-value)
-                            (aref ,arr-c-h hue40 scaled-value half-chroma 0)
-                            (aref ,arr-c-h hue40 scaled-value half-chroma 1))
-                    ;; If chroma > 50, the C*ab is linearly extrapolated.
-                    (let ((cstarab (aref ,arr-c-h hue40 scaled-value 25 0))
-                          (factor (* half-chroma #.(float 1/25 1d0))))
-                      (values (aref ,arr-l scaled-value)
-                              (* cstarab factor)
-                              (aref ,arr-c-h hue40 scaled-value 25 1))))))
-    (if dark
-        (gen-body +mrd-table-l-dark+ +mrd-table-ch-dark+)
-        (gen-body +mrd-table-l+ +mrd-table-ch+))))
-
-(declaim (inline mhvc-to-lchab-value-chroma-integer-case))
-(defun mhvc-to-lchab-value-chroma-integer-case (hue40 scaled-value half-chroma &optional (dark nil))
-  (declare (optimize (speed 3) (safety 0))
-           ((double-float 0d0 40d0) hue40)
-           (fixnum scaled-value half-chroma))
-  (let ((hue1 (floor hue40))
-        (hue2 (mod (ceiling hue40) 40)))
-    (multiple-value-bind (lstar cstarab1 hab1)
-        (mhvc-to-lchab-all-integer-case hue1 scaled-value half-chroma dark)
-      (if (= hue1 hue2)
-          (values lstar cstarab1 hab1)
-          (multiple-value-bind (_ cstarab2 hab2)
-              (mhvc-to-lchab-all-integer-case hue2 scaled-value half-chroma dark)
-            (declare (ignore _)
-                     ((double-float 0d0 360d0) hab1 hab2))
-            (if (= hab1 hab2)
-                (values lstar cstarab1 hab1)
-                (let* ((hab (circular-lerp (- hue40 hue1) hab1 hab2 360d0))
-                       (cstarab (+ (* cstarab1 (/ (mod (- hab2 hab) 360d0)
-                                                  (mod (- hab2 hab1) 360d0)))
-                                   (* cstarab2 (/ (mod (- hab hab1) 360d0)
-                                                  (mod (- hab2 hab1) 360d0))))))
-                  (declare ((double-float 0d0 360d0) hab))
-                  (values lstar cstarab hab))))))))
-
-(defun mhvc-to-lchab-value-integer-case (hue40 scaled-value half-chroma &optional (dark nil))
-  (declare (optimize (speed 3) (safety 0))
-           ((double-float 0d0 40d0) hue40)
-           (non-negative-non-large-double-float half-chroma)
-           (fixnum scaled-value))
-  (let ((hchroma1 (floor half-chroma))
-        (hchroma2 (ceiling half-chroma)))
-    (if (= hchroma1 hchroma2)
-        (mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma1 dark)
-        (multiple-value-bind (lstar astar1 bstar1)
-            (multiple-value-call #'lchab-to-lab
-              (mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma1 dark))
-          (multiple-value-bind (_ astar2 bstar2)
-              (multiple-value-call #'lchab-to-lab
-                (mhvc-to-lchab-value-chroma-integer-case hue40 scaled-value hchroma2 dark))
-            (declare (ignore _)
-                     (double-float lstar astar1 bstar1 astar2 bstar2))
-            (let* ((astar (+ (* astar1 (- hchroma2 half-chroma))
-                             (* astar2 (- half-chroma hchroma1))))
-                   (bstar (+ (* bstar1 (- hchroma2 half-chroma))
-                             (* bstar2 (- half-chroma hchroma1)))))
-              (lab-to-lchab lstar astar bstar)))))))
-
-(defun mhvc-to-lchab-general-case (hue40 scaled-value half-chroma &optional (dark nil))
-  (declare (optimize (speed 3) (safety 0))
-           ((double-float 0d0 40d0) hue40 scaled-value)
-           (non-negative-non-large-double-float half-chroma))
-  (let ((true-value (if dark (* scaled-value 0.2d0) scaled-value)))
-    (let  ((scaled-val1 (floor scaled-value))
-           (scaled-val2 (ceiling scaled-value))
-           (lstar (munsell-value-to-lstar true-value)))
-      (if (= scaled-val1 scaled-val2)
-          (mhvc-to-lchab-value-integer-case hue40 scaled-val1 half-chroma dark)
-          ;; If the given color is so dark that it is out of MRD, we
-          ;; use the fact that the chroma and hue of LCh(ab)
-          ;; corresponds roughly to that of Munsell.
-          (if (zerop scaled-val1)
-              (multiple-value-bind (_ cstarab hab)
-                  (mhvc-to-lchab-value-integer-case hue40 1 half-chroma dark)
-                (declare (ignore _))
-                (values lstar cstarab hab))
-              (multiple-value-bind (lstar1 astar1 bstar1)
-                  (multiple-value-call #'lchab-to-lab
-                    (mhvc-to-lchab-value-integer-case hue40 scaled-val1 half-chroma dark))
-                (multiple-value-bind (lstar2 astar2 bstar2)
-                    (multiple-value-call #'lchab-to-lab
-                      (mhvc-to-lchab-value-integer-case hue40 scaled-val2 half-chroma dark))
-                  (declare (double-float lstar1 astar1 bstar1
-                                         lstar2 astar2 bstar2))
-                  (let ((astar (+ (* astar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
-                                  (* astar2 (/ (- lstar lstar1) (- lstar2 lstar1)))))
-                        (bstar (+ (* bstar1 (/ (- lstar2 lstar) (- lstar2 lstar1)))
-                                  (* bstar2 (/ (- lstar lstar1) (- lstar2 lstar1))))))
-                    (lab-to-lchab lstar astar bstar)))))))))
-
-(define-primary-converter (mhvc lchab :name mhvc-to-lchab-illum-c)
-    (hue40 value chroma &aux (illuminant +illum-c+))
-  (declare (optimize (speed 3) (safety 1))
-           (ignorable illuminant))
-  "Illuminant C."
-  (let ((hue40 (mod (float hue40 1d0) 40d0))
-        (value (clamp (float value 1d0) 0d0 10d0))
-        (chroma (clamp (float chroma 1d0) 0d0 *most-positive-non-large-double-float*)))
-    (if (>= value 1d0)
-        (mhvc-to-lchab-general-case hue40 value (* chroma 0.5d0) nil)
-        (mhvc-to-lchab-general-case hue40 (* value 5d0) (* chroma 0.5d0) t))))
-
-(defconverter mhvc xyz
-  :name mhvc-to-xyz-illum-c
-  :documentation "Illuminant C.")
-
-(declaim (inline mhvc-to-xyz)
-         (ftype (function * (values double-float double-float double-float &optional)) mhvc-to-xyz))
-(defun mhvc-to-xyz (hue40 value chroma)
-  "Illuminant D65.
-This converter involves the Bradford transformation from illuminant C
-to illuminant D65."
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'c-to-d65
-    (mhvc-to-xyz-illum-c (float hue40 1d0)
-                         (float value 1d0)
-                         (float chroma 1d0))))
-
-(declaim (inline mhvc-to-qrgb)
-         (ftype (function * (values fixnum fixnum fixnum &optional)) mhvc-to-qrgb))
-(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp t))
-  "Illuminant D65.
-The illuminant of RGBSPACE must also be D65."
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'xyz-to-qrgb
-    (mhvc-to-xyz hue40 value chroma)
-    :rgbspace rgbspace
-    :clamp clamp))
-
-(defconverter munsell lchab
-  :name munsell-to-lchab-illum-c
-  :documentation "Illuminant C.")
-
-(defconverter munsell xyz
-  :name munsell-to-xyz-illum-c
-  :documentation "Illuminant C.")
-
-(declaim (inline munsell-to-xyz)
-         (ftype (function * (values double-float double-float double-float &optional)) munsell-to-xyz))
-(defun munsell-to-xyz (munsellspec)
-  "Illuminant D65."
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'mhvc-to-xyz (munsell-to-mhvc munsellspec)))
-
-;; For development. Not exported.
-(defun mhvc-to-xyy (hue40 value chroma)
-  "Illuminant D65."
-  (multiple-value-call #'xyz-to-xyy (mhvc-to-xyz hue40 value chroma)))
-(defun munsell-to-xyy (munsellspec)
-  "Illuminant D65."
-  (multiple-value-call #'xyz-to-xyy (munsell-to-xyz munsellspec)))
-
-(defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (clamp t))
-  "Illuminant D65.
-The illuminant of RGBSPACE must also be D65."
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'xyz-to-qrgb
-    (munsell-to-xyz munsellspec)
-    :rgbspace rgbspace
-    :clamp clamp))
-
-(defun max-chroma-lchab (hue40 value &key (use-dark t))
-  "For devel. Returns the LCh(ab) value of the color on the max-chroma
-boundary in the MRD."
-  (mhvc-to-lchab-illum-c hue40
-                         value
-                         (max-chroma-in-mrd hue40 value :use-dark use-dark)))
-
-
 ;;;
 ;;; -to-Munsell converters
 ;;;
-;;; The primary converter is LCHAB-TO-MHVC-ILLUM-C. This function
-;;; calls PREDICT-LCHAB-TO-MHVC (that calls LCHAB-TO-MHVC-GENERAL-CASE
-;;; that calls LCHAB-TO-MHVC-L-INTEGER-CASE that calls
+;;; The primary converter is LCHAB-TO-MHVC-ILLUM-C.
+;;;
+;;; TODO: LCHAB-TO-MHVC-ILLUM-C should call PREDICT-LCHAB-TO-MHVC
+;;; (that calls LCHAB-TO-MHVC-GENERAL-CASE that calls
+;;; LCHAB-TO-MHVC-L-INTEGER-CASE that calls
 ;;; LCHAB-TO-MHVC-L-C-INTEGER-CASE that calls
 ;;; LCHAB-TO-MHVC-ALL-INTEGER-CASE) for the first approximation and
 ;;; passes the returned HVC to INVERT-MHVC-TO-LCHAB to compute a more
 ;;; accurate HVC.
 ;;;
+
+(uiop:define-package :dufy/munsell/invert
+  (:use :cl :alexandria :dufy/internal/* :dufy/core/* :dufy/munsell/fundamental
+   :dufy/munsell/renotation-data :dufy/munsell/inversed-renotation-data
+   :dufy/munsell/convert)
+  (:export #:large-approximation-error
+           #:lchab-to-mhvc-illum-c
+           #:lchab-to-munsell-illum-c
+           #:xyz-to-mhvc-illum-c
+           #:xyz-to-mhvc
+           #:xyz-to-munsell-illum-c
+           #:xyz-to-munsell))
+
+(in-package :dufy/munsell/invert)
+
+;; Below are converters between Munsell HVC and corresponding
+;; cartesian coordinates. (Used only internally.)
+(declaim (inline cartesian-to-mhvc))
+(defun cartesian-to-mhvc (x y value)
+  (values (mod (* (atan y x) #.(/ 40 TWO-PI)) 40d0)
+          value
+          ;; A unit value is equivalent to two units chroma.
+          (* 2 (sqrt (+ (* x x) (* y y))))))
+
+(declaim (inline mhvc-to-cartesian))
+(defun mhvc-to-cartesian (hue40 value chroma)
+  (let ((rad (* hue40 #.(/ TWO-PI 40)))
+        (chroma/2 (/ chroma 2)))
+    (values (* chroma/2 (cos rad))
+            (* chroma/2 (sin rad))
+            value)))
 
 (declaim (ftype (function * (values (double-float 0d0 40d0) double-float double-float &optional))
                 lchab-to-mhvc-all-integer-case
@@ -380,9 +210,6 @@ boundary in the MRD."
 
 (define-primary-converter (lchab mhvc :name lchab-to-mhvc-illum-c)
     (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6) &aux (illuminant +illum-c+))
-  (declare (optimize (speed 3) (safety 1))
-           (ignorable illuminant)
-           (fixnum max-iteration))
   "Is an inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
 algorithm, which is almost same as the one in \"An Open-Source
 Inversion Algorithm for the Munsell Renotation\" by Paul Centore,
@@ -405,6 +232,9 @@ MAX-ITERATION:
 :return40: Three 40d0s are returned.
 :raw: Just returns HVC as it is.
 "
+  (declare (optimize (speed 3) (safety 1))
+           (ignorable illuminant)
+           (fixnum max-iteration))
   (with-ensuring-type double-float (lstar cstarab hab factor threshold)
     (let ((init-hue40 (* hab #.(float 40/360 1d0)))
           (init-chroma (* cstarab #.(/ 5.5d0))))
@@ -422,6 +252,10 @@ MAX-ITERATION:
 (defconverter xyz mhvc
   :name xyz-to-mhvc-illum-c
   :documentation "Illuminant C.")
+
+;; The Bradford transformation from D65 to C
+(define-cat-function d65-to-c
+  +illum-d65+ +illum-c+ :cat +bradford+)
 
 (declaim (inline xyz-to-mhvc))
 (defun xyz-to-mhvc (x y z &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6))
@@ -453,36 +287,3 @@ D65 to illuminant C."
                  :factor factor
                  :threshold threshold)
     :digits digits))
-
-;;;
-;;; For development
-;;;
-
-(defun calc-isochroma-ovoid-integer-case (value chroma/2)
-  "Value is integer."
-  (let ((ovoid (make-array '(40 2) :element-type 'double-float))) ; (C*ab hab)
-    (dotimes (hue40 40 ovoid)
-      (setf (aref ovoid hue40 0) (aref +mrd-table-ch+ hue40 value chroma/2 0))
-      (setf (aref ovoid hue40 1) (aref +mrd-table-ch+ hue40 value chroma/2 1)))))
-
-(defun calc-isochroma-ovoid (value chroma/2)
-  (declare (optimize (speed 3) (safety 1))
-           ((double-float 0d0 10d0) value)
-           (fixnum chroma/2))
-  (let* ((ovoid (make-array '(40 2) :element-type 'double-float))
-         (value1 (floor value))
-         (value2 (ceiling value))
-         (r (- value value1)))
-    (declare ((double-float 0d0 1d0) r))
-    (if (= value1 value2)
-        (calc-isochroma-ovoid-integer-case value1 chroma/2)
-        (dotimes (hue40 40 ovoid)
-          (setf (aref ovoid hue40 0)
-                (lerp r
-                      (aref +mrd-table-ch+ hue40 value1 chroma/2 0)
-                      (aref +mrd-table-ch+ hue40 value2 chroma/2 0)))
-          (setf (aref ovoid hue40 1)
-                (circular-lerp r
-                               (aref +mrd-table-ch+ hue40 value1 chroma/2 1)
-                               (aref +mrd-table-ch+ hue40 value2 chroma/2 1)
-                               360d0))))))

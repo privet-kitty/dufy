@@ -1,4 +1,23 @@
-(in-package :dufy/core)
+(uiop:define-package :dufy/core/lab-and-luv
+  (:use :cl :dufy/internal/* :dufy/core/spectrum :dufy/core/illuminants-data :dufy/core/xyz)
+  (:export #:lab #:lchab
+           #:xyz-to-lab
+           #:lab-to-xyz
+           #:lstar-to-y
+           #:lab-to-lchab
+           #:lchab-to-lab
+           #:xyz-to-lchab
+           #:lchab-to-xyz
+
+           #:luv #:lchuv
+           #:xyz-to-luv
+           #:luv-to-xyz
+           #:luv-to-lchuv
+           #:lchuv-to-luv
+           #:xyz-to-lchuv
+           #:lchuv-to-xyz))
+
+(in-package :dufy/core/lab-and-luv)
 
 ;;;
 ;;; L*a*b*
@@ -8,14 +27,17 @@
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
   :documentation "L*a*b* space. The nominal range of L* is [0, 100]")
+
 (define-colorspace lchab (lstar cstarab hab)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
   :documentation "LCh(ab) space. h is in the circle group R/360Z. The nominal range of L* is [0, 100]")
+
 (define-colorspace luv (lstar ustar vstar)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
   :documentation "L*u*v* space. The nominal range of L* is [0, 100]")
+
 (define-colorspace lchuv (lstar cstaruv huv)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
@@ -38,7 +60,6 @@
     (values (- (* 116d0 fy) 16d0)
             (* 500d0 (- fx fy))
             (* 200d0 (- fy fz)))))
-
 
 (define-primary-converter (lab xyz) (lstar astar bstar &key (illuminant +illum-d65+))
   (declare (optimize (speed 3) (safety 1)))
@@ -91,7 +112,6 @@
 (defconverter lab xyy)
 (defconverter xyy lchab)
 (defconverter lchab xyy)
-
 
 ;;;
 ;;; L*u*v*

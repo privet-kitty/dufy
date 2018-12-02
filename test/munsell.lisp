@@ -2,7 +2,7 @@
 ;;; Test for dufy/munsell
 ;;;
 
-(uiop:define-package :dufy/core/munsell
+(uiop:define-package :dufy/test/munsell
   (:use :cl :dufy/munsell/* :dufy/internal/* :dufy/test/core))
 
 (def-suite munsell-suite :in :dufy-suite)

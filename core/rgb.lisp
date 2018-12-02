@@ -1,38 +1,123 @@
-(in-package :dufy/core)
+;;;
+;;; RGB and HSV/HSL
+;;;
 
-;;;
-;;; RGB Color Space
-;;;
+(uiop:define-package :dufy/core/rgb
+  (:use :cl :alexandria :dufy/internal/* :dufy/core/spectrum :dufy/core/illuminants-data :dufy/core/xyz)
+  (:export #:lrgb #:rgb #:qrgb #:rgbpack
+           #:rgba #:qrgba #:rgbapack
+           #:rgbspace
+           #:make-rgbspace
+           #:rgbspace-illuminant
+           #:rgbspace-xr
+           #:rgbspace-yr
+           #:rgbspace-xg
+           #:rgbspace-yg
+           #:rgbspace-xb
+           #:rgbspace-yb
+           #:rgbspace-to-xyz-matrix
+           #:rgbspace-from-xyz-matrix
+           #:rgbspace-normal
+           #:rgbspace-lmin
+           #:rgbspace-lmax
+           #:rgbspace-bit-per-channel
+           #:rgbspace-min
+           #:rgbspace-max
+           #:rgbspace-qmax
+           #:rgbspace-linearizer
+           #:rgbspace-delinearizer
+           #:gen-linearizer
+           #:gen-delinearizer
+
+           #:linearize
+           #:delinearize
+           #:xyz-to-lrgb
+           #:lrgb-to-xyz
+           #:lrgb-out-of-gamut-p
+           #:rgb-to-lrgb
+           #:lrgb-to-rgb
+           #:rgb-out-of-gamut-p
+           #:xyz-to-rgb
+           #:rgb-to-xyz
+           #:quantize
+           #:dequantize
+           #:rgb-to-qrgb
+           #:qrgb-to-rgb
+           #:qrgb-out-of-gamut-p
+           #:lrgb-to-qrgb
+           #:qrgb-to-lrgb
+           #:xyz-to-qrgb
+           #:qrgb-to-xyz
+           
+           #:qrgb-to-rgbpack
+           #:rgbpack-to-qrgb
+           #:rgb-to-rgbpack
+           #:rgbpack-to-rgb
+           #:lrgb-to-rgbpack
+           #:rgbpack-to-lrgb
+           #:xyz-to-rgbpack
+           #:rgbpack-to-xyz
+
+           #:hsv
+           #:hsv-to-rgb
+           #:rgb-to-hsv
+           #:hsv-to-lrgb
+           #:lrgb-to-hsv
+           #:hsv-to-qrgb
+           #:qrgb-to-hsv
+           #:hsv-to-rgbpack
+           #:rgbpack-to-hsv
+           #:hsv-to-xyz
+           #:xyz-to-hsv
+
+           #:hsl
+           #:hsl-to-rgb
+           #:rgb-to-hsl
+           #:hsl-to-lrgb
+           #:lrgb-to-hsl
+           #:hsl-to-qrgb
+           #:qrgb-to-hsl
+           #:hsl-to-rgbpack
+           #:rgbpack-to-hsl
+           #:hsl-to-xyz
+           #:xyz-to-hsl))
+
+(in-package :dufy/core/rgb)
 
 (define-colorspace lrgb (lr lg lb)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
-  :documentation "Linear RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+  :documentation "Is linear RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+
 (define-colorspace rgb (r g b)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
-  :documentation "Gamma-corrected RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+  :documentation "Is gamma-corrected RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+
 (define-colorspace qrgb (qr qg qb)
   :arg-types (fixnum fixnum fixnum)
   :return-types (fixnum fixnum fixnum)
-  :documentation "Quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+  :documentation "Is quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+
 (define-colorspace rgbpack (int)
   :arg-types ((integer 0))
   :return-types ((integer 0))
-  :documentation "RGB, encoded to an unsigned integer. The size depends on the RGB space but is 24 bit for example.")
+  :documentation "Is RGB encoded to an unsigned integer. The size depends on the RGB space but is 24 bit for example.")
 
 (define-colorspace rgba (r g b alpha)
   :arg-types (real real real real)
   :return-types (double-float double-float double-float double-float)
-  :documentation "Gamma-corrected RGBA. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+  :documentation "Is gamma-corrected RGBA. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+
 (define-colorspace qrgba (qr qg qb qalpha)
   :arg-types (fixnum fixnum fixnum fixnum)
   :return-types (fixnum fixnum fixnum fixnum)
-  :documentation "Quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+  :documentation "Is quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+
 (define-colorspace rgbapack (int)
   :arg-types ((integer 0))
   :return-types ((integer 0))
-  :documentation "RGB, encoded to an unsigned integer. The order can be ARGB or RGBA.")
+  :documentation "Is RGBA encoded to an unsigned integer. The order can be ARGB or RGBA.")
 
 (defun gen-linearizer (gamma)
   "Returns a linearization function for a given gamma value. You
@@ -57,9 +142,9 @@ shouldn't call the returned function on your own, as it is not safe."
             (- (expt (- x) /gamma))))))
 
 (defstruct (rgbspace (:constructor %make-rgbspace)
-                     (:copier nil))
-  "Structure of RGB space including encoding characteristics. You
-shouldn't write to any slots directly; instead MAKE-RGBSPACE or
+                     (:copier nil)) ; COPY-RGBSPACE is defined later.
+  "Is structure of RGB space including encoding characteristics. You
+shouldn't write to any slots directly; instead MAKE-RGBSPACE and
 COPY-RGBSPACE are available."
   ;; primary coordinates in xyY space.
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
@@ -102,33 +187,31 @@ If FORCE-NORMAL is T, the nominal range of gamma-corrected values is
 forcibly set to [0d0, 1d0]. It is used to avoid the computed range
 being e.g. [0d0, 0.9999999999999999d0]."
   (declare (optimize (speed 3) (safety 1))
-           ((function * double-float) linearizer delinearizer))
+           ((function * (values double-float &optional)) linearizer delinearizer))
   (with-ensuring-type double-float (xr yr xg yg xb yb)
-    (let ((coordinates
-            (make-array '(3 3)
-                        :element-type 'double-float
-                        :initial-contents
-                        `((,xr ,xg ,xb)
-                          (,yr ,yg ,yb)
-                          (,(- 1d0 xr yr) ,(- 1d0 xg yg) ,(- 1d0 xb yb))))))
+    (let ((coordinates (make-array '(3 3)
+                                   :element-type 'double-float
+                                   :initial-contents
+                                   `((,xr ,xg ,xb)
+                                     (,yr ,yg ,yb)
+                                     (,(- 1d0 xr yr) ,(- 1d0 xg yg) ,(- 1d0 xb yb))))))
       (multiple-value-bind (sr sg sb)
           (multiply-mat-vec (invert-matrix coordinates)
                             (illuminant-x illuminant)
                             1d0
                             (illuminant-z illuminant))
-        (let* ((mat
-                 (make-array '(3 3)
-                             :element-type 'double-float
-                             :initial-contents
-                             `((,(* sr (aref coordinates 0 0))
-                                ,(* sg (aref coordinates 0 1))
-                                ,(* sb (aref coordinates 0 2)))
-                               (,(* sr (aref coordinates 1 0))
-                                ,(* sg (aref coordinates 1 1))
-                                ,(* sb (aref coordinates 1 2)))
-                               (,(* sr (aref coordinates 2 0))
-                                ,(* sg (aref coordinates 2 1))
-                                ,(* sb (aref coordinates 2 2))))))
+        (let* ((mat (make-array '(3 3)
+                                :element-type 'double-float
+                                :initial-contents
+                                `((,(* sr (aref coordinates 0 0))
+                                   ,(* sg (aref coordinates 0 1))
+                                   ,(* sb (aref coordinates 0 2)))
+                                  (,(* sr (aref coordinates 1 0))
+                                   ,(* sg (aref coordinates 1 1))
+                                   ,(* sb (aref coordinates 1 2)))
+                                  (,(* sr (aref coordinates 2 0))
+                                   ,(* sg (aref coordinates 2 1))
+                                   ,(* sb (aref coordinates 2 2))))))
                (min (if force-normal 0d0 (funcall delinearizer lmin)))
                (max (if force-normal 1d0 (funcall delinearizer lmax)))
                (normal (and (= min 0d0) (= max 1d0)))
@@ -154,7 +237,14 @@ being e.g. [0d0, 0.9999999999999999d0]."
                           :qmax-float/length (/ qmax-float len)
                           :length/qmax-float (/ len qmax-float)))))))
 
-(defvar +srgb+) ; defined in another file
+;; FIXME: +SRGB+ is later defined though it is necessary here for
+;; the default value of the keyword arg :RGBSPACE.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (unless (find-package :dufy/core/rgbspaces-data)
+    (make-package :dufy/core/rgbspaces-data)
+    (uiop:export* :+srgb+ :dufy/core/rgbspaces-data))
+  (import (uiop:find-symbol* :+srgb+ :dufy/core/rgbspaces-data)))
+(defvar +srgb+)
 
 (define-primary-converter (xyz lrgb) (x y z &key (rgbspace +srgb+) &aux (illuminant (rgbspace-illuminant rgbspace)))
   (declare (optimize (speed 3) (safety 1))
@@ -172,9 +262,8 @@ being e.g. [0d0, 0.9999999999999999d0]."
                     (float lg 1d0)
                     (float lb 1d0)))
 
-
 ;;;
-;;; Linear RGB, gamma-corrected RGB and quantized RGB
+;;; Linear RGB, gamma-corrected RGB, and quantized RGB
 ;;;
 
 (defun lrgb-out-of-gamut-p (lr lg lb &key (rgbspace +srgb+) (threshold 1d-4))
@@ -243,7 +332,8 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
   (if clamp
       (clamp (round (* (- (float x 1d0) (rgbspace-min rgbspace))
                        (rgbspace-qmax-float/length rgbspace)))
-             0 (rgbspace-qmax rgbspace))
+             0
+             (rgbspace-qmax rgbspace))
       (round (* (- (float x 1d0) (rgbspace-min rgbspace))
                 (rgbspace-qmax-float/length rgbspace)))))
 
@@ -437,7 +527,7 @@ situation whether the returned values are meaningful."
 
 (define-primary-converter (hsl rgb) (hue sat lum)
   (declare (optimize (speed 3) (safety 1)))
-    "Non-normal RGB space is also accepted, though it depends on the
+  "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
   (with-ensuring-type double-float (hue sat lum)
     (let* ((hue (mod hue 360d0))

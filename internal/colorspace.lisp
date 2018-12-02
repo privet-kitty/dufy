@@ -3,7 +3,7 @@
 ;;;
 
 (uiop:define-package :dufy/internal/colorspace
-  (:use :cl :alexandria)
+  (:use :cl :alexandria :dufy/internal/utilities)
   (:export #:colorspace
            #:define-colorspace
            #:primary-converter
@@ -277,7 +277,8 @@ allowed. "
   (check-type dimension (integer 1))
   (let ((global-key-args (gen-global-key-args chain exclude-args))
         (global-aux-args (gen-global-aux-args chain)))
-    ;; If duplicates between &key and &aux arguments exist, &aux takes priority.
+    ;; If duplicates between &key and &aux arguments exist, &aux takes
+    ;; priority.
     (dolist (x global-aux-args)
       (setf global-key-args
             (delete (car x) global-key-args :key #'car :test #'string=)))
@@ -303,23 +304,22 @@ allowed. "
     (append required
             (mappend #'car keyword))))
 
-(defun expand-conversion-form (chain &key exclude-args)
-  (labels ((expand (term-lst code)
-              (if (null (cdr term-lst))
-                  code
-                  (let* ((term1 (first term-lst))
-                         (term2 (second term-lst))
-                         (name (get-primary-converter-name term1 term2)))
-                    (cond ((null term2) code) ; end
-                          ((null code)
-                           (expand (cdr term-lst) ; first conversion
-                                   `(,name ,@(get-args term1)
-                                           ,@(gen-local-key-args term1 term2 exclude-args))))
-                          (t (expand (cdr term-lst) ; intermediate conversion
-                                     `(multiple-value-call #',name
-                                        ,code
-                                        ,@(gen-local-key-args term1 term2 exclude-args)))))))))
-    (expand chain nil)))
+(defun expand-conversion-form (cs-chain &key exclude-args)
+  (nlet expand ((cs-chain cs-chain) (code nil))
+    (if (null (cdr cs-chain))
+        code
+        (let* ((cs1 (first cs-chain))
+               (cs2 (second cs-chain))
+               (name (get-primary-converter-name cs1 cs2)))
+          (cond ((null cs2) code) ; end
+                ((null code)
+                 (expand (cdr cs-chain) ; first conversion
+                         `(,name ,@(get-args cs1)
+                                 ,@(gen-local-key-args cs1 cs2 exclude-args))))
+                (t (expand (cdr cs-chain) ; intermediate conversion
+                           `(multiple-value-call #',name
+                              ,code
+                              ,@(gen-local-key-args cs1 cs2 exclude-args)))))))))
 
 (defmacro defconverter (from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace)) (exclude-args nil) (documentation nil))
   "Generates and defines a converter function from FROM-COLORSPACE to
@@ -393,7 +393,7 @@ EXTEND-FUNCTIONAL."
   (fname nil :type symbol) ; function name
   (term nil :type symbol) ; symbol used for looking up
   (colorspace nil :type symbol)
-  (dimension 1 :type (integer 1)) ; e.g. dimension of a color difference functional is two
+  (dimension 1 :type (integer 1)) ; e.g. the dimension of a color difference functional is two
   (key-args nil :type list)
   (allow-other-keys nil :type boolean) ; currently not used
   (aux-args nil :type list))
@@ -421,8 +421,7 @@ EXTEND-FUNCTIONAL."
 (defun add-functional (fname colorspace lambda-list &key (term fname))
   "Registers a functional to *functional-table*"
   (setf (gethash term *functional-table*)
-        (make-functional fname colorspace lambda-list
-                         :term term)))
+        (make-functional fname colorspace lambda-list :term term)))
 
 (defun get-functional (term)
   (or (gethash term *functional-table*)
