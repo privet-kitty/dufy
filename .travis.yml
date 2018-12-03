@@ -23,8 +23,9 @@ matrix:
 
 install:
   - curl -L https://raw.githubusercontent.com/snmsts/roswell/release/scripts/install-for-ci.sh | sh
+  - git clone --depth=1 git://github.com/privet-kitty/wild-package-inferred-system.git ~/lisp/wild-package-inferred-system
   - git clone --depth=1 git://github.com/edicl/cl-ppcre.git ~/lisp/cl-ppcre
-  - git clone --depth=1 https://gitlab.common-lisp.net/alexandria/alexandria.git ~/lisp/alexandria
+  - git clone --depth=1 git://gitlab.common-lisp.net/alexandria/alexandria.git ~/lisp/alexandria
 
 script:
   - ros -s fiveam -e '(ql:quickload :dufy/test)
