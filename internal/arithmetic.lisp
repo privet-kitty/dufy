@@ -6,6 +6,7 @@
            #:nearly=
            #:nearly<=
            #:nearly-equal
+           #:nearly-equal-values
            #:circular-nearer
            #:circular-clamp
            #:circular-lerp-loose
@@ -46,6 +47,11 @@
            (apply #'nearly-equal threshold
                   (cdr lst1)
                   (mapcar #'cdr lsts)))))
+
+(defmacro nearly-equal-values (threshold &rest forms)
+  `(nearly-equal ,threshold
+                 ,@(mapcar #'(lambda (x) `(multiple-value-list ,x))
+                           forms)))
 
 (defun nearly<= (threshold number &rest more-numbers)
   (if (null more-numbers)

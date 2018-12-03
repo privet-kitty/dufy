@@ -1,11 +1,13 @@
+;; -*- coding: utf-8 -*-
+
 (uiop:define-package :dufy/test/core
     (:use :cl :dufy/core/* :dufy/internal/* :fiveam :alexandria :cl-csv :parse-float)
-  (:export #:*xyz-set*))
+  (:export #:main-suite #:*xyz-set*))
 
 (in-package :dufy/test/core)
 
-(def-suite :dufy-suite)
-(in-suite :dufy-suite)
+(def-suite main-suite)
+(in-suite main-suite)
 
 ;;;
 ;;; Test Data
@@ -36,17 +38,6 @@
 (defparameter *lchuv-set*
   '((20 30 40) (0.5 0.2 240) (99.9 0.1 359.9)))
 
-(define-cat-function lchuv-d50-to-a +illum-d50+ +illum-a+
-  :target :lchuv
-  :cat +cmccat97+)
-(define-cat-function lchuv-a-to-d50 +illum-a+ +illum-d50+
-  :target :lchuv
-  :cat +cmccat97+)
-(define-cat-function xyy-c-to-e +illum-c+ +illum-e+
-  :target :xyy)
-(define-cat-function xyy-e-to-c +illum-e+ +illum-c+
-  :target :xyy)
-
 ;; Workaround for ABCL. (alexanrdia:rcurry causes an error on ABCL.)
 #+abcl
 (defun rcurry (function &rest initial-args)
@@ -54,6 +45,8 @@
     (apply function (append args initial-args))))
 
 (defparameter *ciede2000-set-path* (asdf:component-pathname (asdf:find-component "dufy" '("dat" "ciede2000-test-data.csv"))))
+
+;; Extract two sets of L*a*b* values and ΔE_00 from the CSV.
 (defparameter *ciede2000-set*
   (loop for (row1 row2)
           on (read-csv *ciede2000-set-path*
@@ -82,7 +75,7 @@
   ;; coerced) DOUBLE-FLOATs.
   #-ccl (is (= 1 (circular-lerp 1 0.2 1))))
 
-(test test-spectrum
+(test spectrum
   (is (nearly-equal 1d-4
 		    '(0.33411d0 0.34877)
 		    (multiple-value-list (illuminant-xy *illum-d55-10*))))
@@ -116,7 +109,7 @@
   (signals no-spd-error
     (spectrum-to-xyz #'flat-spectrum :illuminant *illum-b*)))
 
-(test test-xyy
+(test xyy
   (dolist (xyz *xyz-set*)
     (is (nearly-equal 1d-4
 		      xyz
@@ -128,41 +121,40 @@
   (is (equal '(0d0 0d0 0.8d0)
              (multiple-value-list (xyz-to-xyy 0 0.8d0 -0.8d0)))))
 
-(test test-cat
+(test lms
   (dolist (xyz *xyz-set*)
     (is (nearly-equal 1d-4
 		      xyz
 		      (multiple-value-list
 		       (multiple-value-call #'lms-to-xyz
-			 (apply (rcurry #'xyz-to-lms
-					:illuminant *illum-d55-10*
-					:cat +cmccat97+)
-				xyz)
-			 :illuminant *illum-d55-10*
-			 :cat +cmccat97+)))))
-  (let ((cat-func (gen-cat-function *illum-d55-10* +illum-a+ :target :xyy))
-	(cat-func-rev (gen-cat-function +illum-a+ *illum-d55-10* :target :xyy)))
-    (dolist (xyy *xyy-set*)
+		         (apply (rcurry #'xyz-to-lms
+				        :illuminant *illum-d55-10*
+				        :cat +cmccat97+)
+			        xyz)
+		         :illuminant *illum-d55-10*
+		         :cat +cmccat97+))))))
+
+
+(define-cat-function d50-to-a +illum-d50+ +illum-a+ :cat +cmccat97+)
+(define-cat-function a-to-d50 +illum-a+ +illum-d50+ :cat +cmccat97+)
+(test cat
+  (let ((cat-func (gen-cat-function *illum-d55-10* +illum-a+))
+	(cat-func-rev (gen-cat-function +illum-a+ *illum-d55-10*)))
+    (dolist (xyz *xyz-set*)
       (is (nearly-equal 1d-4
-			xyy
+			xyz
 			(multiple-value-list
 			 (multiple-value-call cat-func-rev
-			   (apply cat-func xyy)))))))
-  (dolist (lchuv *lchuv-set*)
+			   (apply cat-func xyz)))))))
+  (dolist (xyz *xyz-set*)
     (is (nearly-equal 1d-4
-		      lchuv
+		      xyz
 		      (multiple-value-list
-		       (multiple-value-call #'lchuv-a-to-d50
-			 (apply #'lchuv-d50-to-a lchuv))))))
-  (dolist (xyy *xyy-set*)
-    (is (nearly-equal 1d-4
-		      xyy
-		      (multiple-value-list
-		       (multiple-value-call #'xyy-c-to-e
-			 (apply #'xyy-e-to-c xyy)))))))
+		       (multiple-value-call #'a-to-d50
+			 (apply #'d50-to-a xyz)))))))
 
 
-(test test-rgb
+(test rgb
   (dolist (xyz *xyz-set*)
     (is (nearly-equal 1d-4
 		      xyz
@@ -203,8 +195,9 @@
     (is (= intrgb
            (multiple-value-call #'lrgb-to-rgbpack
              (rgbpack-to-lrgb intrgb :rgbspace +bg-srgb-16+)
-             :rgbspace +bg-srgb-16+))))
-  ;; rgbspace changer
+             :rgbspace +bg-srgb-16+)))))
+
+(test gen-rgbspace-chanter
   (dolist (rgb *rgb-set*)
     (is (nearly-equal 1d-4
 		      rgb
@@ -215,14 +208,15 @@
                                                       :target :rgb)
 				rgb)))))))
 
-(test test-lab/luv
+(defconverter lchab xyy)
+(defconverter xyy lchab)
+(test lab/luv
   (dolist (xyy *xyy-set*)
     (is (nearly-equal 1d-4
 		      xyy
 		      (multiple-value-list
-		       (multiple-value-call #'dufy/core::lchab-to-xyy
-			 (apply (rcurry #'dufy/core::xyy-to-lchab
-                                        :illuminant *illum-d55-10*)
+		       (multiple-value-call #'lchab-to-xyy
+			 (apply (rcurry #'xyy-to-lchab :illuminant *illum-d55-10*)
 				xyy)
 			 :illuminant *illum-d55-10*)))))
   (dolist (xyz *xyz-set*)
@@ -235,7 +229,7 @@
 				xyz)
 			 :illuminant *illum-d55-10*))))))
 
-(test test-hsv/hsl
+(test hsv/hsl
   (is (nearly-equal 1d-4
                     (multiple-value-list
                      (hsl-to-rgb 1234 0 1.2545778685270217d0))
@@ -263,8 +257,8 @@
 				qrgb)
 			 :rgbspace rgbspace))))))))
 
-(test test-deltae
-  ;; By Bruce Lindbloom's calculator
+(test deltae
+  ;; From Bruce Lindbloom's calculator
   (is (nearly= 5d-3 66.228653d0 (qrgb-deltae94 10 20 30 200 100 0 :application :textiles)))
   (is (nearly= 5d-3 91.75d0 (qrgb-deltaeab 10 20 30 200 100 0)))
   (is (nearly= 1d-4 62.131436d0 (lab-deltaecmc 10 20 30 40 50 60 :l-factor 1d0 :c-factor 1d0)))

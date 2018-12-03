@@ -153,7 +153,7 @@ by linking them."
   (pop (queue-list queue)))
 
 (defun find-converter-path (from-colorspace to-colorspace &key (if-does-not-exist :error))
-  "Finds the shortest path in the graph of color spaces with BFS."
+  "Finds the shortest path in the graph of color spaces by BFS."
   (let ((visited (make-hash-table))
         (path-queue (enqueue (list from-colorspace) (make-queue))))
     (loop for path = (dequeue path-queue)
@@ -386,7 +386,7 @@ Example:
 ;;; 
 
 (defstruct (functional (:constructor %make-functional))
-  "The functional here is e.g. color difference, luminance or color
+  "The functional here is e.g. color difference, luminance, or color
 temperature. If you define a functional for a color space with
 DEFINE-FUNCTIONAL, you can extend it to other color spaces with
 EXTEND-FUNCTIONAL."

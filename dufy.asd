@@ -21,4 +21,4 @@
                ;; (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples/*")
                )
   :perform (test-op (o s)
-                    (uiop:eval-input "(fiveam:run! :dufy-suite)")))
+                    (uiop:eval-input "(fiveam:run! 'dufy/test:main-suite)")))
