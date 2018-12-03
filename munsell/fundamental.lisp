@@ -232,20 +232,3 @@ However, the capital letters and  '/' are reserved:
 
 (defun munsell-out-of-mrd-p (munsellspec)
   (multiple-value-call #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
-
-;; Below are converters between Munsell HVC and corresponding
-;; cartesian coordinates. (Used only internally.)
-(declaim (inline cartesian-to-mhvc))
-(defun cartesian-to-mhvc (x y value)
-  (values (mod (* (atan y x) #.(/ 40 TWO-PI)) 40d0)
-          value
-          ;; A unit value is equivalent to two units chroma.
-          (* 2 (sqrt (+ (* x x) (* y y))))))
-
-(declaim (inline mhvc-to-cartesian))
-(defun mhvc-to-cartesian (hue40 value chroma)
-  (let ((rad (* hue40 #.(/ TWO-PI 40)))
-        (chroma/2 (/ chroma 2)))
-    (values (* chroma/2 (cos rad))
-            (* chroma/2 (sin rad))
-            value)))

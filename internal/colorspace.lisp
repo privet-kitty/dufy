@@ -222,7 +222,7 @@ allowed. "
 ;;; Code for linking primary converters
 ;;;
 
-(defun global-allow-other-keys-p (chain)
+(defun contains-allow-other-keys-p (chain)
   (loop for (term1 term2) on chain
         until (null term2)
         do (when (get-allow-other-keys term1 term2)
@@ -260,12 +260,12 @@ allowed. "
   (string= (car (ensure-list key1))
            (car (ensure-list key2))))
 
-(defun gen-global-key-args (chain &optional exclude-args)
+(defun gen-key-args (chain &optional exclude-args)
   (mapcar #'(lambda (x) (list (cadar x) (second x)))
           (delete-if #'(lambda (x) (member (caar x) exclude-args :test #'string=))
                      (collect-key-args chain))))
 
-(defun gen-global-aux-args (chain)
+(defun gen-aux-args (chain)
   (collect-aux-args chain))
 
 (defun gen-local-key-args (term1 term2 &optional exclude-args)
@@ -273,30 +273,30 @@ allowed. "
            (delete-if #'(lambda (x) (member (caar x) exclude-args :test #'string=))
                       (collect-key-args (list term1 term2)))))
 
-(defun gen-global-args (chain &key exclude-args extra-key-args (with-aux t) (dimension 1) (extra-suffix ""))
+(defun gen-args (chain &key exclude-args extra-key-args (with-aux t) (dimension 1) (extra-suffix ""))
   (check-type dimension (integer 1))
-  (let ((global-key-args (gen-global-key-args chain exclude-args))
-        (global-aux-args (gen-global-aux-args chain)))
+  (let ((key-args (gen-key-args chain exclude-args))
+        (aux-args (gen-aux-args chain)))
     ;; If duplicates between &key and &aux arguments exist, &aux takes
     ;; priority.
-    (dolist (x global-aux-args)
-      (setf global-key-args
-            (delete (car x) global-key-args :key #'car :test #'string=)))
+    (dolist (x aux-args)
+      (setf key-args
+            (delete (car x) key-args :key #'car :test #'string=)))
     (append (if (= dimension 1)
                 (get-args (car chain) :suffix extra-suffix)
                 (loop for d from 1 to dimension
                       append (get-args (car chain)
                                        :suffix (format nil "~A~A" d extra-suffix))))
-            (when global-key-args
-              `(&key ,@global-key-args
+            (when key-args
+              `(&key ,@key-args
                      ,@(mapcar #'(lambda (x) (list (cadar x) (second x)))
                                extra-key-args)))
-            (when (and global-aux-args with-aux)
-              `(&aux ,@global-aux-args)))))
+            (when (and aux-args with-aux)
+              `(&aux ,@aux-args)))))
 
-(defun gen-passed-global-args (chain &key exclude-args (suffix ""))
+(defun gen-passed-args (chain &key exclude-args (suffix ""))
   (multiple-value-bind (required optional rest keyword allow-other-keys aux)
-      (parse-ordinary-lambda-list (gen-global-args chain
+      (parse-ordinary-lambda-list (gen-args chain
                                                    :exclude-args exclude-args
                                                    :extra-suffix suffix
                                                    :with-aux nil))
@@ -325,16 +325,16 @@ allowed. "
   "Generates and defines a converter function from FROM-COLORSPACE to
 TO-COLORSPACE automatically with linking primary converters."
   (let* ((chain (find-converter-path from-colorspace to-colorspace))
-         (global-args (gen-global-args chain :exclude-args exclude-args)))
+         (args (gen-args chain :exclude-args exclude-args)))
     `(progn
        (declaim #+dufy/inline (inline ,name)
                 (ftype (function * (values ,@(get-return-types (lastcar chain)) &optional)) ,name))
-       (defun ,name ,global-args
+       (defun ,name ,args
          (declare (optimize (speed 3) (safety 1))
                   (ignorable ,@(collect-aux-arg-names chain))
                   ,@(mapcar #'(lambda (typ arg) (list typ arg))
                             (get-arg-types from-colorspace)
-                            global-args))
+                            args))
          ,@(ensure-list documentation)
          ,(expand-conversion-form chain :exclude-args exclude-args)))))
 
@@ -365,15 +365,15 @@ Example:
             collect
                (destructuring-bind (name from-colorspace to-colorspace &key (exclude-args nil)) def
                  (let* ((chain (find-converter-path from-colorspace to-colorspace))
-                        (global-args (gen-global-args chain :exclude-args exclude-args)))
+                        (args (gen-args chain :exclude-args exclude-args)))
                    (push name name-lst)
                    (push (get-return-types (lastcar chain)) return-types-lst)
-                   `(,name ,global-args
+                   `(,name ,args
                            (declare (optimize (speed 3) (safety 1))
                                     (ignorable ,@(collect-aux-arg-names chain))
                                     ,@(mapcar #'(lambda (typ arg) (list typ arg))
                                               (get-arg-types from-colorspace)
-                                              global-args))
+                                              args))
                            ,(expand-conversion-form chain :exclude-args exclude-args)))))
        (declare #+dufy/inline(inline ,@name-lst)
                 ,@(loop for return-types in return-types-lst
@@ -454,7 +454,7 @@ of the function is [COLORSPACE]-[TERM] if FNAME is not given."
          (from-colorspace colorspace)
          (chain (find-converter-path from-colorspace to-colorspace))
          (transform (gensym (string (gen-converter-name from-colorspace to-colorspace)))))
-    `(defun ,fname ,(gen-global-args chain
+    `(defun ,fname ,(gen-args chain
                      :exclude-args exclude-args
                      :extra-key-args extra-key-args
                      :with-aux nil
@@ -465,7 +465,7 @@ of the function is [COLORSPACE]-[TERM] if FNAME is not given."
                                    :exclude-args ,exclude-args))
          (multiple-value-call #',func-name
            ,@(if (= dimension 1)
-                 `((,transform ,@(gen-passed-global-args chain :exclude-args exclude-args)))
+                 `((,transform ,@(gen-passed-args chain :exclude-args exclude-args)))
                  (loop for d from 1 to dimension
-                       collect `(,transform ,@(gen-passed-global-args chain :exclude-args exclude-args :suffix d))))
+                       collect `(,transform ,@(gen-passed-args chain :exclude-args exclude-args :suffix d))))
            ,@(mappend #'car extra-key-args))))))
