@@ -161,17 +161,6 @@ to illuminant D65."
                          (float value 1d0)
                          (float chroma 1d0))))
 
-(declaim (inline mhvc-to-qrgb)
-         (ftype (function * (values fixnum fixnum fixnum &optional)) mhvc-to-qrgb))
-(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp t))
-  "Illuminant D65.
-The illuminant of RGBSPACE must also be D65."
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'xyz-to-qrgb
-    (mhvc-to-xyz hue40 value chroma)
-    :rgbspace rgbspace
-    :clamp clamp))
-
 (defconverter munsell lchab
   :name munsell-to-lchab-illum-c
   :documentation "Illuminant C.")
@@ -187,7 +176,11 @@ The illuminant of RGBSPACE must also be D65."
   (declare (optimize (speed 3) (safety 1)))
   (multiple-value-call #'mhvc-to-xyz (munsell-to-mhvc munsellspec)))
 
-;; For development. Not exported.
+;;;
+;;; For development
+;;;
+
+;; Not exported.
 (defun mhvc-to-xyy (hue40 value chroma)
   "Illuminant D65."
   (multiple-value-call #'xyz-to-xyy (mhvc-to-xyz hue40 value chroma)))
@@ -195,14 +188,14 @@ The illuminant of RGBSPACE must also be D65."
   "Illuminant D65."
   (multiple-value-call #'xyz-to-xyy (munsell-to-xyz munsellspec)))
 
-(defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (clamp t))
-  "Illuminant D65.
-The illuminant of RGBSPACE must also be D65."
-  (declare (optimize (speed 3) (safety 1)))
-  (multiple-value-call #'xyz-to-qrgb
-    (munsell-to-xyz munsellspec)
-    :rgbspace rgbspace
-    :clamp clamp))
+;; (defun munsell-to-qrgb (munsellspec &key (rgbspace +srgb+) (clamp t))
+;;   "Illuminant D65.
+;; The illuminant of RGBSPACE must also be D65."
+;;   (declare (optimize (speed 3) (safety 1)))
+;;   (multiple-value-call #'xyz-to-qrgb
+;;     (munsell-to-xyz munsellspec)
+;;     :rgbspace rgbspace
+;;     :clamp clamp))
 
 (defun max-chroma-lchab (hue40 value &key (use-dark t))
   "For devel. Returns the LCh(ab) value of the color on the max-chroma
@@ -210,10 +203,6 @@ boundary in the MRD."
   (mhvc-to-lchab-illum-c hue40
                          value
                          (max-chroma-in-mrd hue40 value :use-dark use-dark)))
-
-;;;
-;;; For development
-;;;
 
 (defun calc-isochroma-ovoid-integer-case (value chroma/2)
   "Value is integer."

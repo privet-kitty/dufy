@@ -1,6 +1,7 @@
 (uiop:define-package #:dufy/examples/visualize-munsell
   (:use #:cl #:alexandria #:dufy)
-  (:import-from #:lparallel #:lispbuilder-sdl)
+  (:import-from #:lparallel)
+  (:import-from #:lispbuilder-sdl)
   (:export #:draw-srgb-in-munsell))
 
 (in-package :dufy/examples/visualize-munsell)
