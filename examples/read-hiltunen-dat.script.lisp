@@ -12,12 +12,12 @@
 
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (ql:quickload :cl-ppcre)
-  (ql:quickload :cl-ftp)
-  (ql:quickload :babel)
-  (ql:quickload :dufy)
-  (ql:quickload :quri)
-  (ql:quickload :cl-fad))
+  (ql:quickload '(:cl-ppcre
+                  :cl-ftp
+                  :babel
+                  :dufy
+                  :quri
+                  :cl-fad)))
 
 (defparameter *label-url* (quri:uri "ftp://ftp.cs.joensuu.fi/pub/color/spectra/mspec/README.txt"))
 (defparameter *label-filename* "README-joensuu-matt1.txt")

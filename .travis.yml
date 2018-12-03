@@ -28,7 +28,7 @@ install:
 
 script:
   - ros -s fiveam -e '(ql:quickload :dufy/test)
-                      (or (fiveam:run! (quote dufy/test:dufy-suite))
+                      (or (fiveam:run! (quote dufy/test:main-suite))
                           (uiop:quit 1))'
 
 sudo: required
