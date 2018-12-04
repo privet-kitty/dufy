@@ -10,14 +10,15 @@
   :add-non-wild-nickname t
   :depends-on ("dufy/interface" "dufy/core/*" "dufy/munsell/*")
   :components ((:module "dat"
-                :components ((:static-file "ciede2000-test-data.csv"))))
+                :components ((:static-file "ciede2000-test-data.csv")
+                             (:static-file "FL3.x.tsv"))))
   :in-order-to ((test-op (test-op "dufy/test"))))
 
 (defsystem "dufy/test"
   :depends-on ("dufy/test/*"
                ;; There's no specific test for dufy/extra-data and dufy/examples;
                ;; the following is just for checking if load-op succeeds.
-               ;; "dufy/extra-data/*"
+               "dufy/extra-data/*"
                (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples/*"))
   :perform (test-op (o s)
                     (uiop:eval-input "(fiveam:run! 'dufy/test:main-suite)")))
