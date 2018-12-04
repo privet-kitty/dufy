@@ -28,8 +28,10 @@ Besides this README file, most of the documentation is written as docstrings in 
 
 
 # Dependencies
+
 * alexandria
 * cl-ppcre
+* wild-package-inferred-system (requires **ASDF 3.3** or later)
 
 All of the dependent libraries can be installed with quicklisp.
 

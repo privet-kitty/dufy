@@ -6,7 +6,7 @@
   :author "Hugo I."
   :license "MIT"
   :defsystem-depends-on ("wild-package-inferred-system")
-  :class "wpis:wild-package-inferred-system"
+  :class "winfer:wild-package-inferred-system"
   :add-non-wild-nickname t
   :depends-on ("dufy/interface" "dufy/core/*" "dufy/munsell/*")
   :components ((:module "dat"
