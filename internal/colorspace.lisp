@@ -323,11 +323,11 @@ allowed. "
 
 (defmacro defconverter (from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace)) (exclude-args nil) (documentation nil))
   "Generates and defines a converter function from FROM-COLORSPACE to
-TO-COLORSPACE automatically with linking primary converters."
+TO-COLORSPACE automatically with linking primary converters. "
   (let* ((chain (find-converter-path from-colorspace to-colorspace))
          (args (gen-args chain :exclude-args exclude-args)))
     `(progn
-       (declaim #+dufy/inline (inline ,name)
+       (declaim (inline ,name)
                 (ftype (function * (values ,@(get-return-types (lastcar chain)) &optional)) ,name))
        (defun ,name ,args
          (declare (optimize (speed 3) (safety 1))
@@ -336,7 +336,8 @@ TO-COLORSPACE automatically with linking primary converters."
                             (get-arg-types from-colorspace)
                             args))
          ,@(ensure-list documentation)
-         ,(expand-conversion-form chain :exclude-args exclude-args)))))
+         ,(expand-conversion-form chain :exclude-args exclude-args))
+       (declaim (notinline ,name)))))
 
 (defmacro defconverters (from-colorspaces to-colorspaces &key (exclude-args nil))
   `(progn
@@ -375,8 +376,7 @@ Example:
                                               (get-arg-types from-colorspace)
                                               args))
                            ,(expand-conversion-form chain :exclude-args exclude-args)))))
-       (declare #+dufy/inline(inline ,@name-lst)
-                ,@(loop for return-types in return-types-lst
+       (declare ,@(loop for return-types in return-types-lst
                         for name in name-lst
                         collect `(ftype (function * (values ,@return-types &optional)) ,name)))
        ,@body)))
