@@ -125,20 +125,6 @@ Data, and Mathematical Observations\", 2004."
 (extend-functional deltae00 xyz)
 (extend-functional deltae00 qrgb)
 
-(defun bench (&optional (num 1000000))
-  (let ((state (sb-ext:seed-random-state 0)))
-    (time-median 10  
-      (labels ((random-int (inf sup)
-                 (+ inf (random (- sup inf) state))))
-        (declare (inline random-int))
-        (print
-         (loop repeat num
-               sum (lab-deltae00 (random-int 0d0 100d0)
-                                 (random-int -128d0 128d0)
-                                 (random-int -128d0 128d0)
-                                 (random-int 0d0 100d0)
-                                 (random-int -128d0 128d0)
-                                 (random-int -128d0 128d0))))))))
 
 (define-functional (lab-deltaecmc lab :term deltaecmc) (l1 a1 b1 l2 a2 b2 &key (l-factor 2d0) (c-factor 1d0))
   (declare (optimize (speed 3) (safety 1)))
