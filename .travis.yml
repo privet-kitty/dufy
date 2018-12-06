@@ -23,7 +23,7 @@ matrix:
 
 install:
   - curl -L https://raw.githubusercontent.com/snmsts/roswell/release/scripts/install-for-ci.sh | sh
-  - git clone --depth=1 https://gitlab.common-lisp.net/asdf/asdf/git
+  - git clone --depth=1 https://gitlab.common-lisp.net/asdf/asdf.git
   - git clone --depth=1 git://github.com/privet-kitty/wild-package-inferred-system.git ~/lisp/wild-package-inferred-system
 
 script:
