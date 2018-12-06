@@ -33,16 +33,6 @@
   :return-types (double-float double-float double-float)
   :documentation "LCh(ab) space. h is in the circle group R/360Z. The nominal range of L* is [0, 100]")
 
-(define-colorspace luv (lstar ustar vstar)
-  :arg-types (real real real)
-  :return-types (double-float double-float double-float)
-  :documentation "L*u*v* space. The nominal range of L* is [0, 100]")
-
-(define-colorspace lchuv (lstar cstaruv huv)
-  :arg-types (real real real)
-  :return-types (double-float double-float double-float)
-  :documentation "LCh(uv) space. h is in the circle group R/360Z. The nominal range of L* is [0, 100]")
-
 (declaim (inline function-f)
          (ftype (function * (values double-float &optional)) function-f))
 (defun function-f (x)
@@ -78,6 +68,7 @@
 
 (declaim (inline lstar-to-y))
 (defun lstar-to-y (lstar)
+  "L* (of L*a*b*) to Y (of XYZ)"
   (declare (optimize (speed 3) (safety 1)))
   (let* ((fy (* (+ (float lstar 1d0) 16d0) 1/116)))
     (if (> fy #.(float 6/29 1d0))
@@ -86,6 +77,7 @@
 
 (declaim (inline y-to-lstar))
 (defun y-to-lstar (y)
+  "Y (of XYZ) to L* (of L*a*b*)"
   (declare (optimize (speed 3) (safety 1)))
   (- (* 116d0 (function-f (float y 1d0))) 16d0))
 
@@ -116,6 +108,16 @@
 ;;;
 ;;; L*u*v*
 ;;;
+
+(define-colorspace luv (lstar ustar vstar)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float)
+  :documentation "L*u*v* space. The nominal range of L* is [0, 100]")
+
+(define-colorspace lchuv (lstar cstaruv huv)
+  :arg-types (real real real)
+  :return-types (double-float double-float double-float)
+  :documentation "LCh(uv) space. h is in the circle group R/360Z. The nominal range of L* is [0, 100]")
 
 (declaim (inline calc-uvprime))
 (defun calc-uvprime (x y)

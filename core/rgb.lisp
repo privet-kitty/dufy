@@ -121,7 +121,7 @@
 
 (defun gen-linearizer (gamma)
   "Returns a linearization function for a given gamma value. You
-shouldn't call the returned function on your own, as it is not safe."
+shouldn't call the returned function directly as it is not safe."
   (let ((gamma (float gamma 1d0)))
     #'(lambda (x)
         (declare (optimize (speed 3) (safety 0))
@@ -132,7 +132,7 @@ shouldn't call the returned function on your own, as it is not safe."
 
 (defun gen-delinearizer (gamma)
   "Returns a gamma-correction function for a given gamma value. You
-shouldn't call the returned function on your own, as it is not safe."
+shouldn't call the returned function directly as it is not safe."
   (let ((/gamma (/ (float gamma 1d0))))
     #'(lambda (x)
         (declare (optimize (speed 3) (safety 0))

@@ -3,6 +3,8 @@
   (:export #:TWO-PI
            #:+TWO-PI/360+
            #:+360/TWO-PI+
+           #:degree-to-radian
+           #:radian-to-degree
            #:nearly=
            #:nearly<=
            #:nearly-equal
@@ -13,17 +15,24 @@
            #:circular-lerp
            #:circular-member
            #:square
-           #:fast-expt))
+           #:pow))
 
 (in-package :dufy/internal/arithmetic)
 
 ;;
-;; Constants
+;; Degree and radian
 ;;
 
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 (define-constant +TWO-PI/360+ (/ TWO-PI 360))
 (define-constant +360/TWO-PI+ (/ 360 TWO-PI))
+
+(declaim (inline degree-to-radian))
+(defun degree-to-radian (degree)
+  (* degree +TWO-PI/360+))
+(declaim (inline radian-to-degree))
+(defun radian-to-degree (radian)
+  (* radian +360/TWO-PI+))
 
 ;;
 ;; Approximate comparison operators
@@ -131,7 +140,7 @@ THETA2] in a circle group."
 ;; Miscellaneous arithmetic
 ;;
 
-(defmacro fast-expt (base power)
+(defmacro pow (base power)
   "Does fast exponentiation by squaring. POWER must be a literal of
 type (integer 1)."
   (assert (constantp power))
