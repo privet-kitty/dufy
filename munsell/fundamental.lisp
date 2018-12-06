@@ -44,6 +44,7 @@
   +illum-d65+ +illum-c+ :cat +bradford+)
 
 ;; FIXME: Below are (not so good) workaround for optimization.
+(declaim (double-float *most-positive-non-large-double-float*))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *bit-length-of-most-positive-fixnum*
     (floor (log most-positive-fixnum 2)))
