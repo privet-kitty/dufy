@@ -502,8 +502,7 @@ situation whether the returned values are meaningful."
             ((= 3 h-prime-int) (values base (+ base x) val))
             ((= 4 h-prime-int) (values (+ base x) base val))
             ((= 5 h-prime-int) (values val base (+ base x)))
-            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding compiler warnings
-               )))))
+            (t (error "Reached unreachable clause"))))))
 
 (defconverters hsv (rgbpack qrgb lrgb xyz))
 
@@ -555,8 +554,7 @@ situation whether the returned values are meaningful."
             ((= 5 h-prime) (values max
                                    min
                                    (+ min (* delta (- 360d0 hue) 1/60))))
-            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding compiler warnings
-               )))))
+            (t (error "Reached unreachable clause."))))))
 
 (defconverters hsl (rgbpack qrgb lrgb xyz))
 
