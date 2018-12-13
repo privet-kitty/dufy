@@ -23,9 +23,9 @@ The illuminant of RGBSPACE must also be D65."
     :clamp clamp))
 
 (defun draw-srgb-in-munsell (&optional (size 300) (framerate 10) (bg-color sdl:*black*))
-  "Graphical demonstration with SDL. Renders the sRGB space in the
-Munsell space."
-  (declare (optimize (speed 3) (safety 0))
+  "Graphical demonstration with SDL. Renders the sRGB space in the Munsell
+space."
+  (declare (optimize (speed 3) (safety 1))
            (type uint size framerate))
   (let* ((value100 0) ; mut.
          (radius (round (/ size 2)))

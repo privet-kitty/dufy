@@ -175,11 +175,11 @@ Likewise most converters regard the implicit illuminant as D65. You can also spe
 # Modules
 Dufy consists of several independent modules:
 - dufy
-  - dufy/core
-  - dufy/munsell
-- dufy/extra-data
-- dufy/examples
+  - dufy/core/* (`package-nicknames`: dufy/core)
+  - dufy/munsell/* (`package-nicknames`: dufy/munsell)
+- dufy/extra-data/* (`package-nicknames`: dufy/extra-data)
+- dufy/examples/* (`package-nicknames`: dufy/examples)
 
-Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy/core` instead of `dufy` in some cases.
+Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy/core/*` instead of `dufy` in some cases.
 
 As of dufy 0.3.0, both the system names and the package names use the separator `/` instead of `-`, though the old package prefixes like `dufy-core` are left as nicknames.

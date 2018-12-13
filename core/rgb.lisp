@@ -224,8 +224,8 @@ being e.g. [0d0, 0.9999999999999999d0]."
                           :delinearizer delinearizer
                           :to-xyz-matrix mat
                           :from-xyz-matrix (invert-matrix mat)
-                          :lmin lmin
                           :lmax lmax
+                          :lmin lmin
                           :min min
                           :max max
                           :length len
@@ -347,9 +347,9 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
 
 (define-primary-converter (rgb qrgb) (r g b &key (rgbspace +srgb+) (clamp t))
   (declare (optimize (speed 3) (safety 1)))
-  "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1]
-typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255} typically),
-though it accepts all the real values."
+  "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1] typically) to
+0, 1, ..., RGBSPACE-QMAX (255 typically), though it accepts all the real
+values."
   (with-ensuring-type double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
           (qmax-float/length (rgbspace-qmax-float/length rgbspace))
