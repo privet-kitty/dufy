@@ -44,7 +44,8 @@ only linear models are available."
      (array (let ((coerced-mat (make-array '(3 3) :element-type 'double-float)))
               (dotimes-unroll (i 3)
                 (dotimes-unroll (j 3)
-                  (setf (aref coerced-mat i j) (aref mat i j))))
+                  (setf (aref coerced-mat i j)
+                        (coerce (aref mat i j) 'double-float))))
               coerced-mat)))))
 
 (defparameter +bradford+

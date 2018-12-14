@@ -138,7 +138,8 @@
   (is (equalp +identity-matrix+ (cat-inv-matrix +xyz-scaling+)))
   (is (equalp +xyz-scaling+ (make-cat #((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0)))))
   (is (equalp +xyz-scaling+ (make-cat '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0)))))
-  (signals type-error (make-cat '((1f0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0)))))
+  (is (equalp +xyz-scaling+ (make-cat #2a((1f0 0e0 0l0) (0s0 1 0) (0 0/1 1l0)))))
+  (signals type-error (make-cat 0d0)))
 
 (define-cat-function d50-to-a +illum-d50+ +illum-a+ :cat +cmccat97+)
 (define-cat-function a-to-d50 +illum-a+ +illum-d50+ :cat +cmccat97+)
