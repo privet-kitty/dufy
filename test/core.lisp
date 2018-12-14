@@ -134,25 +134,30 @@
 		         :illuminant *illum-d55-10*
 		         :cat +cmccat97+))))))
 
+(test make-cat
+  (is (equalp +identity-matrix+ (cat-inv-matrix +xyz-scaling+)))
+  (is (equalp +xyz-scaling+ (make-cat #((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0)))))
+  (is (equalp +xyz-scaling+ (make-cat '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0)))))
+  (signals type-error (make-cat '((1f0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0)))))
 
 (define-cat-function d50-to-a +illum-d50+ +illum-a+ :cat +cmccat97+)
 (define-cat-function a-to-d50 +illum-a+ +illum-d50+ :cat +cmccat97+)
+
 (test cat
   (let ((cat-func (gen-cat-function *illum-d55-10* +illum-a+))
-	(cat-func-rev (gen-cat-function +illum-a+ *illum-d55-10*)))
+        (cat-func-rev (gen-cat-function +illum-a+ *illum-d55-10*)))
     (dolist (xyz *xyz-set*)
       (is (nearly-equal 1d-4
-			xyz
-			(multiple-value-list
-			 (multiple-value-call cat-func-rev
+		        xyz
+		        (multiple-value-list
+		         (multiple-value-call cat-func-rev
 			   (apply cat-func xyz)))))))
   (dolist (xyz *xyz-set*)
     (is (nearly-equal 1d-4
 		      xyz
 		      (multiple-value-list
 		       (multiple-value-call #'a-to-d50
-			 (apply #'d50-to-a xyz)))))))
-
+		         (apply #'d50-to-a xyz)))))))
 
 (test rgb
   (dolist (xyz *xyz-set*)

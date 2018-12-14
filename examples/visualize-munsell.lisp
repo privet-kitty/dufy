@@ -16,7 +16,8 @@
 (defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp t))
   "Illuminant D65.
 The illuminant of RGBSPACE must also be D65."
-  (declare (optimize (speed 3) (safety 1)))
+  (declare (optimize (speed 3) (safety 1))
+           (inline xyz-to-qrgb))
   (multiple-value-call #'xyz-to-qrgb
     (mhvc-to-xyz hue40 value chroma)
     :rgbspace rgbspace

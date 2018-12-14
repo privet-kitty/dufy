@@ -26,59 +26,65 @@
 
 (in-package :dufy/core/cat)
 
-(defstruct (cat (:constructor %make-cat))
+(defstruct (cat (:constructor %make-cat
+                  (matrix &aux (inv-matrix (invert-matrix matrix)))))
   "Expresses a model of chromatic adaptation transformation. Currently
 only linear models are available."
   (matrix +empty-matrix+ :type matrix33)
   (inv-matrix +empty-matrix+ :type matrix33))
 
 (defun make-cat (mat)
-  "Generates a (linear) CAT model with a 3*3 matrix."
-  (let ((mat-arr (make-array '(3 3)
-                             :element-type 'double-float
-                             :initial-contents mat)))
-    (%make-cat :matrix mat-arr
-               :inv-matrix (invert-matrix mat-arr))))
+  "Generates a (linear) CAT model from a 3*3 matrix."
+  (%make-cat
+   (etypecase mat
+     (matrix33 mat)
+     (sequence (make-array '(3 3)
+                           :element-type 'double-float
+                           :initial-contents mat))
+     (array (let ((coerced-mat (make-array '(3 3) :element-type 'double-float)))
+              (dotimes-unroll (i 3)
+                (dotimes-unroll (j 3)
+                  (setf (aref coerced-mat i j) (aref mat i j))))
+              coerced-mat)))))
 
 (defparameter +bradford+
-  (make-cat '((0.8951d0 0.2664d0 -0.1614d0)
-              (-0.7502d0 1.7135d0 0.0367d0)
-              (0.0389d0 -0.0685d0 1.0296d0))))
+  (make-cat #2a((0.8951d0 0.2664d0 -0.1614d0)
+                (-0.7502d0 1.7135d0 0.0367d0)
+                (0.0389d0 -0.0685d0 1.0296d0))))
 
 (defparameter +xyz-scaling+
-  (make-cat '((1d0 0d0 0d0)
-              (0d0 1d0 0d0)
-              (0d0 0d0 1d0))))
+  (make-cat #2a((1d0 0d0 0d0)
+                (0d0 1d0 0d0)
+                (0d0 0d0 1d0))))
 
 (defparameter +von-kries+
-  (make-cat '((0.4002d0 0.7076d0 -0.0808d0)
-              (-0.2263d0 1.1653d0 0.0457d0)
-              (0.0000d0 0.0000d0 0.9182d0))))
+  (make-cat #2a((0.4002d0 0.7076d0 -0.0808d0)
+                (-0.2263d0 1.1653d0 0.0457d0)
+                (0.0000d0 0.0000d0 0.9182d0))))
 
 (defparameter +cmccat97+
-  (make-cat '((0.8951d0 -0.7502d0 0.0389d0)
-              (0.2664d0 1.7135d0 0.0685d0)
-              (-0.1614d0 0.0367d0 1.0296d0))))
+  (make-cat #2a((0.8951d0 -0.7502d0 0.0389d0)
+                (0.2664d0 1.7135d0 0.0685d0)
+                (-0.1614d0 0.0367d0 1.0296d0))))
 
 (defparameter +cmccat2000+
-  (make-cat '((0.7982d0 0.3389d0 -0.1371d0)
-              (-0.5918d0 1.5512d0 0.0406d0)
-              (0.0008d0 0.0239d0 0.9753d0))))
+  (make-cat #2a((0.7982d0 0.3389d0 -0.1371d0)
+                (-0.5918d0 1.5512d0 0.0406d0)
+                (0.0008d0 0.0239d0 0.9753d0))))
 
 (defparameter +cat97s-revised+
-  (make-cat '((0.8562d0 0.3372d0 -0.1934d0)
-              (-0.8360d0 1.8327d0 0.0033d0)
-              (0.0357d0 -0.0469d0 1.0112d0)))
+  (make-cat #2a((0.8562d0 0.3372d0 -0.1934d0)
+                (-0.8360d0 1.8327d0 0.0033d0)
+                (0.0357d0 -0.0469d0 1.0112d0)))
   "Fairchild, Mark D. (2001).\"A Revision of CIECAM97s for Practical
 Applications\" http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 
 (defparameter +cat02+
-  (make-cat '((0.7328d0 0.4296d0 -0.1624d0)
-              (-0.7036d0 1.6975d0 0.0061d0)
-              (0.0030d0 0.0136d0 0.9834d0)))
-  "Note that the CAT function returned by (gen-cat-function ... :cat
-  +cat02+) is different from the one in CIECAM02 since the latter is
-  non-linear.")
+  (make-cat #2a((0.7328d0 0.4296d0 -0.1624d0)
+                (-0.7036d0 1.6975d0 0.0061d0)
+                (0.0030d0 0.0136d0 0.9834d0)))
+  "Note that the CAT function returned by (gen-cat-function ... :cat +cat02+) is
+  different from the one in CIECAM02 since the latter is non-linear.")
 
 (define-colorspace lms (l m s)
   :arg-types (real real real)

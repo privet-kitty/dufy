@@ -97,7 +97,7 @@
 (define-colorspace qrgb (qr qg qb)
   :arg-types (fixnum fixnum fixnum)
   :return-types (fixnum fixnum fixnum)
-  :documentation "Is quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+  :documentation "Is quantized RGB. The nominal range of each value depends on the RGB space but is typically @{0, 1, ..., 255@}")
 
 (define-colorspace rgbpack (int)
   :arg-types ((integer 0))
@@ -112,7 +112,7 @@
 (define-colorspace qrgba (qr qg qb qalpha)
   :arg-types (fixnum fixnum fixnum fixnum)
   :return-types (fixnum fixnum fixnum fixnum)
-  :documentation "Is quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+  :documentation "Is quantized RGBA. The nominal range of each value depends on the RGB space but is typically @{0, 1, ..., 255@}")
 
 (define-colorspace rgbapack (int)
   :arg-types ((integer 0))

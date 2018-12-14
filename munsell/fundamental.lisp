@@ -30,12 +30,12 @@
 (define-colorspace mhvc (hue40 value chroma)
   :arg-types (real real real)
   :return-types ((double-float 0d0 40d0) double-float double-float)
-  :documentation "Three-number specification of Munsell color. HUE40 is in the circle group R/40Z. The nominal range of VALUE is [0, 10].")
+  :documentation "Is a three-number specification of Munsell Color. HUE40 is in the circle group R/40Z. The nominal range of VALUE is [0, 10].")
 
 (define-colorspace munsell (munsellspec)
   :arg-types (string)
   :return-types (string)
-  :documentation "Standard string specification of Munsell color.")
+  :documentation "Is the standard string specification of Munsell color.")
 
 ;; The bradford transformations between D65 and C are frequently used here.
 (define-cat-function c-to-d65
@@ -155,13 +155,13 @@ smaller than 1e-5."
                      (cond-chroma condition)))))
 
 (defun mhvc-out-of-mrd-p (hue40 value chroma)
-  "Checks if MHVC is out of the Munsell renotation data."
+  "Checks if Munsell HVC is out of the Munsell Renotation data."
   (or (< value 0) (> value 10)
       (< chroma 0)
       (> chroma (max-chroma-in-mrd hue40 value))))
 
 (defun mhvc-invalid-p (hue40 value chroma)
-  "Checks if MHVC values are out of range."
+  "Checks if Munsell HVC values are out of the valid range."
   (declare (ignore hue40))
   (or (< value 0) (> value 10)
       (< chroma 0) (> chroma *most-positive-non-large-double-float*)))

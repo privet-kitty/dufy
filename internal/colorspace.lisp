@@ -44,11 +44,14 @@
                             :documentation ,documentation
                             :neighbors nil))))
 
-(defun ensure-colorspace (thing)
-  (if (typep thing 'colorspace)
-      thing
-      (or (gethash thing *colorspace-table*)
-          (error "No such color space: ~A" thing))))
+(defun find-colorspace (colorspace-designator &optional (error t))
+  "colorspace-designator ::= symbol | colorspace"
+  (etypecase colorspace-designator
+    (colorspace colorspace-designator)
+    (symbol (or (gethash colorspace-designator *colorspace-table*)
+                (when error
+                  (error "No such color space: ~A" colorspace-designator))))))
+
 (defun ensure-colorspace-name (thing)
   (etypecase thing
     (symbol thing)
@@ -57,24 +60,25 @@
 (defmethod documentation ((x colorspace) (doc-type (eql 'colorspace)))
   (colorspace-documentation x))
 (defmethod documentation ((x symbol) (doc-type (eql 'colorspace)))
-  (documentation (ensure-colorspace x) 'colorspace))
+  (uiop:if-let ((cs (find-colorspace x nil)))
+    (documentation cs 'colorspace)))
 (defmethod (setf documentation) (new-value (x colorspace) (doc-type (eql 'colorspace)))
   (setf (colorspace-documentation x) new-value))
 (defmethod (setf documentation) (new-value (x symbol) (doc-type (eql 'colorspace)))
-  (setf (documentation (ensure-colorspace x) 'colorspace) new-value))
+  (setf (documentation (find-colorspace x) 'colorspace) new-value))
 
 (defun get-neighbors (name)
-  (colorspace-neighbors (ensure-colorspace name)))
+  (colorspace-neighbors (find-colorspace name)))
 (defun (setf get-neighbors) (val name)
-  (setf (colorspace-neighbors (ensure-colorspace name)) val))
+  (setf (colorspace-neighbors (find-colorspace name)) val))
 (defun get-args (name &key (package nil) (suffix ""))
   (mapcar #'(lambda (x) (intern (format nil "~A~A" x suffix)
                                 (or package (symbol-package x))))
-          (colorspace-args (ensure-colorspace name))))
+          (colorspace-args (find-colorspace name))))
 (defun get-arg-types (name)
-  (colorspace-arg-types (ensure-colorspace name)))
+  (colorspace-arg-types (find-colorspace name)))
 (defun get-return-types (name)
-  (colorspace-return-types (ensure-colorspace name)))
+  (colorspace-return-types (find-colorspace name)))
 
 (defun print-hash-table (hash)
   (format t "~%#<HASH-TABLE ~%")
