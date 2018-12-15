@@ -33,6 +33,7 @@ only linear models are available."
   (matrix +empty-matrix+ :type matrix33)
   (inv-matrix +empty-matrix+ :type matrix33))
 
+(declaim (inline make-cat))
 (defun make-cat (mat)
   "Generates a (linear) CAT model from a 3*3 matrix."
   (%make-cat
@@ -47,6 +48,7 @@ only linear models are available."
                   (setf (aref coerced-mat i j)
                         (coerce (aref mat i j) 'double-float))))
               coerced-mat)))))
+(declaim (notinline make-cat))
 
 (defparameter +bradford+
   (make-cat #2a((0.8951d0 0.2664d0 -0.1614d0)

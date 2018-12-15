@@ -147,9 +147,9 @@ type (integer 1)."
   (check-type power (integer 1))
   (labels ((round-off-to-power-of-2 (num)
              (let* ((approx (log num 2))
-                    (flo (expt 2 (floor approx)))
+                    (floor (expt 2 (floor approx)))
                     (ceil (expt 2 (ceiling approx))))
-               (if (<= ceil num) ceil flo)))
+               (if (<= ceil num) ceil floor)))
            (decompose-to-sum-of-powers-of-2 (num &optional result)
              (if (zerop num)
                  result
@@ -168,8 +168,8 @@ type (integer 1)."
                                                   ,(aref vars (- i 1))))))
          ,(if (= 1 (length components))
               (last-elt vars)
-              `(* ,@(loop for num in components
-                          collect (aref vars (round (log num 2))))))))))
+              `(* ,@(mapcar #'(lambda (num) (aref vars (round (log num 2))))
+                            components)))))))
 
 (declaim (inline square))
 (defun square (x) (* x x))

@@ -105,16 +105,12 @@ by linking them."
 (defun gen-converter-name (from-colorspace to-colorspace)
   (intern (format nil "~A-TO-~A"
                   (ensure-colorspace-name from-colorspace)
-                  (ensure-colorspace-name to-colorspace))
-          *package*))
+                  (ensure-colorspace-name to-colorspace))))
 
 (defun lambda-list= (lambda-list1 lambda-list2)
-  (if (null lambda-list1)
-      (if (null lambda-list2) t nil)
-      (if (null lambda-list2)
-          nil
-          (and (string= (car lambda-list1) (car lambda-list2))
-               (lambda-list= (cdr lambda-list1) (cdr lambda-list2))))))
+  (or (and (null lambda-list1) (null lambda-list2))
+      (and (string= (car lambda-list1) (car lambda-list2))
+           (lambda-list= (cdr lambda-list1) (cdr lambda-list2)))))
 
 (defun find-duplicates (lst &key (key #'identity) (test #'eql))
   (if (null lst)
