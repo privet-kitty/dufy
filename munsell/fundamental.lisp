@@ -118,6 +118,8 @@ smaller than 1e-5."
           (+ (* (- 1 r) (aref +y-to-munsell-value-table+ y1))
              (* r (aref +y-to-munsell-value-table+ y2)))))))
 
+;; y-to-munsell-value takes max. error = 4.907406006155954d-6 at
+;; 0.013503095272735743d0.
 (defun evaluate-error-of-y-to-munsell-value (&optional (num 100000000))
   "For devel. Returns the maximal error and the corresponding Y."
   (declare (optimize (speed 3) (safety 1))

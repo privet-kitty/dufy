@@ -15,25 +15,27 @@
 
 (in-package :dufy/core/rgbspaces-data)
 
-(defun linearize-srgb (x)
-  "linearizer of sRGB (actually the same as bg-sRGB)"
-  (declare (optimize (speed 3) (safety 0))
-           (double-float x))
-  (cond ((> x #.(* 0.0031308d0 12.92d0))
-         (expt (* (+ 0.055d0 x) #.(/ 1.055d0)) 2.4d0))
-        ((< x #.(* -0.0031308d0 12.92d0))
-         (- (expt (* (- 0.055d0 x) #.(/ 1.055d0)) 2.4d0)))
-        (t (* x #.(/ 12.92d0)))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (declaim (inline linearize-srgb delinearize-srgb))
+  (defun linearize-srgb (x)
+    "linearizer of sRGB (actually the same as bg-sRGB)"
+    (declare (optimize (speed 3) (safety 0))
+             (double-float x))
+    (cond ((> x #.(* 0.0031308d0 12.92d0))
+           (expt (* (+ 0.055d0 x) #.(/ 1.055d0)) 2.4d0))
+          ((< x #.(* -0.0031308d0 12.92d0))
+           (- (expt (* (- 0.055d0 x) #.(/ 1.055d0)) 2.4d0)))
+          (t (* x #.(/ 12.92d0)))))
 
-(defun delinearize-srgb (x)
-  "delinealizer of sRGB (actually the same as bg-sRGB)"
-  (declare (optimize (speed 3) (safety 0))
-           (double-float x))
-  (cond ((> x 0.0031308d0)
-         (+ (* 1.055d0 (expt x #.(/ 2.4d0))) -0.055d0))
-        ((< x -0.0031308d0)
-         (+ (* -1.055d0 (expt (- x) #.(/ 2.4d0))) 0.055d0))
-        (t (* x 12.92d0))))
+  (defun delinearize-srgb (x)
+    "delinealizer of sRGB (actually the same as bg-sRGB)"
+    (declare (optimize (speed 3) (safety 0))
+             (double-float x))
+    (cond ((> x 0.0031308d0)
+           (+ (* 1.055d0 (expt x #.(/ 2.4d0))) -0.055d0))
+          ((< x -0.0031308d0)
+           (+ (* -1.055d0 (expt (- x) #.(/ 2.4d0))) 0.055d0))
+          (t (* x 12.92d0)))))
 
 (defun linearize-scrgb-nl (x)
   (declare (optimize (speed 3) (safety 0))
@@ -53,12 +55,13 @@
          (+ (* -1.099d0 (expt (- x) 0.45d0)) 0.099d0))
         (t (* x 4.5d0))))
 
-(defparameter +srgb+
+(alexandria:define-constant +srgb+
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
                 :linearizer #'linearize-srgb
                 :delinearizer #'delinearize-srgb
                 :force-normal t)
-  "sRGB, 8-bit per channel")
+  :test (constantly t)
+  :documentation "sRGB, 8-bit per channel")
 
 (defparameter +bg-srgb-10+
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0

@@ -97,7 +97,7 @@
 (define-colorspace qrgb (qr qg qb)
   :arg-types (fixnum fixnum fixnum)
   :return-types (fixnum fixnum fixnum)
-  :documentation "Is quantized RGB. The nominal range of each value depends on the RGB space but is typically @{0, 1, ..., 255@}")
+  :documentation "Is quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
 
 (define-colorspace rgbpack (int)
   :arg-types ((integer 0))
@@ -112,7 +112,7 @@
 (define-colorspace qrgba (qr qg qb qalpha)
   :arg-types (fixnum fixnum fixnum fixnum)
   :return-types (fixnum fixnum fixnum fixnum)
-  :documentation "Is quantized RGBA. The nominal range of each value depends on the RGB space but is typically @{0, 1, ..., 255@}")
+  :documentation "Is quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
 
 (define-colorspace rgbapack (int)
   :arg-types ((integer 0))
@@ -183,9 +183,9 @@ COPY-RGBSPACE are available."
 LINEARIZER and DELINEARIZER must be (FUNCTION * (VALUES DOUBLE-FLOAT
 &OPTIONAL)).
 
-If FORCE-NORMAL is T, the nominal range of gamma-corrected values is
-forcibly set to [0d0, 1d0]. It is used to avoid the computed range
-being e.g. [0d0, 0.9999999999999999d0]."
+If FORCE-NORMAL is T, the nominal range of gamma-corrected values is forcibly
+set to [0d0, 1d0]. This option is used to avoid the computed range being
+e.g. [0d0, 0.9999999999999999d0]."
   (declare (optimize (speed 3) (safety 1))
            ((function * (values double-float &optional)) linearizer delinearizer))
   (with-ensuring-type double-float (xr yr xg yg xb yb)
@@ -200,7 +200,7 @@ being e.g. [0d0, 0.9999999999999999d0]."
                             (illuminant-x illuminant)
                             1d0
                             (illuminant-z illuminant))
-        (let* ((mat (make-array '(3 3)
+        (let* ((mat (make-array '(3 3) ; transformation matrix for linear-RGB-to-XYZ
                                 :element-type 'double-float
                                 :initial-contents
                                 `((,(* sr (aref coordinates 0 0))
@@ -237,14 +237,13 @@ being e.g. [0d0, 0.9999999999999999d0]."
                           :qmax-float/length (/ qmax-float len)
                           :length/qmax-float (/ len qmax-float)))))))
 
-;; FIXME: +SRGB+ is later defined though it is necessary here for
-;; the default value of the keyword arg :RGBSPACE.
+;; FIXME: +SRGB+ is later defined though its symbol is necessary here for the
+;; default value of the keyword arg :RGBSPACE.
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package :dufy/core/rgbspaces-data)
     (make-package :dufy/core/rgbspaces-data)
     (uiop:export* :+srgb+ :dufy/core/rgbspaces-data))
   (import (uiop:find-symbol* :+srgb+ :dufy/core/rgbspaces-data)))
-(defvar +srgb+)
 
 (define-primary-converter (xyz lrgb) (x y z &key (rgbspace +srgb+) &aux (illuminant (rgbspace-illuminant rgbspace)))
   (declare (optimize (speed 3) (safety 1))
@@ -348,8 +347,8 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
 (define-primary-converter (rgb qrgb) (r g b &key (rgbspace +srgb+) (clamp t))
   (declare (optimize (speed 3) (safety 1)))
   "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1] typically) to
-0, 1, ..., RGBSPACE-QMAX (255 typically), though it accepts all the real
-values."
+0, 1, ..., RGBSPACE-QMAX (255 typically), though it accepts all the real values
+and properly processes them as out-of-gamut color."
   (with-ensuring-type double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
           (qmax-float/length (rgbspace-qmax-float/length rgbspace))
@@ -415,8 +414,8 @@ typically), though it accepts all the real values."
   "Decodes a packed RGB value, whose type depends on RGBSPACE but is
 typically unsigned 24-bit integer.
 
-It is guaranteed that this converter can also process a packed RGBA
-value correctly if its order is ARGB."
+It is guaranteed that this converter can correctly process a packed RGBA value
+if its order is ARGB."
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
         (qmax (rgbspace-qmax rgbspace)))
     (values (logand (ash int (+ minus-bpc minus-bpc)) qmax)
@@ -426,12 +425,11 @@ value correctly if its order is ARGB."
 (define-primary-converter (qrgba rgbapack) (qr qg qb qalpha &key (rgbspace +srgb+) (order :argb) &aux (clamp nil))
   (declare (optimize (speed 3) (safety 1))
            (ignorable clamp))
-  "Decodes a packed RGBA value, whose type depends on RGBSPACE but is
-typically unsigned 32-bit integer.
+  "Decodes a packed RGBA value, whose type depends on RGBSPACE but is typically
+unsigned 32-bit integer.
 
-The order can be :ARGB or :RGBA. Note that it is different from the
-'physical' byte order in your machine, which depends on the
-endianess."
+The order can be :ARGB or :RGBA. Note that it is different from the 'physical'
+byte order in your machine, which depends on the endianess."
   (let* ((bpc (rgbspace-bit-per-channel rgbspace))
          (2bpc (+ bpc bpc))
          (qmax (rgbspace-qmax rgbspace)))
@@ -448,8 +446,7 @@ endianess."
 (define-primary-converter (rgbapack qrgba) (int &key (rgbspace +srgb+) (order :argb))
   (declare (optimize (speed 3) (safety 1)))
   "The order can be :ARGB or :RGBA. Note that it is different from the
-  'physical' byte order in your machine, which depends on the
-  endianess."
+  'physical' byte order in your machine, which depends on the endianess."
   (let* ((-bpc (- (rgbspace-bit-per-channel rgbspace)))
          (-2bpc (+ -bpc -bpc))
          (qmax (rgbspace-qmax rgbspace)))
@@ -485,8 +482,8 @@ endianess."
 
 (define-primary-converter (hsv rgb) (hue sat val)
   (declare (optimize (speed 3) (safety 1)))
-  "Non-normal RGB space is also accepted, though it depends on the
-situation whether the returned values are meaningful."
+  "Non-normal RGB space is also accepted, though it depends on the situation
+whether the returned values are meaningful."
   (let ((hue (the (double-float 0d0 360d0) (mod (float hue 1d0) 360d0)))
         (sat (float sat 1d0))
         (val (float val 1d0)))

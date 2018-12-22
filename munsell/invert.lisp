@@ -1,3 +1,4 @@
+;; -*- coding: utf-8 -*-
 ;;;
 ;;; -to-Munsell converters
 ;;;
@@ -210,24 +211,23 @@
 
 (define-primary-converter (lchab mhvc :name lchab-to-mhvc-illum-c)
     (lstar cstarab hab &key (max-iteration 200) (if-reach-max :error) (factor 0.5d0) (threshold 1d-6) &aux (illuminant +illum-c+))
-  "Is an inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration
-algorithm, which is almost same as the one in \"An Open-Source
-Inversion Algorithm for the Munsell Renotation\" by Paul Centore,
-2011:
+  "Is an inverter of MHVC-TO-LCHAB-ILLUM-C with a simple iteration algorithm,
+which is almost same as the one in \"An Open-Source Inversion Algorithm for the
+Munsell Renotation\" by Paul Centore, 2011:
 
 V := LSTAR-TO-MUNSELL-VALUE(L*);
-C_0 := C*ab / 5.5;
-H_0 := Hab / 9;
-C_(n+1) :=  C_n + factor * delta(C_n);
-H_(n+1) := H_n + factor * delta(H_n);
+C_0 := C*_ab / 5.5;
+H_0 := h_ab / 9;
+C_(n+1) :=  C_n + FACTOR * ΔC_n;
+H_(n+1) := H_n + FACTOR * ΔH_n;
 
-delta(H_n) and delta(C_n) are internally calculated at every
-step. This function returns Munsell HVC values if C_0 <= THRESHOLD or
-if V <= THRESHOLD or when max(delta(H_n), delta(C_n)) falls below
-THRESHOLD.
+Δ(H_n) and Δ(C_n) are internally calculated at every step. This function
+returns Munsell HVC values if C_0 <= THRESHOLD or if V <= THRESHOLD or when
+max(Δ(H_n), Δ(C_n)) falls below THRESHOLD.
 
 IF-REACH-MAX specifies the action to be taken if the loop reaches the
-MAX-ITERATION:
+MAX-ITERATION as follows:
+
 :error: Error of type DUFY:LARGE-APPROXIMATION-ERROR is signaled.
 :return40: Three 40d0s are returned.
 :raw: Just returns HVC as it is.
