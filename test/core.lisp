@@ -197,7 +197,7 @@
              (rgbpack-to-lrgb intrgb :rgbspace +bg-srgb-16+)
              :rgbspace +bg-srgb-16+)))))
 
-(test gen-rgbspace-chanter
+(test gen-rgbspace-changer
   (dolist (rgb *rgb-set*)
     (is (nearly-equal 1d-4
 		      rgb
