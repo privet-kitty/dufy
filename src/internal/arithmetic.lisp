@@ -1,13 +1,20 @@
 (in-package :dufy/internal)
 
 ;;
-;; Constants
+;; Degree and radian
 ;;
 
 (define-constant TWO-PI (float (+ PI PI) 1d0))
 (define-constant +TWO-PI/360+ (/ TWO-PI 360))
 (define-constant +360/TWO-PI+ (/ 360 TWO-PI))
 
+(declaim (inline degree-to-radian))
+(defun degree-to-radian (degree)
+  (* degree +TWO-PI/360+))
+
+(declaim (inline radian-to-degree))
+(defun radian-to-degree (radian)
+  (* radian +360/TWO-PI+))
 
 ;;
 ;; Approximate comparison operators
@@ -31,6 +38,11 @@
            (apply #'nearly-equal threshold
                   (cdr lst1)
                   (mapcar #'cdr lsts)))))
+
+(defmacro nearly-equal-values (threshold &rest forms)
+  `(nearly-equal ,threshold
+                 ,@(mapcar #'(lambda (x) `(multiple-value-list ,x))
+                           forms)))
 
 (defun nearly<= (threshold number &rest more-numbers)
   (if (null more-numbers)
@@ -106,21 +118,20 @@ THETA2] in a circle group."
         (or (<= mtheta1 mnumber)
             (<= mnumber theta2)))))
 
-
 ;;
 ;; Miscellaneous arithmetic
 ;;
 
-(defmacro fast-expt (base power)
+(defmacro pow (base power)
   "Does fast exponentiation by squaring. POWER must be a literal of
 type (integer 1)."
   (assert (constantp power))
   (check-type power (integer 1))
   (labels ((round-off-to-power-of-2 (num)
              (let* ((approx (log num 2))
-                    (flo (expt 2 (floor approx)))
+                    (floor (expt 2 (floor approx)))
                     (ceil (expt 2 (ceiling approx))))
-               (if (<= ceil num) ceil flo)))
+               (if (<= ceil num) ceil floor)))
            (decompose-to-sum-of-powers-of-2 (num &optional result)
              (if (zerop num)
                  result
@@ -139,8 +150,8 @@ type (integer 1)."
                                                   ,(aref vars (- i 1))))))
          ,(if (= 1 (length components))
               (last-elt vars)
-              `(* ,@(loop for num in components
-                          collect (aref vars (round (log num 2))))))))))
+              `(* ,@(mapcar #'(lambda (num) (aref vars (round (log num 2))))
+                            components)))))))
 
 (declaim (inline square))
 (defun square (x) (* x x))

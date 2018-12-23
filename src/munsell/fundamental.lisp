@@ -10,12 +10,12 @@
 (define-colorspace mhvc (hue40 value chroma)
   :arg-types (real real real)
   :return-types ((double-float 0d0 40d0) double-float double-float)
-  :documentation "Three-number specification of Munsell color. HUE40 is in the circle group R/40Z. The nominal range of VALUE is [0, 10].")
+  :documentation "Is a three-number specification of Munsell Color. HUE40 is in the circle group R/40Z. The nominal range of VALUE is [0, 10].")
 
 (define-colorspace munsell (munsellspec)
   :arg-types (string)
   :return-types (string)
-  :documentation "Standard string specification of Munsell color.")
+  :documentation "Is the standard string specification of Munsell color.")
 
 ;; The bradford transformations between D65 and C are frequently used here.
 (define-cat-function c-to-d65
@@ -24,6 +24,7 @@
   +illum-d65+ +illum-c+ :cat +bradford+)
 
 ;; FIXME: Below are (not so good) workaround for optimization.
+(declaim (double-float *most-positive-non-large-double-float*))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *bit-length-of-most-positive-fixnum*
     (floor (log most-positive-fixnum 2)))
@@ -92,11 +93,13 @@ smaller than 1e-5."
          (y1 (floor y1000))
          (y2 (ceiling y1000)))
     (if (= y1 y2)
-        (aref y-to-munsell-value-arr y1)
+        (aref +y-to-munsell-value-table+ y1)
         (let ((r (- y1000 y1)))
-          (+ (* (- 1 r) (aref y-to-munsell-value-arr y1))
-             (* r (aref y-to-munsell-value-arr y2)))))))
+          (+ (* (- 1 r) (aref +y-to-munsell-value-table+ y1))
+             (* r (aref +y-to-munsell-value-table+ y2)))))))
 
+;; y-to-munsell-value takes max. error = 4.907406006155954d-6 at
+;; 0.013503095272735743d0.
 (defun evaluate-error-of-y-to-munsell-value (&optional (num 100000000))
   "For devel. Returns the maximal error and the corresponding Y."
   (declare (optimize (speed 3) (safety 1))
@@ -134,13 +137,13 @@ smaller than 1e-5."
                      (cond-chroma condition)))))
 
 (defun mhvc-out-of-mrd-p (hue40 value chroma)
-  "Checks if MHVC is out of the Munsell renotation data."
+  "Checks if Munsell HVC is out of the Munsell Renotation data."
   (or (< value 0) (> value 10)
       (< chroma 0)
       (> chroma (max-chroma-in-mrd hue40 value))))
 
 (defun mhvc-invalid-p (hue40 value chroma)
-  "Checks if MHVC values are out of range."
+  "Checks if Munsell HVC values are out of the valid range."
   (declare (ignore hue40))
   (or (< value 0) (> value 10)
       (< chroma 0) (> chroma *most-positive-non-large-double-float*)))
@@ -212,20 +215,3 @@ However, the capital letters and  '/' are reserved:
 
 (defun munsell-out-of-mrd-p (munsellspec)
   (multiple-value-call #'mhvc-out-of-mrd-p (munsell-to-mhvc munsellspec)))
-
-;; Below are converters between Munsell HVC and corresponding
-;; cartesian coordinates. (Used only internally.)
-(declaim (inline cartesian-to-mhvc))
-(defun cartesian-to-mhvc (x y value)
-  (values (mod (* (atan y x) #.(/ 40 TWO-PI)) 40d0)
-          value
-          ;; A unit value is equivalent to two units chroma.
-          (* 2 (sqrt (+ (* x x) (* y y))))))
-
-(declaim (inline mhvc-to-cartesian))
-(defun mhvc-to-cartesian (hue40 value chroma)
-  (let ((rad (* hue40 #.(/ TWO-PI 40)))
-        (chroma/2 (/ chroma 2)))
-    (values (* chroma/2 (cos rad))
-            (* chroma/2 (sin rad))
-            value)))

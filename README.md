@@ -6,12 +6,10 @@ Dufy - Color Library for Common Lisp
 Dufy is a library for exact color manipulation and conversion in various color spaces, which supports the following color models:
 
 * RGB
-* XYZ
-* xyY
+* XYZ and xyY
 * CIELAB and LCh<sub>ab</sub>
 * CIELUV and LCh<sub>uv</sub>
-* HSV
-* HSL
+* HSV and HSL
 * Munsell Color System
 * LMS
 * spectrum (as spectral power distribution function)
@@ -21,7 +19,7 @@ Dufy can deal with the following concepts:
 * Illuminant: A, B, C, D series, F series, etc. A new illuminant can be defined by white point or SPD.
 * RGB space: sRGB, Adobe RGB, scRGB, etc.  A new RGB space can be defined by primary coordinates, illuminant, method of gamma correction, bit per channel and other encoding characteristics.
 * Observer (Color Matching Functions): CIE 1931 2&deg; Standard Observer, CIE 1964 10&deg;. Other observer model can be defined by color matching data.
-* Color difference: Delta-E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000, CMC l:c.
+* Color difference: &Delta;-E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000, CMC l:c.
 * Chromatic adaptaion transform: Bradford, Von Kries, etc. User-defined CAT is also available.
 
 
@@ -30,8 +28,10 @@ Besides this README file, most of the documentation is written as docstrings in 
 
 
 # Dependencies
+
 * alexandria
 * cl-ppcre
+* wild-package-inferred-system (requires **ASDF 3.3** or later)
 
 All of the dependent libraries can be installed with quicklisp.
 
@@ -40,7 +40,7 @@ The easiest way to install dufy is to use [quicklisp](https://www.quicklisp.org/
 
     * (ql:quickload :dufy)
 
-The latest version in this repository can also be used with quicklisp:
+The latest version in this repository can also be loaded with quicklisp:
 
     $ cd ~/quicklisp/local-projects   # the path is held in ql:*local-project-directories*
     $ git clone git@github.com:privet-kitty/dufy.git
@@ -175,11 +175,11 @@ Likewise most converters regard the implicit illuminant as D65. You can also spe
 # Modules
 Dufy consists of several independent modules:
 - dufy
-  - dufy/core
-  - dufy/munsell
-- dufy/extra-data
-- dufy/examples
+  - dufy/core/* (`package-nicknames`: dufy/core)
+  - dufy/munsell/* (`package-nicknames`: dufy/munsell)
+- dufy/extra-data/* (`package-nicknames`: dufy/extra-data)
+- dufy/examples/* (`package-nicknames`: dufy/examples)
 
-Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy/core` instead of `dufy` in some cases.
+Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy/core/*` instead of `dufy` in some cases.
 
 As of dufy 0.3.0, both the system names and the package names use the separator `/` instead of `-`, though the old package prefixes like `dufy-core` are left as nicknames.

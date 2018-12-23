@@ -1,17 +1,16 @@
-(in-package :dufy/internal)
-
 ;;;
 ;;; Matrix operations
 ;;;
 ;;; Currently only the operations for 3*3 matrix are necessary.
 ;;;
 
+(in-package :dufy/internal)
 
 (deftype matrix33 () '(simple-array double-float (3 3)))
 
 (defparameter +identity-matrix+
   (make-array '(3 3) :element-type 'double-float
-              :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
+                     :initial-contents '((1d0 0d0 0d0) (0d0 1d0 0d0) (0d0 0d0 1d0))))
 
 (defparameter +empty-matrix+
   (make-array '(3 3) :element-type 'double-float)

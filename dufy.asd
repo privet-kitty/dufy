@@ -7,7 +7,8 @@
   :license "MIT"
   :depends-on ("dufy/core" "dufy/munsell")
   :components ((:module "dat"
-                :components ((:static-file "ciede2000-test-data.csv")))
+                :components ((:static-file "ciede2000-test-data.csv")
+                             (:static-file "FL3.x.tsv")))
                (:module "src"
                 :components ((:file "package"))))
   :in-order-to ((test-op (test-op "dufy/test"))))
@@ -22,7 +23,8 @@
                 ((:file "package")
                  (:file "utilities")
                  (:file "arithmetic")
-                 (:file "matrix")))))
+                 (:file "matrix")
+                 (:file "colorspace")))))
 
 (defsystem "dufy/core"
   :pathname "src"
@@ -31,10 +33,10 @@
   :components ((:module "core"
                 :components
                 ((:file "package")
-                 (:file "colorspace")
                  (:file "cmf-data")
-                 (:file "xyz")
+                 (:file "spectrum")
                  (:file "illuminants-data")
+                 (:file "xyz")
                  (:file "rgb")
                  (:file "lab-and-luv")
                  (:file "cat")
@@ -49,10 +51,11 @@
                 :components
                 ((:file "package")
                  (:file "y-to-value-data")
-                 (:file "munsell-renotation-data")
-                 (:file "inversed-munsell-renotation-data")
+                 (:file "renotation-data")
+                 (:file "inversed-renotation-data")
                  (:file "fundamental")
-                 (:file "munsell")))))
+                 (:file "convert")
+                 (:file "invert")))))
 
 (defsystem "dufy/extra-data"
   :pathname "src"
@@ -61,21 +64,19 @@
   :components ((:module "extra-data"
                 :components
                 ((:file "package")
-                 (:file "illuminants-data")
+                 (:file "illuminants")
                  (:file "illuminants-f3-series")
-                 (:file "illuminants-gas-discharge-lamps")))))
+                 (:file "illuminants-lamps")))))
 
 (defsystem "dufy/examples"
-  :description "Examples of dufy"
   :pathname "src"
   :serial t
   :depends-on ("dufy" "lispbuilder-sdl" "iterate" "alexandria" "lparallel")
   :components ((:module "examples"
-                :components ((:file "packages")
-                             (:file "show-munsell-space")))))
+                :components ((:file "package")
+                             (:file "visualize-munsell")))))
 
 (defsystem "dufy/test"
-  :description "Test system for dufy"
   :pathname "test"
   :serial t
   :depends-on ("dufy"
@@ -87,6 +88,7 @@
                "dufy/extra-data"
                (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples"))
   :components ((:file "package")
+               (:file "core")
                (:file "munsell"))
   :perform (test-op (o s)
-                    (uiop:eval-input "(fiveam:run! 'dufy/test:dufy-suite)")))
+                    (uiop:eval-input "(fiveam:run! 'dufy/test:main-suite)")))

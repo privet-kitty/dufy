@@ -69,8 +69,8 @@
      (internal-real-time ,@body)))
 
 (defmacro time-median (num &body body)
-  "Repeats BODY NUM times and returns the median of elapsed (internal
-real) times."
+  "Repeats BODY NUM times and returns the median of elapsed (internal real)
+times."
   (let ((i (gensym)))
     `(alexandria:median
       (loop for ,i below ,num
@@ -120,12 +120,16 @@ real) times."
        ,@body)))
 
 (deftype tuple (&rest rest)
-  "Analogy of the type specifier `cons' and the function `list':
-type (TUPLE A B C) is equivalent to the type (CONS A (CONS B (CONS
-C))); the type TUPLE (or (TUPLE)) is equivalent to the type NULL."
+  "Analogy of the type specifier `cons' and the function `list': type (TUPLE A B
+C) is equivalent to the type (CONS A (CONS B (CONS C NULL))); the type
+TUPLE (or (TUPLE)) is equivalent to the type NULL."
   (if (null rest)
       'null
       (reduce #'(lambda (x y) (if (null y) `(cons ,x) `(cons ,x ,y)))
               rest
               :from-end t
-              :initial-value nil)))
+              :initial-value 'null)))
+
+(defmacro nlet (name args &body body)
+  `(labels ((,name ,(mapcar #'car args) ,@body))
+     (,name ,@(mapcar #'cadr args))))

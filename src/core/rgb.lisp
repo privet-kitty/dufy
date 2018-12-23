@@ -1,42 +1,47 @@
-(in-package :dufy/core)
+;;;
+;;; RGB and HSV/HSL
+;;;
 
-;;;
-;;; RGB Color Space
-;;;
+(in-package :dufy/core)
 
 (define-colorspace lrgb (lr lg lb)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
-  :documentation "Linear RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+  :documentation "Is linear RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+
 (define-colorspace rgb (r g b)
   :arg-types (real real real)
   :return-types (double-float double-float double-float)
-  :documentation "Gamma-corrected RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+  :documentation "Is gamma-corrected RGB. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+
 (define-colorspace qrgb (qr qg qb)
   :arg-types (fixnum fixnum fixnum)
   :return-types (fixnum fixnum fixnum)
-  :documentation "Quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+  :documentation "Is quantized RGB. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+
 (define-colorspace rgbpack (int)
   :arg-types ((integer 0))
   :return-types ((integer 0))
-  :documentation "RGB, encoded to an unsigned integer. The size depends on the RGB space but is 24 bit for example.")
+  :documentation "Is RGB encoded to an unsigned integer. The size depends on the RGB space but is 24 bit for example.")
 
 (define-colorspace rgba (r g b alpha)
   :arg-types (real real real real)
   :return-types (double-float double-float double-float double-float)
-  :documentation "Gamma-corrected RGBA. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+  :documentation "Is gamma-corrected RGBA. The nominal range of each value depends on the RGB space but is typically [0, 1]")
+
 (define-colorspace qrgba (qr qg qb qalpha)
   :arg-types (fixnum fixnum fixnum fixnum)
   :return-types (fixnum fixnum fixnum fixnum)
-  :documentation "Quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+  :documentation "Is quantized RGBA. The nominal range of each value depends on the RGB space but is typically {0, 1, ..., 255}")
+
 (define-colorspace rgbapack (int)
   :arg-types ((integer 0))
   :return-types ((integer 0))
-  :documentation "RGB, encoded to an unsigned integer. The order can be ARGB or RGBA.")
+  :documentation "Is RGBA encoded to an unsigned integer. The order can be ARGB or RGBA.")
 
 (defun gen-linearizer (gamma)
   "Returns a linearization function for a given gamma value. You
-shouldn't call the returned function on your own, as it is not safe."
+shouldn't call the returned function directly as it is not safe."
   (let ((gamma (float gamma 1d0)))
     #'(lambda (x)
         (declare (optimize (speed 3) (safety 0))
@@ -47,7 +52,7 @@ shouldn't call the returned function on your own, as it is not safe."
 
 (defun gen-delinearizer (gamma)
   "Returns a gamma-correction function for a given gamma value. You
-shouldn't call the returned function on your own, as it is not safe."
+shouldn't call the returned function directly as it is not safe."
   (let ((/gamma (/ (float gamma 1d0))))
     #'(lambda (x)
         (declare (optimize (speed 3) (safety 0))
@@ -57,9 +62,9 @@ shouldn't call the returned function on your own, as it is not safe."
             (- (expt (- x) /gamma))))))
 
 (defstruct (rgbspace (:constructor %make-rgbspace)
-                     (:copier nil))
-  "Structure of RGB space including encoding characteristics. You
-shouldn't write to any slots directly; instead MAKE-RGBSPACE or
+                     (:copier nil)) ; COPY-RGBSPACE is defined later.
+  "Is structure of RGB space including encoding characteristics. You
+shouldn't write to any slots directly; instead MAKE-RGBSPACE and
 COPY-RGBSPACE are available."
   ;; primary coordinates in xyY space.
   (xr 0d0 :type double-float) (yr 0d0 :type double-float)
@@ -98,37 +103,35 @@ COPY-RGBSPACE are available."
 LINEARIZER and DELINEARIZER must be (FUNCTION * (VALUES DOUBLE-FLOAT
 &OPTIONAL)).
 
-If FORCE-NORMAL is T, the nominal range of gamma-corrected values is
-forcibly set to [0d0, 1d0]. It is used to avoid the computed range
-being e.g. [0d0, 0.9999999999999999d0]."
+If FORCE-NORMAL is T, the nominal range of gamma-corrected values is forcibly
+set to [0d0, 1d0]. This option is used to avoid the computed range being
+e.g. [0d0, 0.9999999999999999d0]."
   (declare (optimize (speed 3) (safety 1))
-           ((function * double-float) linearizer delinearizer))
+           ((function * (values double-float &optional)) linearizer delinearizer))
   (with-ensuring-type double-float (xr yr xg yg xb yb)
-    (let ((coordinates
-            (make-array '(3 3)
-                        :element-type 'double-float
-                        :initial-contents
-                        `((,xr ,xg ,xb)
-                          (,yr ,yg ,yb)
-                          (,(- 1d0 xr yr) ,(- 1d0 xg yg) ,(- 1d0 xb yb))))))
+    (let ((coordinates (make-array '(3 3)
+                                   :element-type 'double-float
+                                   :initial-contents
+                                   `((,xr ,xg ,xb)
+                                     (,yr ,yg ,yb)
+                                     (,(- 1d0 xr yr) ,(- 1d0 xg yg) ,(- 1d0 xb yb))))))
       (multiple-value-bind (sr sg sb)
           (multiply-mat-vec (invert-matrix coordinates)
                             (illuminant-x illuminant)
                             1d0
                             (illuminant-z illuminant))
-        (let* ((mat
-                 (make-array '(3 3)
-                             :element-type 'double-float
-                             :initial-contents
-                             `((,(* sr (aref coordinates 0 0))
-                                ,(* sg (aref coordinates 0 1))
-                                ,(* sb (aref coordinates 0 2)))
-                               (,(* sr (aref coordinates 1 0))
-                                ,(* sg (aref coordinates 1 1))
-                                ,(* sb (aref coordinates 1 2)))
-                               (,(* sr (aref coordinates 2 0))
-                                ,(* sg (aref coordinates 2 1))
-                                ,(* sb (aref coordinates 2 2))))))
+        (let* ((mat (make-array '(3 3) ; transformation matrix for linear-RGB-to-XYZ
+                                :element-type 'double-float
+                                :initial-contents
+                                `((,(* sr (aref coordinates 0 0))
+                                   ,(* sg (aref coordinates 0 1))
+                                   ,(* sb (aref coordinates 0 2)))
+                                  (,(* sr (aref coordinates 1 0))
+                                   ,(* sg (aref coordinates 1 1))
+                                   ,(* sb (aref coordinates 1 2)))
+                                  (,(* sr (aref coordinates 2 0))
+                                   ,(* sg (aref coordinates 2 1))
+                                   ,(* sb (aref coordinates 2 2))))))
                (min (if force-normal 0d0 (funcall delinearizer lmin)))
                (max (if force-normal 1d0 (funcall delinearizer lmax)))
                (normal (and (= min 0d0) (= max 1d0)))
@@ -141,8 +144,8 @@ being e.g. [0d0, 0.9999999999999999d0]."
                           :delinearizer delinearizer
                           :to-xyz-matrix mat
                           :from-xyz-matrix (invert-matrix mat)
-                          :lmin lmin
                           :lmax lmax
+                          :lmin lmin
                           :min min
                           :max max
                           :length len
@@ -154,7 +157,7 @@ being e.g. [0d0, 0.9999999999999999d0]."
                           :qmax-float/length (/ qmax-float len)
                           :length/qmax-float (/ len qmax-float)))))))
 
-(defvar +srgb+) ; defined in another file
+(defvar +srgb+) ; defined later
 
 (define-primary-converter (xyz lrgb) (x y z &key (rgbspace +srgb+) &aux (illuminant (rgbspace-illuminant rgbspace)))
   (declare (optimize (speed 3) (safety 1))
@@ -172,9 +175,8 @@ being e.g. [0d0, 0.9999999999999999d0]."
                     (float lg 1d0)
                     (float lb 1d0)))
 
-
 ;;;
-;;; Linear RGB, gamma-corrected RGB and quantized RGB
+;;; Linear RGB, gamma-corrected RGB, and quantized RGB
 ;;;
 
 (defun lrgb-out-of-gamut-p (lr lg lb &key (rgbspace +srgb+) (threshold 1d-4))
@@ -243,7 +245,8 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
   (if clamp
       (clamp (round (* (- (float x 1d0) (rgbspace-min rgbspace))
                        (rgbspace-qmax-float/length rgbspace)))
-             0 (rgbspace-qmax rgbspace))
+             0
+             (rgbspace-qmax rgbspace))
       (round (* (- (float x 1d0) (rgbspace-min rgbspace))
                 (rgbspace-qmax-float/length rgbspace)))))
 
@@ -257,9 +260,9 @@ interval [RGBSPACE-LMIN - THRESHOLD, RGBSPACE-LMAX + THRESHOLD]."
 
 (define-primary-converter (rgb qrgb) (r g b &key (rgbspace +srgb+) (clamp t))
   (declare (optimize (speed 3) (safety 1)))
-  "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1]
-typically) to {0, 1, ..., RGBSPACE-QMAX} ({0, 1, ..., 255} typically),
-though it accepts all the real values."
+  "Quantizes RGB values from [RGBSPACE-MIN, RGBSPACE-MAX] ([0, 1] typically) to
+0, 1, ..., RGBSPACE-QMAX (255 typically), though it accepts all the real values
+and properly processes them as out-of-gamut color."
   (with-ensuring-type double-float (r g b)
     (let ((min (rgbspace-min rgbspace))
           (qmax-float/length (rgbspace-qmax-float/length rgbspace))
@@ -325,8 +328,8 @@ typically), though it accepts all the real values."
   "Decodes a packed RGB value, whose type depends on RGBSPACE but is
 typically unsigned 24-bit integer.
 
-It is guaranteed that this converter can also process a packed RGBA
-value correctly if its order is ARGB."
+It is guaranteed that this converter can correctly process a packed RGBA value
+if its order is ARGB."
   (let ((minus-bpc (- (rgbspace-bit-per-channel rgbspace)))
         (qmax (rgbspace-qmax rgbspace)))
     (values (logand (ash int (+ minus-bpc minus-bpc)) qmax)
@@ -336,12 +339,11 @@ value correctly if its order is ARGB."
 (define-primary-converter (qrgba rgbapack) (qr qg qb qalpha &key (rgbspace +srgb+) (order :argb) &aux (clamp nil))
   (declare (optimize (speed 3) (safety 1))
            (ignorable clamp))
-  "Decodes a packed RGBA value, whose type depends on RGBSPACE but is
-typically unsigned 32-bit integer.
+  "Decodes a packed RGBA value, whose type depends on RGBSPACE but is typically
+unsigned 32-bit integer.
 
-The order can be :ARGB or :RGBA. Note that it is different from the
-'physical' byte order in your machine, which depends on the
-endianess."
+The order can be :ARGB or :RGBA. Note that it is different from the 'physical'
+byte order in your machine, which depends on the endianess."
   (let* ((bpc (rgbspace-bit-per-channel rgbspace))
          (2bpc (+ bpc bpc))
          (qmax (rgbspace-qmax rgbspace)))
@@ -358,8 +360,7 @@ endianess."
 (define-primary-converter (rgbapack qrgba) (int &key (rgbspace +srgb+) (order :argb))
   (declare (optimize (speed 3) (safety 1)))
   "The order can be :ARGB or :RGBA. Note that it is different from the
-  'physical' byte order in your machine, which depends on the
-  endianess."
+  'physical' byte order in your machine, which depends on the endianess."
   (let* ((-bpc (- (rgbspace-bit-per-channel rgbspace)))
          (-2bpc (+ -bpc -bpc))
          (qmax (rgbspace-qmax rgbspace)))
@@ -395,8 +396,8 @@ endianess."
 
 (define-primary-converter (hsv rgb) (hue sat val)
   (declare (optimize (speed 3) (safety 1)))
-  "Non-normal RGB space is also accepted, though it depends on the
-situation whether the returned values are meaningful."
+  "Non-normal RGB space is also accepted, though it depends on the situation
+whether the returned values are meaningful."
   (let ((hue (the (double-float 0d0 360d0) (mod (float hue 1d0) 360d0)))
         (sat (float sat 1d0))
         (val (float val 1d0)))
@@ -412,8 +413,7 @@ situation whether the returned values are meaningful."
             ((= 3 h-prime-int) (values base (+ base x) val))
             ((= 4 h-prime-int) (values (+ base x) base val))
             ((= 5 h-prime-int) (values val base (+ base x)))
-            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding compiler warnings
-               )))))
+            (t (error "Reached unreachable clause"))))))
 
 (defconverters hsv (rgbpack qrgb lrgb xyz))
 
@@ -437,7 +437,7 @@ situation whether the returned values are meaningful."
 
 (define-primary-converter (hsl rgb) (hue sat lum)
   (declare (optimize (speed 3) (safety 1)))
-    "Non-normal RGB space is also accepted, though it depends on the
+  "Non-normal RGB space is also accepted, though it depends on the
 situation whether the returned values are meaningful."
   (with-ensuring-type double-float (hue sat lum)
     (let* ((hue (mod hue 360d0))
@@ -465,8 +465,7 @@ situation whether the returned values are meaningful."
             ((= 5 h-prime) (values max
                                    min
                                    (+ min (* delta (- 360d0 hue) 1/60))))
-            (t (values 0d0 0d0 0d0) ; unreachable. just for avoiding compiler warnings
-               )))))
+            (t (error "Reached unreachable clause."))))))
 
 (defconverters hsl (rgbpack qrgb lrgb xyz))
 

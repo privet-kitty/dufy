@@ -1,9 +1,10 @@
 ;;;
-;;; Predefined RGB spaces
+;;; Built-in RGB spaces
 ;;;
 
 (in-package :dufy/core)
 
+(declaim (inline linearize-srgb delinearize-srgb))
 (defun linearize-srgb (x)
   "linearizer of sRGB (actually the same as bg-sRGB)"
   (declare (optimize (speed 3) (safety 0))
@@ -41,7 +42,6 @@
         ((< x -0.018d0)
          (+ (* -1.099d0 (expt (- x) 0.45d0)) 0.099d0))
         (t (* x 4.5d0))))
-
 
 (defparameter +srgb+
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
@@ -95,8 +95,8 @@ http://www.color.org/chardata/rgb/scrgb-nl.xalter")
 
 (defparameter +adobe+
   (make-rgbspace 0.64d0 0.33d0 0.21d0 0.71d0 0.15d0 0.06d0
-                :linearizer (gen-linearizer #.(float 563/256 1d0))
-                :delinearizer (gen-delinearizer #.(float 563/256 1d0)))
+                 :linearizer (gen-linearizer #.(float 563/256 1d0))
+                 :delinearizer (gen-delinearizer #.(float 563/256 1d0)))
   "Adobe RGB (1998), 8-bit per channel")
 
 (defparameter +adobe-16+

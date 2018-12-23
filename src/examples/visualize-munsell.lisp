@@ -5,12 +5,24 @@
 
 (setf lparallel:*kernel* (lparallel:make-kernel 4))
 
+(declaim (inline mhvc-to-qrgb)
+         (ftype (function * (values fixnum fixnum fixnum &optional)) mhvc-to-qrgb))
+(defun mhvc-to-qrgb (hue40 value chroma &key (rgbspace +srgb+) (clamp t))
+  "Illuminant D65.
+The illuminant of RGBSPACE must also be D65."
+  (declare (optimize (speed 3) (safety 1))
+           (inline xyz-to-qrgb))
+  (multiple-value-call #'xyz-to-qrgb
+    (mhvc-to-xyz hue40 value chroma)
+    :rgbspace rgbspace
+    :clamp clamp))
+
 (defun draw-srgb-in-munsell (&optional (size 300) (framerate 10) (bg-color sdl:*black*))
-  "Graphical demonstration with SDL. Renders the sRGB space in the
-Munsell space."
-  (declare (optimize (speed 3) (safety 0))
+  "Graphical demonstration with SDL. Renders the sRGB space in the Munsell
+space."
+  (declare (optimize (speed 3) (safety 1))
            (type uint size framerate))
-  (let* ((value100 0)
+  (let* ((value100 0) ; mut.
          (radius (round (/ size 2)))
          (center-x radius)
          (center-y radius)
@@ -26,7 +38,7 @@ Munsell space."
                          (atan delta-y delta-x))))
              (coord-to-mhvc (i j)
                (multiple-value-bind (r theta) (polar i j)
-                 (values (- 20 (* theta #.(/ 40 dufy/core::two-pi)))
+                 (values (- 20 (* theta #.(/ 40 dufy/internal:two-pi)))
                          (* value100 0.1d0)
                          (* max-chroma (/ r radius))))))
       (declare (inline coord-to-mhvc polar)
@@ -52,7 +64,7 @@ Munsell space."
                    (lparallel:pdotimes (i size)
                      (dotimes (j size)
                        (multiple-value-bind (qr qg qb)
-                           (multiple-value-call #'dufy:mhvc-to-qrgb
+                           (multiple-value-call #'mhvc-to-qrgb
                              (coord-to-mhvc i j)
                              :clamp nil)
                          (declare (type sint qr qg qb))

@@ -4,7 +4,7 @@
 
 (in-package :dufy/test)
 
-(def-suite munsell-suite :in dufy-suite)
+(def-suite munsell-suite :in main-suite)
 (in-suite munsell-suite)
 
 (defun ordered-in-circle-group-p (list &optional (perimeter 360d0))
@@ -46,10 +46,10 @@ this value.)"
   ;; achromatic
   (is (nearly-equal 1d-4
                     '(0 0 0)
-                    (multiple-value-list (dufy:munsell-to-lchab-illum-c "3RP 0/200"))))
+                    (multiple-value-list (munsell-to-lchab-illum-c "3RP 0/200"))))
   (is (nearly-equal 1d-4
                     '(100 0 0)
-                    (multiple-value-list (dufy:munsell-to-lchab-illum-c "N 10")))))
+                    (multiple-value-list (munsell-to-lchab-illum-c "N 10")))))
 
 (test munsell-to-xyz
   (is (nearly-equal 1d-4
@@ -64,8 +64,8 @@ this value.)"
   (is (nearly-equal 1d-9
                     '(0.31006249258289614d0 0.31615894048704557d0 0.06827557003978901d0)
                     (multiple-value-list
-                     (multiple-value-call #'dufy:xyz-to-xyy
-                       (dufy:munsell-to-xyz-illum-c "N 3.1"))))))
+                     (multiple-value-call #'xyz-to-xyy
+                       (munsell-to-xyz-illum-c "N 3.1"))))))
 
 (test lchab-to-mhvc-illum-c
   (signals large-approximation-error
