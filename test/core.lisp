@@ -1,12 +1,6 @@
 ;; -*- coding: utf-8 -*-
+(in-package :dufy/test)
 
-(uiop:define-package :dufy/test/core
-    (:use :cl :dufy/core/* :dufy/internal/* :fiveam :alexandria :cl-csv :parse-float)
-  (:export #:main-suite #:*xyz-set*))
-
-(in-package :dufy/test/core)
-
-(def-suite main-suite)
 (in-suite main-suite)
 
 ;;;

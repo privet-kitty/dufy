@@ -2,10 +2,7 @@
 ;;; Test for dufy/munsell
 ;;;
 
-(uiop:define-package :dufy/test/munsell
-  (:use :cl :fiveam :alexandria :dufy/munsell/* :dufy/internal/* :dufy/core/* :dufy/test/core))
-
-(in-package :dufy/test/munsell)
+(in-package :dufy/test)
 
 (def-suite munsell-suite :in main-suite)
 (in-suite munsell-suite)
