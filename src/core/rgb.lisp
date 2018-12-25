@@ -98,6 +98,9 @@ COPY-RGBSPACE are available."
       (length/qmax-float (float 1/255 1d0) :type double-float)
       (qmax-float/length 255d0 :type double-float)))
 
+  (defmethod make-load-form ((rgbspace rgbspace) &optional env)
+    (make-load-form-saving-slots rgbspace :environment env))
+  
   (defun make-rgbspace (xr yr xg yg xb yb &key (illuminant +illum-d65+) (lmin 0d0) (lmax 1d0) (linearizer (rcurry #'float 1d0)) (delinearizer (rcurry #'float 1d0)) (bit-per-channel 8) (force-normal nil))
     "xr, yr, xg, yg, xb, yb := primary coordinates in the xy plane.
 [lmin, lmax] := range of linear values ([0, 1] typically).

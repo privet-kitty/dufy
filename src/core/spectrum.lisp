@@ -90,6 +90,9 @@ is used to lighten a \"heavy\" spectrum function."
     (cmf-z nil :type spectrum-function)
     (cmf nil :type (function * (values double-float double-float double-float &optional)))))
 
+(defmethod make-load-form ((observer observer) &optional env)
+  (make-load-form-saving-slots observer :environment env))
+  
 (defmethod print-object ((obs observer) stream)
   (let ((*print-array* nil))
     (call-next-method)))
@@ -294,6 +297,9 @@ f(x) = 0d0 otherwise."
     (observer +obs-cie1931+ :type observer)
     ;; used in xyz-to-spectrum conversion
     (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3)))))
+
+(defmethod make-load-form ((illuminant illuminant) &optional env)
+  (make-load-form-saving-slots illuminant :environment env))
 
 (defun illuminant-xy (illuminant)
   "Returns the xy chromacity coordinates of a given illuminant."

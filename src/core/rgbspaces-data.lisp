@@ -4,27 +4,6 @@
 
 (in-package :dufy/core)
 
-(declaim (inline linearize-srgb delinearize-srgb))
-(defun linearize-srgb (x)
-  "linearizer of sRGB (actually the same as bg-sRGB)"
-  (declare (optimize (speed 3) (safety 0))
-           (double-float x))
-  (cond ((> x #.(* 0.0031308d0 12.92d0))
-         (expt (* (+ 0.055d0 x) #.(/ 1.055d0)) 2.4d0))
-        ((< x #.(* -0.0031308d0 12.92d0))
-         (- (expt (* (- 0.055d0 x) #.(/ 1.055d0)) 2.4d0)))
-        (t (* x #.(/ 12.92d0)))))
-
-(defun delinearize-srgb (x)
-  "delinealizer of sRGB (actually the same as bg-sRGB)"
-  (declare (optimize (speed 3) (safety 0))
-           (double-float x))
-  (cond ((> x 0.0031308d0)
-         (+ (* 1.055d0 (expt x #.(/ 2.4d0))) -0.055d0))
-        ((< x -0.0031308d0)
-         (+ (* -1.055d0 (expt (- x) #.(/ 2.4d0))) 0.055d0))
-        (t (* x 12.92d0))))
-
 (defun linearize-scrgb-nl (x)
   (declare (optimize (speed 3) (safety 0))
            (double-float x))
