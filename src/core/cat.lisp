@@ -4,12 +4,13 @@
 
 (in-package :dufy/core)
 
-(defstruct (cat (:constructor %make-cat
-                  (matrix &aux (inv-matrix (invert-matrix matrix)))))
-  "Expresses a model of chromatic adaptation transformation. Currently only
+(with-read-only
+  (defstruct (cat (:constructor %make-cat
+                      (matrix &aux (inv-matrix (invert-matrix matrix)))))
+    "Expresses a model of chromatic adaptation transformation. Currently only
 linear models are available."
-  (matrix +empty-matrix+ :type matrix33)
-  (inv-matrix +empty-matrix+ :type matrix33))
+    (matrix +empty-matrix+ :type matrix33)
+    (inv-matrix +empty-matrix+ :type matrix33)))
 
 (declaim (inline make-cat))
 (defun make-cat (mat)
@@ -26,7 +27,6 @@ linear models are available."
                   (setf (aref coerced-mat i j)
                         (coerce (aref mat i j) 'double-float))))
               coerced-mat)))))
-(declaim (notinline make-cat))
 
 (defparameter +bradford+
   (make-cat #2a((0.8951d0 0.2664d0 -0.1614d0)
@@ -73,8 +73,8 @@ Applications\" http://rit-mcsl.org/fairchild//PDFs/PAP10.pdf")
 
 (define-primary-converter (xyz lms) (x y z &key (illuminant +illum-d65+) (cat +bradford+))
   (declare (optimize (speed 3) (safety 1)))
-  "If ILLUMINANT is NIL, the transform is virtually equivalent to that of
-illuminant E. "
+  "ILLUMINANT can be NIL and in that case the transform is virtually equivalent
+to that of illuminant E. "
   (with-ensuring-type double-float (x y z)
     (if illuminant
         (let* ((mat (cat-matrix cat))
@@ -96,8 +96,8 @@ illuminant E. "
 
 (define-primary-converter (lms xyz) (l m s &key (illuminant +illum-d65+) (cat +bradford+))
   (declare (optimize (speed 3) (safety 1)))
-  "If ILLUMINANT is NIL, the transform is virtually equivalent to that of
-illuminant E. "
+  "ILLUMINANT can be NIL and in that case the transform is virtually equivalent
+to that of illuminant E. "
   (with-ensuring-type double-float (l m s)
     (if illuminant
         (let* ((mat (cat-matrix cat))

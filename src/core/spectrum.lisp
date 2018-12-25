@@ -78,16 +78,17 @@ is used to lighten a \"heavy\" spectrum function."
 ;;; Observer
 ;;;
 
-(defstruct (observer (:constructor %make-observer))
-  "OBSERVER is a structure of color matching functions."
-  (begin-wl 360 :type (integer 0))
-  (end-wl 830 :type (integer 0))
-  (cmf-table nil :type (simple-array double-float (* 3)))
-  ;; Below are (linear) interpolation functions for cmf-table.
-  (cmf-x nil :type spectrum-function)
-  (cmf-y nil :type spectrum-function)
-  (cmf-z nil :type spectrum-function)
-  (cmf nil :type (function * (values double-float double-float double-float &optional))))
+(with-read-only
+  (defstruct (observer (:constructor %make-observer))
+    "OBSERVER is a structure of color matching functions."
+    (begin-wl 360 :type (integer 0))
+    (end-wl 830 :type (integer 0))
+    (cmf-table nil :type (simple-array double-float (* 3)))
+    ;; Below are (linear) interpolation functions for cmf-table.
+    (cmf-x nil :type spectrum-function)
+    (cmf-y nil :type spectrum-function)
+    (cmf-z nil :type spectrum-function)
+    (cmf nil :type (function * (values double-float double-float double-float &optional)))))
 
 (defmethod print-object ((obs observer) stream)
   (let ((*print-array* nil))
@@ -284,14 +285,15 @@ f(x) = 0d0 otherwise."
 ;;; Illuminant, White Point
 ;;;
 
-(defstruct (illuminant (:constructor %make-illuminant)
-                       (:copier nil))
-  (x 1d0 :type double-float)
-  (z 1d0 :type double-float)
-  (spectrum #'empty-spectrum :type spectrum-function)
-  (observer +obs-cie1931+ :type observer)
-  ;; used in xyz-to-spectrum conversion
-  (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
+(with-read-only
+  (defstruct (illuminant (:constructor %make-illuminant)
+                         (:copier nil))
+    (x 1d0 :type double-float)
+    (z 1d0 :type double-float)
+    (spectrum #'empty-spectrum :type spectrum-function)
+    (observer +obs-cie1931+ :type observer)
+    ;; used in xyz-to-spectrum conversion
+    (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3)))))
 
 (defun illuminant-xy (illuminant)
   "Returns the xy chromacity coordinates of a given illuminant."
@@ -366,11 +368,12 @@ SPD of illuminant"
 
 (defun make-illuminant (&key x z spectrum (observer +obs-cie1931+) (compile-time nil) (begin-wl 360) (end-wl 830) (band 1))
   (declare (ignore compile-time))
-  "Generates an illuminant from a spectral distribution or a white point. If the
+  "Generates an illuminant from a spectral distribution or a white point. If
 SPECTRUM is nil, the returned illuminant contains only a white point. If X and Z
-are nil, the white point (X, 1d0, Z) is automatically calculated from the
-spectrum. You can also specify the both, though you should note that no error
-occurs even if the given white point and SPD contradicts to each other.
+are nil, on the other hand, the white point (X, 1d0, Z) is automatically
+calculated from the spectrum. You can also specify the both though you should
+note that no error occurs even if the given white point and SPD contradicts to
+each other.
 
  (make-illuminant :x 1.0 :z 1.0)
 ;; => illuminant without SPD

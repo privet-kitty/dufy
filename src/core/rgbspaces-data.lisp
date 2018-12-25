@@ -1,5 +1,5 @@
 ;;;
-;;; Built-in RGB spaces
+;;; Built-in RGB spaces (except sRGB)
 ;;;
 
 (in-package :dufy/core)
@@ -42,13 +42,6 @@
         ((< x -0.018d0)
          (+ (* -1.099d0 (expt (- x) 0.45d0)) 0.099d0))
         (t (* x 4.5d0))))
-
-(defparameter +srgb+
-  (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0
-                :linearizer #'linearize-srgb
-                :delinearizer #'delinearize-srgb
-                :force-normal t)
-  "sRGB, 8-bit per channel")
 
 (defparameter +bg-srgb-10+
   (make-rgbspace 0.64d0 0.33d0  0.30d0 0.60d0 0.15d0 0.06d0

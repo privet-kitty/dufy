@@ -13,7 +13,7 @@
   ;; return type of -to-COLORSPACE functions (used for type declaration)
   (return-types nil :type list) 
   (documentation nil :type (or null string))
-  ;; adjacent color spaces linked with primary converters
+  ;; adjacent color spaces linked by primary converters
   (neighbors nil :type list))
 
 (defvar *colorspace-table* (make-hash-table))

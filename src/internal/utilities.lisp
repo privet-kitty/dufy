@@ -133,3 +133,22 @@ TUPLE (or (TUPLE)) is equivalent to the type NULL."
 (defmacro nlet (name args &body body)
   `(labels ((,name ,(mapcar #'car args) ,@body))
      (,name ,@(mapcar #'cadr args))))
+
+(defmacro with-read-only (&body body)
+  "Adds `:read-only t' to every slot of the enclosed defstruct form"
+  (labels ((add-read-only-to-slot (slot-desc)
+             (ematch (ensure-list slot-desc)
+               ((list slot-name) `(,slot-name nil :read-only t))
+               ((list* slot-name rest) `(,slot-name ,@rest :read-only t))))
+           (add-read-only-to-form (form)
+             (match form
+               ((list* (type (eql defstruct)) name
+                       (guard doc (typep doc 'string)) slot-descriptions)
+                `(defstruct ,name
+                   ,doc
+                   ,@(mapcar #'add-read-only-to-slot slot-descriptions)))
+               ((list* (type (eql defstruct)) name slot-descriptions)
+                `(defstruct ,name
+                   ,@(mapcar #'add-read-only-to-slot slot-descriptions)))
+               (_ form))))
+    `(progn ,@(mapcar #'add-read-only-to-form body))))

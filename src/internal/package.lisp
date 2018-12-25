@@ -1,5 +1,5 @@
 (defpackage :dufy/internal
-  (:use :cl :alexandria)
+  (:use :cl :alexandria :trivia)
   (:export #:*dat-dir-path*
            #:print-make-array
            #:time-after-gc
@@ -11,6 +11,7 @@
            #:dotimes-unroll
            #:tuple
            #:nlet
+           #:with-read-only
            
            #:TWO-PI
            #:+TWO-PI/360+

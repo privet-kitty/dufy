@@ -14,10 +14,10 @@
   :in-order-to ((test-op (test-op "dufy/test"))))
 
 (defsystem "dufy/internal"
-  :description "Common definitions that are not exported in the main package"
+  :description "Common definitions not exported in the main package"
   :pathname "src"
   :serial t
-  :depends-on ("alexandria")
+  :depends-on ("alexandria" "trivia")
   :components ((:module "internal"
                 :components
                 ((:file "package")
