@@ -33,11 +33,13 @@
   :components ((:module "core"
                 :components
                 ((:file "package")
+                 (:file "fndb" :if-feature :sbcl)
                  (:file "cmf-data")
                  (:file "spectrum")
                  (:file "illuminants-data")
                  (:file "xyz")
                  (:file "rgb")
+                 (:file "hsv-and-hsl")
                  (:file "lab-and-luv")
                  (:file "cat")
                  (:file "rgbspaces-data")

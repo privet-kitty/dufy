@@ -1,6 +1,6 @@
 (uiop:define-package :dufy/core
   (:nicknames :dufy-core)
-  (:use :cl :alexandria :dufy/internal)
+  (:use :cl :alexandria :dufy/internal #+sbcl :sb-c)
   (:export #:spectrum
            #:gen-spectrum
            #:approximate-spectrum
