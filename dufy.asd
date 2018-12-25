@@ -40,7 +40,7 @@
                  (:file "rgb")
                  (:file "lab-and-luv")
                  (:file "cat")
-                 (:file "rgbspaces-data")
+                 (:file "builtin-rgbspaces")
                  (:file "deltae")))))
 
 (defsystem "dufy/munsell"
