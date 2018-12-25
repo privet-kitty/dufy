@@ -22,18 +22,16 @@ Dufy can deal with the following concepts:
 * Color difference: &Delta;-E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000, CMC l:c.
 * Chromatic adaptaion transform: Bradford, Von Kries, etc. User-defined CAT is also available.
 
-
 # Documentation
 Besides this README file, most of the documentation is written as docstrings in the source code. [Quickdocs](http://quickdocs.org/dufy/) will be helpful to overview them. Some other information (e.g. changes between versions) is in [github wiki](https://github.com/privet-kitty/dufy/wiki).
-
 
 # Dependencies
 
 * alexandria
 * cl-ppcre
-* wild-package-inferred-system (requires **ASDF 3.3** or later)
+* trivia
 
-All of the dependent libraries can be installed with quicklisp.
+You can install all of the dependent libraries via quicklisp.
 
 # Install
 The easiest way to install dufy is to use [quicklisp](https://www.quicklisp.org/beta/):
@@ -171,15 +169,14 @@ Likewise most converters regard the implicit illuminant as D65. You can also spe
 ;;    1.0000000000000004d0
 ```
 
-
 # Modules
 Dufy consists of several independent modules:
 - dufy
-  - dufy/core/* (`package-nicknames`: dufy/core)
-  - dufy/munsell/* (`package-nicknames`: dufy/munsell)
-- dufy/extra-data/* (`package-nicknames`: dufy/extra-data)
-- dufy/examples/* (`package-nicknames`: dufy/examples)
+  - dufy/core
+  - dufy/munsell
+- dufy/extra-data
+- dufy/examples
 
-Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy/core/*` instead of `dufy` in some cases.
+Since the main package `dufy` contains slightly large colorimetric data, you may want to load `dufy/core` instead of `dufy` in some cases.
 
 As of dufy 0.3.0, both the system names and the package names use the separator `/` instead of `-`, though the old package prefixes like `dufy-core` are left as nicknames.
