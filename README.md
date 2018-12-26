@@ -19,7 +19,7 @@ Dufy can deal with the following concepts:
 * Illuminant: A, B, C, D series, F series, etc. A new illuminant can be defined by white point or SPD.
 * RGB space: sRGB, Adobe RGB, scRGB, etc.  A new RGB space can be defined by primary coordinates, illuminant, method of gamma correction, bit per channel and other encoding characteristics.
 * Observer (Color Matching Functions): CIE 1931 2&deg; Standard Observer, CIE 1964 10&deg;. Other observer model can be defined by color matching data.
-* Color difference: &Delta;-E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000, CMC l:c.
+* Color difference: &Delta;E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000, CMC l:c.
 * Chromatic adaptaion transform: Bradford, Von Kries, etc. User-defined CAT is also available.
 
 # Documentation
