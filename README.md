@@ -22,10 +22,10 @@ Dufy can deal with the following concepts:
 * Color difference: &Delta;E<sup>*</sup><sub>ab</sub>, CIE94, CIEDE2000, CMC l:c.
 * Chromatic adaptaion transform: Bradford, Von Kries, etc. User-defined CAT is also available.
 
-# Documentation
+## Documentation
 Besides this README file, most of the documentation is written as docstrings in the source code. [Quickdocs](http://quickdocs.org/dufy/) will be helpful to overview them. Some other information (e.g. changes between versions) is in [github wiki](https://github.com/privet-kitty/dufy/wiki).
 
-# Dependencies
+## Dependencies
 
 * alexandria
 * cl-ppcre
@@ -33,7 +33,7 @@ Besides this README file, most of the documentation is written as docstrings in 
 
 You can install all of the dependent libraries via quicklisp.
 
-# Install
+## Install
 The easiest way to install dufy is to use [quicklisp](https://www.quicklisp.org/beta/):
 
     * (ql:quickload :dufy)
@@ -51,7 +51,7 @@ If you want to load the ASDF system directly without quicklisp, you should put t
 
 Note that the `master` branch always coincides with the latest stable release. The `develop` branch is usually where development happens.
 
-# Basic Usage
+## Basic Usage
 ![Tree of Direct Converters](https://g.gravizo.com/source/converter_tree?https%3A%2F%2Fraw.githubusercontent.com%2Fprivet-kitty%2Fdufy%2Fdevelop%2FREADME.md)
 
 <details> 
@@ -169,7 +169,7 @@ Likewise most converters regard the implicit illuminant as D65. You can also spe
 ;;    1.0000000000000004d0
 ```
 
-# Modules
+## Modules
 Dufy consists of several independent modules:
 - dufy
   - dufy/core
