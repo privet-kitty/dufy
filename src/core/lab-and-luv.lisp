@@ -147,7 +147,7 @@
              (l (/ (+ lstar 16d0) 116d0))
              (y (if (<= lstar 8d0)
                     (* lstar #.(expt 3/29 3d0))
-                    (* (* l l l)))))
+                    (* l l l))))
         (values (* y (/ (* 9d0 uprime) (* 4d0 vprime)))
                 y
                 (* y (/ (- 12d0 (* 3d0 uprime) (* 20d0 vprime)) (* 4d0 vprime))))))))
