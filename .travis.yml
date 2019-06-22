@@ -14,6 +14,7 @@ env:
     - LISP=ccl-bin
     - LISP=allegro
     - LISP=clisp
+    - LISP=abcl
 
 matrix:
   allow_failures:
