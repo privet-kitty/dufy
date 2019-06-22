@@ -13,12 +13,12 @@ env:
     - LISP=sbcl-bin
     - LISP=ccl-bin
     - LISP=allegro
-    - LISP=abcl
     - LISP=clisp
 
 matrix:
   allow_failures:
     - env: LISP=clisp
+    - env: LISP=abcl
 
 install:
   - curl -L https://raw.githubusercontent.com/snmsts/roswell/release/scripts/install-for-ci.sh | sh
