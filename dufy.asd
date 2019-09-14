@@ -24,7 +24,8 @@
                  (:file "utilities")
                  (:file "arithmetic")
                  (:file "matrix")
-                 (:file "colorspace")))))
+                 (:file "colorspace")
+                 (:file "mb-line")))))
 
 (defsystem "dufy/core"
   :pathname "src"
@@ -39,6 +40,7 @@
                  (:file "xyz")
                  (:file "rgb")
                  (:file "lab-and-luv")
+                 (:file "hsluv")
                  (:file "cat")
                  (:file "builtin-rgbspaces")
                  (:file "deltae")))))
