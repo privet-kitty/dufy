@@ -13,13 +13,13 @@
   :return-types (double-float double-float double-float)
   :documentation "Human-friendly HSL for automatic perceptual color generation. HPLuv uses an absolute saturation, constrained by the minimal saturation range across hues for a given L.")
 
-(when (not (boundp '+m-bounds+))
-  (defconstant +m-bounds+
-    (make-array '(3 3) :initial-contents
-                '((3.240969941904521d0 -1.537383177570093d0 -0.498610760293d0)
-                  (-0.96924363628087d0 1.87596750150772d0 0.041555057407175d0)
-                  (0.055630079696993d0 -0.20397695888897d0 1.056971514242878d0))
-                :element-type 'double-float)))
+(define-constant +m-bounds+
+  (make-array '(3 3) :initial-contents
+              '((3.240969941904521d0 -1.537383177570093d0 -0.498610760293d0)
+                (-0.96924363628087d0 1.87596750150772d0 0.041555057407175d0)
+                (0.055630079696993d0 -0.20397695888897d0 1.056971514242878d0))
+                     :element-type 'double-float)
+  :test #'equalp)
 
 (defconstant +cieluv-kappa+ 903.2962962d0)
 (defconstant +cieluv-epsilon+ 0.0088564516d0)
