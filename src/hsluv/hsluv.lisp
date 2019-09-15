@@ -1,7 +1,8 @@
 ;;;
 ;;; HSLuv and HPLuv
 ;;;
-(in-package #:dufy/core)
+
+(in-package #:dufy/hsluv)
 
 (define-colorspace hsluv (huv sat lstar)
   :arg-types (real real real)
