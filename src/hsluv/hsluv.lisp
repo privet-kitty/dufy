@@ -26,41 +26,43 @@
 (defconstant +cieluv-kappa+ 903.2962962d0)
 (defconstant +cieluv-epsilon+ 0.0088564516d0)
 
+;; TODO: It will be enough to allocate the set of MB-LINEs once in a load-time.
+(declaim (ftype (function * (values double-float &optional)) max-chroma-for-lh))
 (defun max-chroma-for-lh (l h)
   "Given L and H values, return the maximum chroma, constrained to
   those values."
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
            (double-float l h))
   (let ((hrad (degree-to-radian h))
         (bounds (get-cieluv-bounds l)))
-    (the double-float
-         (reduce #'min
-                 (remove-if #'negative-real-p
-                            (mapcar #'(lambda (b) (mb-line-ray-intersect-distance hrad b))
-                                    bounds))
-                 :initial-value most-positive-double-float))))
+    (reduce #'min
+            (remove-if #'negative-real-p
+                       (mapcar #'(lambda (b) (mb-line-ray-intersect-distance hrad b))
+                               bounds))
+            :initial-value most-positive-double-float)))
 
+(declaim (ftype (function * (values double-float &optional)) max-safe-chroma-for-l))
 (defun max-safe-chroma-for-l (l)
   "Given L, return the maximum chroma available over the full range of hues.
 
 For a fixed L, the in-gamut colors are bounded by a convex polygon, whose
 boundary lines are given by GET-CIELUV-BOUNDS. The maximum safe chroma is the
 maximum chroma that would be valid for any hue."
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
            (double-float l))
   (let ((bounds (get-cieluv-bounds l)))
     ;; The minimum from the origin to the polygon is the minimum among
     ;; distances to the lines defining the boundary.
-    (the double-float (reduce #'min
-                              (remove-if #'negative-real-p
-                                         (mapcar #'mb-line-distance-from-origin bounds))
-                              :initial-value most-positive-double-float))))
+    (reduce #'min
+            (remove-if #'negative-real-p
+                       (mapcar #'mb-line-distance-from-origin bounds))
+            :initial-value most-positive-double-float)))
 
 
 (defun get-cieluv-bounds (l)
   "Return a list of lines representing the boundaries of the polygon defining
 the in-gamut colors in CIELUV for a fixed L."
-  (declare (optimize (speed 3) (safety 1))
+  (declare (optimize (speed 3) (safety 0))
            (double-float l))
   (let* ((bounds nil)
          (sub1 (/ (expt (+ l 16) 3) 1560896.0d0))
