@@ -42,7 +42,7 @@ function SPECTRUM, a spectral reflectance, must be defined at least in
 [BEGIN-WL, END-WL]; the SPECTRUM is called for BEGIN-WL, BEGIN-WL + BAND,
 BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
   (if (illuminant-no-spd-p illuminant)
-      (error (make-condition 'no-spd-error :illuminant illuminant))
+      (error 'no-spd-error :illuminant illuminant)
       (%spectrum-to-xyz spectrum
                         (illuminant-spectrum illuminant)
                         (illuminant-observer illuminant)
@@ -54,7 +54,7 @@ BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
   "Converts XYZ to spectrum, which is, of course, a spectrum among many and may
 contain a negative spectral density."
   (if (illuminant-no-spd-p illuminant)
-      (error (make-condition 'no-spd-error :illuminant illuminant))
+      (error 'no-spd-error :illuminant illuminant)
       (let ((observer (illuminant-observer illuminant)))
         (multiple-value-bind (fac-x fac-y fac-z)
             (multiply-mat-vec (illuminant-to-spectrum-matrix illuminant) x y z)

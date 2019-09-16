@@ -187,13 +187,13 @@ However, the capital letters and  '/' are reserved:
            (switch (hue-name :test #'string=)
              ("R" 0) ("YR" 1) ("Y" 2) ("GY" 3) ("G" 4)
              ("BG" 5) ("B" 6) ("PB" 7) ("P" 8) ("RP" 9) ("N" -1)
-             (t (error (make-condition 'munsellspec-parse-error
-                                       :spec (format nil "Invalid hue designator: ~A" hue-name)))))))
+             (t (error 'munsellspec-parse-error
+                       :spec (format nil "Invalid hue designator: ~A" hue-name))))))
     (cond ((= hue-number -1) ; achromatic
            (values 0d0 (car lst) 0d0))
           ((/= (length lst) 3)
-           (error (make-condition 'munsellspec-parse-error
-                                  :spec (format nil "Contains more than 3 numbers: ~A" lst))))
+           (error 'munsellspec-parse-error
+                  :spec (format nil "Contains more than 3 numbers: ~A" lst)))
           (t (setf (car lst)
                    (mod (+ (* hue-number 4)
                            (* (the double-float (car lst)) 0.4d0))

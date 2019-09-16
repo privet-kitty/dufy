@@ -178,8 +178,8 @@
         (dotimes (i max-iteration
                     (ecase if-reach-max
                       (:error
-                       (error (make-condition 'large-approximation-error
-                                              :message "INVERT-MHVC-TO-LCHAB reached MAX-ITERATION without achieving sufficient accuracy.")))
+                       (error 'large-approximation-error
+                              :message "INVERT-MHVC-TO-LCHAB reached MAX-ITERATION without achieving sufficient accuracy."))
                       (:return40 (values 40d0 40d0 40d0))
                       (:raw (values (mod hue40 40d0) value chroma))))
           (multiple-value-bind (_ tmp-cstarab tmp-hab)
