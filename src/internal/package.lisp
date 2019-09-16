@@ -46,8 +46,4 @@
            #:defconverters
            #:functional
            #:define-functional
-           #:extend-functional
-
-           #:make-mb-line
-           #:mb-line-ray-intersect-distance
-           #:mb-line-distance-from-origin))
+           #:extend-functional))

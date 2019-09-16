@@ -10,7 +10,6 @@ Dufy is a library for exact color manipulation and conversion in various color s
 * CIELAB and LCh<sub>ab</sub>
 * CIELUV and LCh<sub>uv</sub>
 * HSV and HSL
-* HSL<sub>uv</sub> and HPL<sub>uv</sub>
 * Munsell Color System
 * LMS
 * spectrum (as spectral power distribution function)
@@ -64,11 +63,7 @@ converter_tree
       label = "Tree of Primary Converters",
       fontsize = 16
     ];
-    node [
-      shape = "box",
-      fontname = "helvetica",
-      fontsize = 14
-    ];
+    node [shape = "box", fontname = "helvetica"]
     xyz [ label = "XYZ" ]
     xyy [ label = "XYY\n(xyY)" ]
     lrgb [ label = "LRGB\n(linear RGB)" ]
@@ -86,8 +81,6 @@ converter_tree
     munsell [ label = "MUNSELL\n(Munsell string spec.)" ]
     hsv [ label = "HSV" ]
     hsl [ label = "HSL" ]
-    hsluv [ label = "HSLUV" ]
-    hpluv [ label = "HPLUV" ]
     spectrum [ label = "SPECTRUM" ]
     lms [ label = "LMS" ]
     xyz -- xyy
@@ -105,8 +98,6 @@ converter_tree
     lab -- lchab
     xyz -- luv
     luv -- lchuv
-    lchuv -- hsluv
-    lchuv -- hpluv
     rgb -- hsv
     rgb -- hsl
 
@@ -182,8 +173,7 @@ Likewise most converters regard the implicit illuminant as D65. You can also spe
 Dufy consists of several independent modules:
 - dufy
   - dufy/core
-  - dufy/hsluv (HSLuv and HPLuv color spaces)
-  - dufy/munsell (Munsell Color System)
+  - dufy/munsell
 - dufy/extra-data
 - dufy/examples
 
