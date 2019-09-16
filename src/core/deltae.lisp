@@ -5,7 +5,7 @@
 
 (in-package :dufy/core)
 
-;; Export the function names of delta-E converters automatically
+;; KLUDGE: Export the function names of delta-E converters all at once
 (dolist (colorspace '(lab qrgb xyz))
   (dolist (name '(#:deltaeab #:deltae94 #:deltae00 #:deltaecmc))
     (export (intern (format nil "~:@(~A-~A~)" colorspace name)))))

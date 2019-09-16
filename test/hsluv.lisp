@@ -8,15 +8,15 @@
 (in-suite hsluv-suite)
 
 (test line-distance
-  (is (nearly-equal 1d-4
-                    (list (mb-line-distance-from-origin (make-mb-line :slope 0.0d0 :intercept 1.0d0)))
-                    (list 1.0)))
-  (is (nearly-equal 1d-4
-                    (list (mb-line-distance-from-origin (make-mb-line :slope 1.0d0 :intercept 1.0d0)))
-                    (list (sqrt 0.5))))
-  (is (nearly-equal 1d-4
-                    (list (mb-line-distance-from-origin (make-mb-line :slope -1.0d0 :intercept 1.0d0)))
-                    (list (sqrt 0.5)))))
+  (is (nearly= 1d-4
+               (mb-line-distance-from-origin (make-mb-line :slope 0.0d0 :intercept 1.0d0))
+               1d0))
+  (is (nearly= 1d-4
+               (mb-line-distance-from-origin (make-mb-line :slope 1.0d0 :intercept 1.0d0))
+               (sqrt 0.5d0)))
+  (is (nearly= 1d-4
+               (mb-line-distance-from-origin (make-mb-line :slope -1.0d0 :intercept 1.0d0))
+               (sqrt 0.5d0))))
 
 (defstruct hsluv-test-case
   hsluv lchuv hpluv)
