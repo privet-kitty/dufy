@@ -13,13 +13,11 @@ env:
     - LISP=sbcl-bin
     - LISP=ccl-bin
     - LISP=allegro
-    - LISP=clisp
     - LISP=abcl
 
 matrix:
   allow_failures:
     - env: LISP=allegro
-    - env: LISP=clisp
     - env: LISP=abcl
 
 install:
