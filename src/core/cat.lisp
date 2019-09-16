@@ -4,13 +4,12 @@
 
 (in-package :dufy/core)
 
-(with-read-only
-  (defstruct (cat (:constructor %make-cat
-                      (matrix &aux (inv-matrix (invert-matrix matrix)))))
-    "Expresses a model of chromatic adaptation transformation. Currently only
+(defstruct (cat (:constructor %make-cat
+                    (matrix &aux (inv-matrix (invert-matrix matrix)))))
+  "Expresses a model of chromatic adaptation transformation. Currently only
 linear models are available."
-    (matrix +empty-matrix+ :type matrix33)
-    (inv-matrix +empty-matrix+ :type matrix33)))
+  (matrix +empty-matrix+ :type matrix33)
+  (inv-matrix +empty-matrix+ :type matrix33))
 
 (declaim (inline make-cat))
 (defun make-cat (mat)

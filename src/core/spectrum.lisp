@@ -78,17 +78,16 @@ is used to lighten a \"heavy\" spectrum function."
 ;;; Observer
 ;;;
 
-(with-read-only
-  (defstruct (observer (:constructor %make-observer))
-    "OBSERVER is a structure of color matching functions."
-    (begin-wl 360 :type (integer 0))
-    (end-wl 830 :type (integer 0))
-    (cmf-table nil :type (simple-array double-float (* 3)))
-    ;; Below are (linear) interpolation functions for cmf-table.
-    (cmf-x nil :type spectrum-function)
-    (cmf-y nil :type spectrum-function)
-    (cmf-z nil :type spectrum-function)
-    (cmf nil :type (function * (values double-float double-float double-float &optional)))))
+(defstruct (observer (:constructor %make-observer))
+  "OBSERVER is a structure of color matching functions."
+  (begin-wl 360 :type (integer 0))
+  (end-wl 830 :type (integer 0))
+  (cmf-table nil :type (simple-array double-float (* 3)))
+  ;; Below are (linear) interpolation functions for cmf-table.
+  (cmf-x nil :type spectrum-function)
+  (cmf-y nil :type spectrum-function)
+  (cmf-z nil :type spectrum-function)
+  (cmf nil :type (function * (values double-float double-float double-float &optional))))
 
 (defmethod print-object ((obs observer) stream)
   (let ((*print-array* nil))
@@ -285,15 +284,14 @@ f(x) = 0d0 otherwise."
 ;;; Illuminant, White Point
 ;;;
 
-(with-read-only
-  (defstruct (illuminant (:constructor %make-illuminant)
-                         (:copier nil))
-    (x 1d0 :type double-float)
-    (z 1d0 :type double-float)
-    (spectrum #'empty-spectrum :type spectrum-function)
-    (observer +obs-cie1931+ :type observer)
-    ;; used in xyz-to-spectrum conversion
-    (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3)))))
+(defstruct (illuminant (:constructor %make-illuminant)
+                       (:copier nil))
+  (x 1d0 :type double-float)
+  (z 1d0 :type double-float)
+  (spectrum #'empty-spectrum :type spectrum-function)
+  (observer +obs-cie1931+ :type observer)
+  ;; used in xyz-to-spectrum conversion
+  (to-spectrum-matrix +empty-matrix+ :type (simple-array double-float (3 3))))
 
 (defun illuminant-xy (illuminant)
   "Returns the xy chromacity coordinates of a given illuminant."

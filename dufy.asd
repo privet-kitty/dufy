@@ -17,7 +17,7 @@
   :description "Common definitions not exported in the main package"
   :pathname "src"
   :serial t
-  :depends-on ("alexandria" "trivia")
+  :depends-on ("alexandria")
   :components ((:module "internal"
                 :components
                 ((:file "package")

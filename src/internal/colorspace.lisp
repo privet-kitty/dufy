@@ -208,7 +208,7 @@ arguments (without supplied-p-parameter) and &aux arguments are allowed. "
                               :name ',name))))
 
 ;;;
-;;; Generates converters between arbitrary two color spaces by linking primary
+;;; Generate converters between arbitrary two color spaces by linking primary
 ;;; converters
 ;;;
 
@@ -325,6 +325,8 @@ TO-COLORSPACE automatically with linking primary converters. "
        (declaim (notinline ,name)))))
 
 (defmacro defconverters (from-colorspaces to-colorspaces &key (exclude-args nil))
+  "Generates and defines converter functions from each color space in
+FROM-COLORSPACES into each color space in TO-COLORSPACES."
   `(progn
      ,@(loop for from-cs in (ensure-list from-colorspaces)
              append (loop for to-cs in (ensure-list to-colorspaces)

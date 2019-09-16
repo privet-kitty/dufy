@@ -30,7 +30,6 @@ Besides this README file, most of the documentation is written as docstrings in 
 
 * alexandria
 * cl-ppcre
-* trivia
 
 You can install all of the dependent libraries via quicklisp.
 
