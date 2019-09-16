@@ -1,5 +1,6 @@
 ;;;
 ;;; HSLuv and HPLuv
+;;; (contributed by masonium)
 ;;;
 
 (in-package #:dufy/hsluv)
