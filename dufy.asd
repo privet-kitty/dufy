@@ -5,7 +5,7 @@
   :description "Color library for Common Lisp"
   :author "Hugo I."
   :license "MIT"
-  :depends-on ("dufy/core" "dufy/munsell" "dufy/hsluv")
+  :depends-on ("dufy/core" "dufy/munsell")
   :components ((:module "dat"
                 :components ((:static-file "ciede2000-test-data.csv")
                              (:static-file "FL3.x.tsv")))
@@ -24,8 +24,7 @@
                  (:file "utilities")
                  (:file "arithmetic")
                  (:file "matrix")
-                 (:file "colorspace")
-                 (:file "mb-line")))))
+                 (:file "colorspace")))))
 
 (defsystem "dufy/core"
   :pathname "src"
@@ -44,18 +43,7 @@
                  (:file "builtin-rgbspaces")
                  (:file "deltae")))))
 
-(defsystem "dufy/hsluv"
-  :description "HSLuv and HPLuv color spaces"
-  :pathname "src"
-  :serial t
-  :depends-on ("dufy/core")
-  :components ((:module "hsluv"
-                :components
-                ((:file "package")
-                 (:file "hsluv")))))
-
 (defsystem "dufy/munsell"
-  :description "Munsell Color System"
   :pathname "src"
   :serial t
   :depends-on ("dufy/core" "cl-ppcre")
@@ -101,7 +89,6 @@
                (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples"))
   :components ((:file "package")
                (:file "core")
-               (:file "hsluv")
                (:file "munsell"))
   :perform (test-op (o s)
                     (uiop:eval-input "(fiveam:run! 'dufy/test:main-suite)")))
