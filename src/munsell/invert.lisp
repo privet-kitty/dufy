@@ -38,8 +38,8 @@
                 lchab-to-mhvc-l-integer-case
                 lchab-to-mhvc-general-case))
 
-;; In the following functions, the actual L* equals 10*LSTAR/10; the
-;; actual C*ab equals 20*CSTARAB/20; the actual hab equals 9*HAB/9.
+;; In the following functions, the actual L* equals 10 * LSTAR/10; the actual
+;; C*ab equals 20 * CSTARAB/20; the actual hab equals 9 * HAB/9.
 (declaim (inline lchab-to-mhvc-all-integer-case))
 (defun lchab-to-mhvc-all-integer-case (lstar/10 cstarab/20 hab/9)
   (declare (optimize (speed 3) (safety 1))

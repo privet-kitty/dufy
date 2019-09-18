@@ -50,6 +50,7 @@ BEGIN-WL + 2*BAND, ..., BEGIN-WL + n*BAND (<= END-WL)."
                         end-wl
                         band)))
 
+;; TODO: sane converter from XYZ to (non-negative) spectrum
 (define-primary-converter (xyz spectrum) (x y z &key (illuminant +illum-d65+))
   "Converts XYZ to spectrum, which is, of course, a spectrum among many and may
 contain a negative spectral density."

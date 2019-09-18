@@ -88,5 +88,3 @@
       mat1
       (multiply-mat-mat mat1
                         (apply #'multiply-matrices (car mats) (cdr mats)))))
-
-

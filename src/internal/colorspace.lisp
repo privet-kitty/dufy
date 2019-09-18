@@ -128,7 +128,7 @@ other than required parameters."
                              :allow-other-keys allow-other-keys
                              :aux-args aux)))
 
-;; simple queue structure
+;; simple queue structure for BFS
 (defstruct queue list tail)
 (defun enqueue (obj queue)
   (symbol-macrolet ((list (queue-list queue))
@@ -308,21 +308,26 @@ arguments (without supplied-p-parameter) and &aux arguments are allowed. "
 
 (defmacro defconverter (from-colorspace to-colorspace &key (name (gen-converter-name from-colorspace to-colorspace)) (exclude-args nil) (documentation nil))
   "Generates and defines a converter function from FROM-COLORSPACE to
-TO-COLORSPACE automatically with linking primary converters. "
+TO-COLORSPACE automatically with linking primary converters.
+
+These secondary converters are not inlined by default, different from primary
+converters. You can manually declare (inline <name>) to inline them. (Declared
+as sb-ext:maybe-inline on SBCL.)"
   (let* ((chain (find-converter-path from-colorspace to-colorspace))
          (args (gen-args chain :exclude-args exclude-args)))
     `(progn
-       (declaim (inline ,name)
-                (ftype (function * (values ,@(get-return-types (lastcar chain)) &optional)) ,name))
+       #-sbcl (declaim (inline ,name))
+       #+sbcl (declaim (sb-ext:maybe-inline ,name))
+       (declaim (ftype (function * (values ,@(get-return-types (lastcar chain)) &optional)) ,name))
        (defun ,name ,args
-         (declare (optimize (speed 3) (safety 1))
+         (declare (optimize (speed 3))
                   (ignorable ,@(collect-aux-arg-names chain))
                   ,@(mapcar #'(lambda (typ arg) (list typ arg))
                             (get-arg-types from-colorspace)
                             args))
          ,@(ensure-list documentation)
          ,(expand-conversion-form chain :exclude-args exclude-args))
-       (declaim (notinline ,name)))))
+       #-sbcl (declaim (notinline ,name)))))
 
 (defmacro defconverters (from-colorspaces to-colorspaces &key (exclude-args nil))
   "Generates and defines converter functions from each color space in
@@ -357,7 +362,7 @@ Example:
                    (push name name-lst)
                    (push (get-return-types (lastcar chain)) return-types-lst)
                    `(,name ,args
-                           (declare (optimize (speed 3) (safety 1))
+                           (declare (optimize (speed 3))
                                     (ignorable ,@(collect-aux-arg-names chain))
                                     ,@(mapcar #'(lambda (typ arg) (list typ arg))
                                               (get-arg-types from-colorspace)
@@ -416,6 +421,7 @@ EXTEND-FUNCTIONAL."
       (error "No functional found: ~A" term)))
 
 (defun circularize (lst)
+  "Destructively makes a circular list."
   (let ((res (copy-list lst)))
     (setf (cdr (last res)) res)
     res))
@@ -447,7 +453,7 @@ function is [COLORSPACE]-[TERM] if FNAME is not given."
                      :extra-key-args extra-key-args
                      :with-aux nil
                      :dimension dimension)
-       (declare (optimize (speed 3) (safety 1)))
+       (declare (optimize (speed 3)))
        ,@(ensure-list documentation)
        (let-converter ((,transform ,from-colorspace ,to-colorspace
                                    :exclude-args ,exclude-args))

@@ -11,11 +11,10 @@
                 mhvc-to-lchab-value-integer-case
                 mhvc-to-lchab-general-case))
 
-;; These converters process a dark color (value < 1) separately
-;; because the values of the Munsell Renotation Data (all.dat) are not
-;; evenly distributed: [0, 0.2, 0.4, 0.6, 0.8, 1, 2, 3, ..., 10]. In
-;; the following functions, the actual value equals SCALED-VALUE/5 if
-;; DARK is true.
+;; These converters process a dark color (i.e. value < 1) separately because the
+;; values of the Munsell Renotation Data (all.dat) are not evenly distributed:
+;; [0, 0.2, 0.4, 0.6, 0.8, 1, 2, 3, ..., 10]. In the following functions, the
+;; actual value equals SCALED-VALUE/5 if DARK is true.
 
 ;; HALF-CHROMA is a half of the actual chroma.
 
