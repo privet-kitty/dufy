@@ -1,5 +1,8 @@
 language: common-lisp
 
+before_install:
+  - sudo apt-get -y install libsdl1.2debian
+
 branches:
   only:
     - master

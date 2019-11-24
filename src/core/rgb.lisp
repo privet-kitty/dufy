@@ -40,8 +40,8 @@
   :documentation "Is RGBA encoded to an unsigned integer. The order can be ARGB or RGBA.")
 
 (defun gen-linearizer (gamma)
-  "Returns a linearization function for a given gamma value. You
-shouldn't call the returned function directly as it is not safe."
+  "Returns a linearization function for a given gamma value. You shouldn't call
+the returned function directly as it is not safe. Use LINEARIZE instead."
   (let ((gamma (float gamma 1d0)))
     #'(lambda (x)
         (declare (optimize (speed 3) (safety 0))
@@ -51,8 +51,8 @@ shouldn't call the returned function directly as it is not safe."
             (- (expt (- x) gamma))))))
 
 (defun gen-delinearizer (gamma)
-  "Returns a gamma-correction function for a given gamma value. You
-shouldn't call the returned function directly as it is not safe."
+  "Returns a gamma-correction function for a given gamma value. You shouldn't
+call the returned function directly as it is not safe. Use DELINEARIZE instead."
   (let ((/gamma (/ (float gamma 1d0))))
     #'(lambda (x)
         (declare (optimize (speed 3) (safety 0))
