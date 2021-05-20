@@ -98,7 +98,8 @@
                ;; There's no specific test for dufy/extra-data and dufy/examples;
                ;; the following is just for checking if load-op succeeds.
                "dufy/extra-data"
-               (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples"))
+               ;; (:feature (:and (:or :sbcl :ccl) :x86-64) "dufy/examples")
+               )
   :components ((:file "package")
                (:file "core")
                (:file "hsluv")

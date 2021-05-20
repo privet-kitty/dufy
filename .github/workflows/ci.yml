@@ -1,0 +1,35 @@
+name: CI
+
+on: [push]
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    if: "! contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - run: echo "${{ github.event.head_commit.message }}"
+  test:
+    name: ${{ matrix.lisp }}
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      matrix:
+        lisp: [sbcl-bin, ccl-bin, allegro, abcl]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Roswell
+        env:
+          LISP: ${{ matrix.lisp }}
+          ROSWELL_LATEST_ASDF: 1
+        run: |
+          curl -L https://raw.githubusercontent.com/roswell/roswell/a8fd8a3c33078d6f06e6cda9d099dcba6fbefcb7/scripts/install-for-ci.sh | sh
+      - name: Install fiveam
+        run: ros install fiveam
+      - name: Run tests
+        run: |
+          ros -s fiveam -e '(handler-bind ((error (lambda (c) (print c) (uiop:quit 1))))
+                              (ql:quickload :dufy/test))
+                            (handler-bind ((error (lambda (c) (print c) (uiop:quit 1))))
+                              (or (fiveam:run! (quote dufy/test:main-suite))
+                                  (uiop:quit 1)))'
